@@ -32,32 +32,31 @@ export default function Index() {
    const mutedColor = useThemeColor("muted");
    const foregroundColor = useThemeColor("foreground");
 
-   const ddt = useQuery(orpc.AI.getSuggestions.queryOptions({
-      type: "plan",
-      isApplied: false,
-      limit: 20,
-      search: "",
 
-   }))
 
 
    const {
       data: suggestionsData,
       isLoading,
       refetch,
+      error,
    } = useQuery({
       queryKey: ["ai-suggestions", filter, showApplied, searchQuery],
       queryFn: async () => {
-         const result = await orpc.AI.getSuggestions.call({
-            type: filter === "all" ? undefined : filter,
-            isApplied: showApplied ? undefined : false,
-            limit: 20,
-            search: searchQuery.trim() || undefined,
-         });
-         return result;
+         try {
+            console.log("🔍 Fetching suggestions with filters:", { filter, showApplied, searchQuery });
+            const result = await orpc.AI.getSuggestions.call({
+               limit: 10,
+            });
+            return result;
+         } catch (err) {
+            console.error("❌ Error fetching suggestions:", err);
+            throw err;
+         }
       },
    });
 
+   console.log(":)", suggestionsData)
 
 
    const applySuggestionMutation = useMutation({
@@ -191,6 +190,24 @@ export default function Index() {
                   <ActivityIndicator size="large" color={foregroundColor} />
                   <Text className="text-muted-foreground mt-4">Loading suggestions...</Text>
                </View>
+            ) : error ? (
+               <Card variant="secondary" className="p-6">
+                  <View className="items-center py-8">
+                     <Text className="text-4xl mb-4">❌</Text>
+                     <Text className="text-foreground font-medium text-lg mb-2">
+                        Error Loading Suggestions
+                     </Text>
+                     <Text className="text-muted-foreground text-center">
+                        {error.message}
+                     </Text>
+                     <Pressable
+                        className="mt-4 bg-primary px-4 py-2 rounded-lg"
+                        onPress={() => refetch()}
+                     >
+                        <Text className="text-white text-sm font-medium">Retry</Text>
+                     </Pressable>
+                  </View>
+               </Card>
             ) : suggestionsData?.suggestions?.length === 0 ? (
                <Card variant="secondary" className="p-6">
                   <View className="items-center py-8">
@@ -206,8 +223,50 @@ export default function Index() {
                   </View>
                </Card>
             ) : (
-               <View className="gap-4">
-
+                <View className="gap-4">
+                  {suggestionsData?.suggestions?.map((suggestion: Suggestion) => (
+                     <Card key={suggestion.id} variant="secondary" className="p-4">
+                        <View className="flex-row items-start justify-between mb-3">
+                           <View className="flex-row items-center gap-2">
+                              <Text className="text-lg">{getTypeIcon(suggestion.type)}</Text>
+                              <View className={`px-2 py-1 rounded-full ${getTypeColor(suggestion.type)}`}>
+                                 <Text className="text-white text-xs font-medium capitalize">
+                                    {suggestion.type}
+                                 </Text>
+                              </View>
+                           </View>
+                           <Text className="text-muted-foreground text-xs">
+                              {formatDate(suggestion.createdAt)}
+                           </Text>
+                        </View>
+                        
+                        <Text className="text-foreground mb-3 text-sm leading-relaxed">
+                           {formatContent(suggestion.content)}
+                        </Text>
+                        
+                        <View className="flex-row items-center justify-between">
+                           <View className="flex-row items-center gap-2">
+                              {suggestion.isApplied && (
+                                 <View className="bg-green-100 px-2 py-1 rounded-full">
+                                    <Text className="text-green-800 text-xs font-medium">Applied</Text>
+                                 </View>
+                              )}
+                           </View>
+                           
+                           {!suggestion.isApplied && (
+                              <Pressable
+                                 className="bg-primary px-3 py-1.5 rounded-lg"
+                                 onPress={() => applySuggestionMutation.mutate(suggestion.id)}
+                                 disabled={applySuggestionMutation.isPending}
+                              >
+                                 <Text className="text-white text-sm font-medium">
+                                    {applySuggestionMutation.isPending ? "Applying..." : "Apply"}
+                                 </Text>
+                              </Pressable>
+                           )}
+                        </View>
+                     </Card>
+                  ))}
                </View>
             )}
 
