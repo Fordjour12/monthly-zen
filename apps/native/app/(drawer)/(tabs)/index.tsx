@@ -9,31 +9,66 @@ import {
    Alert,
    TextInput,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Container } from "@/components/container";
+import { TaskStatusBadge } from "@/components/task-status-toggle";
+import { HabitStreakBadge } from "@/components/habit-tracker";
+import { AICheckin, CheckinNotification } from "@/components/ai-checkin";
 import { Card, useThemeColor } from "heroui-native";
 import { orpc } from "@/utils/orpc";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 
 interface Suggestion {
    id: string;
    type: "plan" | "briefing" | "reschedule";
    content: any; // JSON content
    isApplied: boolean;
-   createdAt: string;
-   updatedAt: string;
+   createdAt: Date | string;
+   updatedAt: Date | string;
 }
 
 export default function Index() {
    const [filter, setFilter] = useState<"all" | "plan" | "briefing" | "reschedule">("all");
    const [showApplied, setShowApplied] = useState(false);
    const [searchQuery, setSearchQuery] = useState("");
+   const [showCheckin, setShowCheckin] = useState(false);
+   const [checkinQuestion, setCheckinQuestion] = useState("");
    const queryClient = useQueryClient();
+   const router = useRouter();
 
-   const mutedColor = useThemeColor("muted");
    const foregroundColor = useThemeColor("foreground");
+   const mutedColor = useThemeColor("muted");
 
 
 
+
+   // Mock data for today's tasks - replace with actual API calls
+   const { data: todayTasks = [] } = useQuery({
+      queryKey: ["today-tasks"],
+      queryFn: async () => {
+         // Mock data - replace with actual API call
+         return [
+            { id: "1", title: "Morning standup", status: "completed", priority: "medium" },
+            { id: "2", title: "Review PRs", status: "pending", priority: "high" },
+            { id: "3", title: "Team meeting", status: "pending", priority: "medium" },
+            { id: "4", title: "Update docs", status: "skipped", priority: "low" },
+         ];
+      },
+   });
+
+   // Mock data for today's habits - replace with actual API calls
+   const { data: todayHabits = [] } = useQuery({
+      queryKey: ["today-habits"],
+      queryFn: async () => {
+         // Mock data - replace with actual API call
+         return [
+            { id: "1", title: "Meditation", currentStreak: 7, todayStatus: "completed" },
+            { id: "2", title: "Exercise", currentStreak: 3, todayStatus: "pending" },
+            { id: "3", title: "Read", currentStreak: 14, todayStatus: "partial" },
+         ];
+      },
+   });
 
    const {
       data: suggestionsData,
@@ -114,6 +149,44 @@ export default function Index() {
       return String(content);
    };
 
+   // Calculate today's stats
+   const taskStats = {
+      total: todayTasks.length,
+      completed: todayTasks.filter(t => t.status === "completed").length,
+      pending: todayTasks.filter(t => t.status === "pending").length,
+   };
+
+   const habitStats = {
+      total: todayHabits.length,
+      completed: todayHabits.filter(h => h.todayStatus === "completed").length,
+      partial: todayHabits.filter(h => h.todayStatus === "partial").length,
+      longestStreak: Math.max(...todayHabits.map(h => h.currentStreak), 0),
+   };
+
+   const handleQuickAction = (action: string) => {
+      switch (action) {
+         case "add-task":
+            router.push("/(drawer)/(tabs)/tasks");
+            break;
+         case "add-habit":
+            router.push("/(drawer)/(tabs)/habits");
+            break;
+         case "generate-plan":
+            router.push("/(drawer)/(tabs)/three");
+            break;
+         case "checkin":
+            setCheckinQuestion("How are you feeling about your productivity today?");
+            setShowCheckin(true);
+            break;
+      }
+   };
+
+   const handleCheckinResponse = (response: string) => {
+      console.log("Check-in response:", response);
+      setShowCheckin(false);
+      // Here you would send the response to your API
+   };
+
    return (
       <Container className="p-3">
          <ScrollView
@@ -122,6 +195,173 @@ export default function Index() {
                <RefreshControl refreshing={isLoading} onRefresh={refetch} />
             }
          >
+            {/* Today's Progress Overview */}
+            <Card variant="secondary" className="mb-6 p-4 w-full">
+               <View className="flex-row items-center justify-between mb-4">
+                  <Text className="text-foreground text-2xl font-black">Today</Text>
+                  <Pressable
+                     onPress={() => handleQuickAction("checkin")}
+                     className="px-3 py-1.5 rounded-lg bg-secondary border border-secondary"
+                  >
+                     <Text className="text-foreground text-sm font-medium">Check-in</Text>
+                  </Pressable>
+               </View>
+
+               {/* Quick Stats */}
+               <View className="grid grid-cols-2 gap-4 mb-4">
+                  <View className="bg-muted/10 rounded-lg p-3">
+                     <View className="flex-row items-center gap-2 mb-2">
+                        <Ionicons name="checkbox" size={16} color={foregroundColor} />
+                        <Text className="text-foreground font-medium">Tasks</Text>
+                     </View>
+                     <Text className="text-2xl font-bold text-foreground mb-1">
+                        {taskStats.completed}/{taskStats.total}
+                     </Text>
+                     <Text className="text-muted-foreground text-xs">
+                        {taskStats.pending} pending
+                     </Text>
+                  </View>
+
+                  <View className="bg-muted/10 rounded-lg p-3">
+                     <View className="flex-row items-center gap-2 mb-2">
+                        <Ionicons name="repeat" size={16} color={foregroundColor} />
+                        <Text className="text-foreground font-medium">Habits</Text>
+                     </View>
+                     <Text className="text-2xl font-bold text-foreground mb-1">
+                        {habitStats.completed}/{habitStats.total}
+                     </Text>
+                     <Text className="text-muted-foreground text-xs">
+                        {habitStats.longestStreak} day streak
+                     </Text>
+                  </View>
+               </View>
+
+               {/* Quick Actions */}
+               <View className="flex-row gap-2">
+                  <Pressable
+                     onPress={() => handleQuickAction("add-task")}
+                     className="flex-1 py-2.5 rounded-lg bg-surface border border-divider flex-row items-center justify-center gap-2"
+                  >
+                     <Ionicons name="add-circle" size={16} color={foregroundColor} />
+                     <Text className="text-foreground text-sm font-medium">Add Task</Text>
+                  </Pressable>
+                  <Pressable
+                     onPress={() => handleQuickAction("add-habit")}
+                     className="flex-1 py-2.5 rounded-lg bg-surface border border-divider flex-row items-center justify-center gap-2"
+                  >
+                     <Ionicons name="add-circle" size={16} color={foregroundColor} />
+                     <Text className="text-foreground text-sm font-medium">Add Habit</Text>
+                  </Pressable>
+                  <Pressable
+                     onPress={() => handleQuickAction("generate-plan")}
+                     className="flex-1 py-2.5 rounded-lg bg-secondary border border-secondary flex-row items-center justify-center gap-2"
+                  >
+                     <Ionicons name="create" size={16} color={foregroundColor} />
+                     <Text className="text-foreground text-sm font-medium">Plan</Text>
+                  </Pressable>
+               </View>
+            </Card>
+
+            {/* Today's Tasks Preview */}
+            <Card variant="secondary" className="mb-6 p-4 w-full">
+               <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-foreground text-lg font-semibold">Today's Tasks</Text>
+                  <Pressable
+                     onPress={() => router.push("/(drawer)/(tabs)/tasks")}
+                     className="text-secondary text-sm font-medium"
+                  >
+                     View All
+                  </Pressable>
+               </View>
+
+               {todayTasks.length === 0 ? (
+                  <View className="items-center py-4">
+                     <Ionicons name="checkbox-outline" size={32} color={foregroundColor} />
+                     <Text className="text-foreground text-sm mt-2">
+                        No tasks for today
+                     </Text>
+                  </View>
+               ) : (
+                  <View className="space-y-2">
+                     {todayTasks.slice(0, 3).map((task) => (
+                        <View key={task.id} className="flex-row items-center justify-between py-2">
+                           <View className="flex-1 mr-3">
+                              <Text className="text-foreground text-sm font-medium">
+                                 {task.title}
+                              </Text>
+                              <TaskStatusBadge status={task.status as any} size="small" />
+                           </View>
+                           <Ionicons
+                              name="chevron-forward"
+                              size={16}
+                              color={mutedColor}
+                           />
+                        </View>
+                     ))}
+                     {todayTasks.length > 3 && (
+                        <Text className="text-muted-foreground text-xs text-center mt-2">
+                           +{todayTasks.length - 3} more tasks
+                        </Text>
+                     )}
+                  </View>
+               )}
+            </Card>
+
+            {/* Today's Habits Preview */}
+            <Card variant="secondary" className="mb-6 p-4 w-full">
+               <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-foreground text-lg font-semibold">Today's Habits</Text>
+                  <Pressable
+                     onPress={() => router.push("/(drawer)/(tabs)/habits")}
+                     className="text-secondary text-sm font-medium"
+                  >
+                     View All
+                  </Pressable>
+               </View>
+
+               {todayHabits.length === 0 ? (
+                  <View className="items-center py-4">
+                     <Ionicons name="repeat-outline" size={32} color={mutedColor} />
+                     <Text className="text-muted-foreground text-sm mt-2">
+                        No habits yet
+                     </Text>
+                  </View>
+               ) : (
+                  <View className="space-y-2">
+                     {todayHabits.slice(0, 3).map((habit) => (
+                        <View key={habit.id} className="flex-row items-center justify-between py-2">
+                           <View className="flex-1 mr-3">
+                              <Text className="text-foreground text-sm font-medium">
+                                 {habit.title}
+                              </Text>
+                              <HabitStreakBadge streak={habit.currentStreak} size="small" />
+                           </View>
+                           <Ionicons
+                              name="chevron-forward"
+                              size={16}
+                              color={mutedColor}
+                           />
+                        </View>
+                     ))}
+                     {todayHabits.length > 3 && (
+                        <Text className="text-muted-foreground text-xs text-center mt-2">
+                           +{todayHabits.length - 3} more habits
+                        </Text>
+                     )}
+                  </View>
+               )}
+            </Card>
+
+            {/* AI Check-in Modal */}
+            <AICheckin
+               visible={showCheckin}
+               type="morning"
+               question={checkinQuestion}
+               onResponse={handleCheckinResponse}
+               onDismiss={() => setShowCheckin(false)}
+            />
+
+            {/* AI Suggestions */}
             <Card variant="secondary" className="mb-6 p-4 w-full">
                <Card.Title className="mb-4 text-2xl font-black">AI Suggestions</Card.Title>
                <Text className="text-foreground mb-4">
@@ -136,7 +376,7 @@ export default function Index() {
                      placeholder="Search in suggestion content..."
                      value={searchQuery}
                      onChangeText={setSearchQuery}
-                     placeholderTextColor={mutedColor}
+                     placeholderTextColor={foregroundColor}
                   />
                </View>
 
@@ -150,7 +390,7 @@ export default function Index() {
                               key={type}
                               className={`px-3 py-2 rounded-lg border ${filter === type
                                  ? "bg-secondary border-segment"
-                                 : "bg-muted border-muted"
+                                 : "bg-surface border-surface"
                                  }`}
                               onPress={() => setFilter(type as any)}
                            >
@@ -170,7 +410,7 @@ export default function Index() {
                <View className="flex-row items-center justify-between">
                   <Text className="text-foreground font-medium">Show Applied Suggestions</Text>
                   <Pressable
-                     className={`w-12 h-6 rounded-full ${showApplied ? "bg-primary" : "bg-muted"
+                     className={`w-12 h-6 rounded-full ${showApplied ? "bg-primary" : "bg-surface"
                         }`}
                      onPress={() => setShowApplied(!showApplied)}
                   >
@@ -186,7 +426,7 @@ export default function Index() {
             {isLoading ? (
                <View className="flex-1 justify-center items-center py-12">
                   <ActivityIndicator size="large" color={foregroundColor} />
-                  <Text className="text-muted-foreground mt-4">Loading suggestions...</Text>
+                  <Text className="text-foreground mt-4">Loading suggestions...</Text>
                </View>
             ) : error ? (
                <Card variant="secondary" className="p-6">
@@ -195,7 +435,7 @@ export default function Index() {
                      <Text className="text-foreground font-medium text-lg mb-2">
                         Error Loading Suggestions
                      </Text>
-                     <Text className="text-muted-foreground text-center">
+                     <Text className="text-foreground text-center">
                         {error.message}
                      </Text>
                      <Pressable
@@ -213,7 +453,7 @@ export default function Index() {
                      <Text className="text-foreground font-medium text-lg mb-2">
                         No suggestions found
                      </Text>
-                     <Text className="text-muted-foreground text-center">
+                     <Text className="text-foreground text-center">
                         {showApplied
                            ? "No applied suggestions match your filters."
                            : "Generate some AI suggestions to get started!"}
@@ -233,7 +473,7 @@ export default function Index() {
                                  </Text>
                               </View>
                            </View>
-                           <Text className="text-muted-foreground text-xs">
+                           <Text className="text-foreground text-xs">
                               {formatDate(suggestion.createdAt)}
                            </Text>
                         </View>
