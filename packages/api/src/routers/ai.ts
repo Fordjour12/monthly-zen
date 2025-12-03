@@ -16,8 +16,8 @@ export const AiRouter = {
    }),
 
    /**
-    * Get all AI suggestions for the current user
-    */
+        * Get all AI suggestions for the current user
+        */
    getSuggestions: protectedProcedure
       .input(
          z.object({
@@ -29,6 +29,9 @@ export const AiRouter = {
       )
       .handler(async ({ input, context }) => {
          const userId = context.session?.user?.id;
+
+         console.log("📋 Getting suggestions for user:", userId);
+
          if (!userId) {
             throw new Error("User not authenticated");
          }
@@ -51,6 +54,50 @@ export const AiRouter = {
             console.error("Get suggestions error:", error);
             throw new Error(
                `Failed to get suggestions: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+      }),
+
+   /**
+    * Apply a suggestion (mark as applied)
+    */
+   applySuggestion: protectedProcedure
+      .input(
+         z.object({
+            suggestionId: z.string(),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) {
+            throw new Error("User not authenticated");
+         }
+
+         try {
+            // First check if the suggestion belongs to the user
+            const suggestion = await aiQueries.getSuggestionById(input.suggestionId);
+            if (!suggestion) {
+               throw new Error("Suggestion not found");
+            }
+            if (suggestion.userId !== userId) {
+               throw new Error("You don't have permission to update this suggestion");
+            }
+
+            // Mark as applied
+            await aiQueries.markAsApplied(input.suggestionId);
+
+            // Get the updated suggestion
+            const updatedSuggestion = await aiQueries.getSuggestionById(input.suggestionId);
+
+            return {
+               success: true,
+               suggestion: updatedSuggestion,
+               message: "Suggestion applied successfully",
+            };
+         } catch (error) {
+            console.error("Apply suggestion error:", error);
+            throw new Error(
+               `Failed to apply suggestion: ${error instanceof Error ? error.message : "Unknown error"}`
             );
          }
       }),
@@ -119,7 +166,7 @@ export const AiRouter = {
                `Failed to generate plan: ${error instanceof Error ? error.message : "Unknown error"}`
             );
          }
-          }),
+      }),
 
    /**
     * Generate a monthly plan with streaming progress updates
