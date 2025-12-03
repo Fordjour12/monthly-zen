@@ -89,29 +89,48 @@ export class AIService {
                    throw new Error("No content received from AI service");
                 }
 
-                // Clean up the content - remove markdown code blocks and extra whitespace
-                let cleanContent = content.trim();
-                
-                // Remove markdown code block markers if present
-                if (cleanContent.startsWith('```')) {
-                   const lines = cleanContent.split('\n');
-                   // Remove first line (```json) and last line (```)
-                   if (lines.length > 2) {
-                      cleanContent = lines.slice(1, -1).join('\n').trim();
-                   }
-                }
+                 // Clean up the content - remove markdown code blocks and extra whitespace
+                 let cleanContent = content.trim();
+                 
+                 // Remove markdown code block markers if present
+                 if (cleanContent.startsWith('```')) {
+                    const lines = cleanContent.split('\n');
+                    // Remove first line (```json) and last line (```)
+                    if (lines.length > 2) {
+                       cleanContent = lines.slice(1, -1).join('\n').trim();
+                    }
+                 }
 
-                // Remove any backticks that might be in the content
-                cleanContent = cleanContent.replace(/`/g, '');
+                 // Remove any backticks that might be in the content
+                 cleanContent = cleanContent.replace(/`/g, '');
 
-                try {
-                   const parsed = JSON.parse(cleanContent);
-                   return parsed as TOutput;
-                } catch (parseError) {
-                   console.error('JSON Parse Error:', parseError);
-                   console.error('Cleaned content:', cleanContent);
-                   throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
-                }
+                 // Try to extract JSON from the content if it's embedded in text
+                 const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+                 if (jsonMatch) {
+                    cleanContent = jsonMatch[0];
+                 }
+
+                 try {
+                    const parsed = JSON.parse(cleanContent);
+                    return parsed as TOutput;
+                 } catch (parseError) {
+                    console.error('JSON Parse Error:', parseError);
+                    console.error('Original content:', content);
+                    console.error('Cleaned content:', cleanContent);
+                    
+                    // Try to fix common JSON issues
+                    try {
+                       // Remove trailing commas and fix other common issues
+                       const fixedContent = cleanContent
+                          .replace(/,\s*}/g, '}')
+                          .replace(/,\s*]/g, ']')
+                          .replace(/"\s*:\s*"/g, '":"');
+                       const fixedParsed = JSON.parse(fixedContent);
+                       return fixedParsed as TOutput;
+                    } catch (fixError) {
+                       throw new Error(`Failed to parse AI response as JSON: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+                    }
+                 }
             },
             {
                maxAttempts: maxRetries,

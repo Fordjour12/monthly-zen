@@ -41,6 +41,23 @@ export default function TabLayout() {
 					),
 				}}
 			/>
+			<Tabs.Screen
+				name="three"
+				options={{
+					title: "Plan",
+					tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+						<Ionicons name="create" size={size} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="[id]"
+				options={{
+					title: "Suggestion Details",
+					href: null,
+					tabBarStyle: { display: "none" },
+				}}
+			/>
 		</Tabs>
 	);
 }

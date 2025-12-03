@@ -22,10 +22,12 @@ interface StreamProgress {
 }
 
 export default function Three() {
-   const [userGoals, setUserGoals] = useState("");
-   const [workHours, setWorkHours] = useState("");
-   const [energyPatterns, setEnergyPatterns] = useState("");
-   const [preferredTimes, setPreferredTimes] = useState("");
+   const [userGoals, setUserGoals] = useState(
+      "I want to learn React Native development, exercise 3 times per week, read 2 technical books, and improve my TypeScript skills. I also want to build a mobile app portfolio project and maintain a healthy work-life balance."
+   );
+   const [workHours, setWorkHours] = useState("9 AM - 5 PM, Monday to Friday");
+   const [energyPatterns, setEnergyPatterns] = useState("High energy in morning (9-12), moderate after lunch (2-4), low energy in evening");
+   const [preferredTimes, setPreferredTimes] = useState("Deep work in morning, exercise at 6 PM, reading before bed");
    const [isLoading, setIsLoading] = useState(false);
    const [streamData, setStreamData] = useState<StreamProgress[]>([]);
    const [finalPlan, setFinalPlan] = useState<string | null>(null);

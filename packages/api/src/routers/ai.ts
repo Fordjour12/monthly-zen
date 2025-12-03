@@ -16,6 +16,46 @@ export const AiRouter = {
    }),
 
    /**
+    * Get all AI suggestions for the current user
+    */
+   getSuggestions: protectedProcedure
+      .input(
+         z.object({
+            type: z.enum(["plan", "briefing", "reschedule"]).optional(),
+            isApplied: z.boolean().optional(),
+            limit: z.number().min(1).max(100).optional(),
+            search: z.string().optional(),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) {
+            throw new Error("User not authenticated");
+         }
+
+         try {
+            const suggestions = await aiQueries.getUserSuggestionsEnhanced(userId, {
+               type: input.type,
+               isApplied: input.isApplied,
+               limit: input.limit || 50,
+               search: input.search,
+               sortBy: "createdAt",
+               sortOrder: "desc",
+            });
+
+            return {
+               suggestions,
+               count: suggestions.length,
+            };
+         } catch (error) {
+            console.error("Get suggestions error:", error);
+            throw new Error(
+               `Failed to get suggestions: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+      }),
+
+   /**
     * Generate a monthly plan based on user goals
     */
    generatePlan: protectedProcedure
