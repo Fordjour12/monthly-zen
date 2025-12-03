@@ -56,8 +56,6 @@ export default function Index() {
       },
    });
 
-   console.log(":)", suggestionsData)
-
 
    const applySuggestionMutation = useMutation({
       mutationFn: async (suggestionId: string) => {
@@ -223,7 +221,7 @@ export default function Index() {
                   </View>
                </Card>
             ) : (
-                <View className="gap-4">
+               <View className="gap-4">
                   {suggestionsData?.suggestions?.map((suggestion: Suggestion) => (
                      <Card key={suggestion.id} variant="secondary" className="p-4">
                         <View className="flex-row items-start justify-between mb-3">
@@ -239,11 +237,11 @@ export default function Index() {
                               {formatDate(suggestion.createdAt)}
                            </Text>
                         </View>
-                        
+
                         <Text className="text-foreground mb-3 text-sm leading-relaxed">
                            {formatContent(suggestion.content)}
                         </Text>
-                        
+
                         <View className="flex-row items-center justify-between">
                            <View className="flex-row items-center gap-2">
                               {suggestion.isApplied && (
@@ -252,7 +250,7 @@ export default function Index() {
                                  </View>
                               )}
                            </View>
-                           
+
                            {!suggestion.isApplied && (
                               <Pressable
                                  className="bg-primary px-3 py-1.5 rounded-lg"

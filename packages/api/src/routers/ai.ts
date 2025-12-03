@@ -122,18 +122,20 @@ export const AiRouter = {
          }
 
          try {
-            // Check if there's already a recent plan suggestion
-            const recentPlans = await aiQueries.getRecentByType(userId, "plan", 2);
-            if (recentPlans.length > 0) {
-               const recentPlan = recentPlans[0]!;
-               return {
-                  suggestionId: recentPlan.id,
-                  content: recentPlan.content,
-                  isRecent: true,
-                  message:
-                     "Using recently generated plan. Generate new plan in 2 hours if needed.",
-               };
-            }
+            /*
+               // Check if there's already a recent plan suggestion
+               const recentPlans = await aiQueries.getRecentByType(userId, "plan", 0.5);
+               console.log("🔍 Checking for recent plan suggestions...", recentPlans);
+               if (recentPlans.length > 5) {
+                  const recentPlan = recentPlans[0]!;
+                  return {
+                     suggestionId: recentPlan.id,
+                     content: recentPlan.content,
+                     isRecent: true,
+                     message:
+                        "Using recently generated plan. Generate new plan in 2 hours if needed.",
+                  };
+               }*/
 
             // Generate plan using AI service with caching and rate limiting
             const planResult = await AIService.generatePlan(

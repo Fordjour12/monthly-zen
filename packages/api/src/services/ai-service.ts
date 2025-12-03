@@ -45,7 +45,7 @@ export class AIService {
    ): Promise<AIResponse<TOutput>> {
       const { type, input, prompt, systemPrompt, config = {} } = request;
       const {
-         cacheTTL = 300000, // 5 minutes default
+         cacheTTL = 3000, // 5 minutes default (300000 => 300 300ms)
          maxRetries = 3,
          userId = "anonymous",
          model = "openai/gpt-oss-120b",
@@ -171,33 +171,61 @@ export class AIService {
    }
 
    /**
-    * Generate plan based on user goals
+    * Generate plan based on user goals using Monthly Planning Prompt
     */
    static async generatePlan(
       userGoals: string,
       config?: AIServiceConfig
    ): Promise<AIResponse<PlanSuggestionContent>> {
-      const prompt = `Generate a structured plan based on these user goals: "${userGoals}"
 
-      Return a JSON response with this structure:
-      {
-        "goals": [
-          {
-            "title": "Goal title",
-            "description": "Goal description",
-            "category": "personal|work|health|learning",
-            "tasks": [
-              {
-                "title": "Task title",
-                "priority": "low|medium|high",
-                "dueDate": "YYYY-MM-DD"
-              }
-            ]
-          }
-        ]
-      }`;
+      //TODO: Send from your userApp as serverless can be stick sometimes
 
-      const systemPrompt = "You are a helpful planning assistant. Create realistic, actionable plans with clear tasks and deadlines.";
+      const currentDate = new Date().toISOString().split('T')[0];
+      const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const prompt = `You are an intelligent monthly planning assistant. Your task is to transform user goals into a structured, actionable monthly plan.
+
+**User Input:**
+${userGoals}
+
+**Context:**
+- Current month: ${currentMonth}
+- Current date: ${currentDate}
+- User's known commitments: []
+- User's preferences: Standard work hours, balanced energy patterns, flexible scheduling
+
+**Your Responsibilities:**
+1. Parse and understand the user's goals
+2. Break down large goals into weekly milestones
+3. Create daily tasks that are realistic and achievable
+4. Identify potential conflicts or overload situations
+5. Suggest optimal timing based on user patterns
+
+**Output Format (JSON):**
+{
+  "monthly_summary": "Brief overview of the plan",
+  "weekly_breakdown": [
+    {
+      "week": 1,
+      "focus": "Main theme for this week",
+      "goals": ["Weekly goal 1", "Weekly goal 2"],
+      "daily_tasks": {
+        "Monday": ["Task 1", "Task 2"],
+        "Tuesday": ["Task 1", "Task 2"]
+      }
+    }
+  ],
+  "potential_conflicts": ["Any identified issues"],
+  "success_metrics": ["How to measure progress"]
+}
+
+**Constraints:**
+- Maximum 3-4 major tasks per day
+- Include buffer time for unexpected delays
+- Consider weekends differently based on user preferences
+- Flag any unrealistic timelines`;
+
+      const systemPrompt = "You are an intelligent monthly planning assistant. Create comprehensive, actionable monthly plans with weekly breakdowns and daily tasks. Focus on realistic timelines and balanced workloads.";
 
       return this.executeAIRequest<string, PlanSuggestionContent>({
          type: "plan",
