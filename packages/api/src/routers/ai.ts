@@ -1,0 +1,215 @@
+import { protectedProcedure, publicProcedure } from "../index";
+import type { RouterClient } from "@orpc/server";
+import { z } from "zod";
+import { AIService } from "../services/ai-service";
+import { aiQueries, taskQueries, habitQueries, calendarQueries } from "@my-better-t-app/db/queries";
+
+export const AiRouter = {
+   healthCheck: publicProcedure.handler(() => {
+      return "OK form AI Router";
+   }),
+   privateData: protectedProcedure.handler(({ context }) => {
+      return {
+         message: "This is a private AI message",
+         user: context.session?.user,
+      };
+   }),
+
+   /**
+    * Generate a monthly plan based on user goals
+    */
+   generatePlan: protectedProcedure
+      .input(
+         z.object({
+            userGoals: z.string().min(10, "Please provide more detailed goals"),
+            workHours: z.string().optional(),
+            energyPatterns: z.string().optional(),
+            preferredTimes: z.string().optional(),
+            model: z.string().optional(),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) {
+            throw new Error("User not authenticated");
+         }
+
+         try {
+            // Check if there's already a recent plan suggestion
+            const recentPlans = await aiQueries.getRecentByType(userId, "plan", 2);
+            if (recentPlans.length > 0) {
+               const recentPlan = recentPlans[0]!;
+               return {
+                  suggestionId: recentPlan.id,
+                  content: recentPlan.content,
+                  isRecent: true,
+                  message:
+                     "Using recently generated plan. Generate new plan in 2 hours if needed.",
+               };
+            }
+
+            // Generate plan using AI service with caching and rate limiting
+            const planResult = await AIService.generatePlan(
+               input.userGoals,
+               { userId, model: input.model }
+            );
+
+            if (!planResult.success || !planResult.data) {
+               throw new Error(planResult.error || "Failed to generate plan");
+            }
+
+            const planContent = planResult.data;
+
+            // Save suggestion to database
+            const suggestion = await aiQueries.createSuggestion(
+               userId,
+               "plan",
+               planContent
+            );
+
+            return {
+               suggestionId: suggestion.id,
+               content: planContent,
+               isRecent: false,
+               message: "Monthly plan generated successfully",
+            };
+         } catch (error) {
+            console.error("Generate plan error:", error);
+            throw new Error(
+               `Failed to generate plan: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+          }),
+
+   /**
+    * Generate a monthly plan with streaming progress updates
+    */
+   generatePlanStream: protectedProcedure
+      .input(
+         z.object({
+            userGoals: z.string().min(10, "Please provide more detailed goals"),
+            workHours: z.string().optional(),
+            energyPatterns: z.string().optional(),
+            preferredTimes: z.string().optional(),
+            model: z.string().optional(),
+         })
+      )
+      .handler(async function* ({ input, context }) {
+         const userId = context.session?.user?.id;
+         if (!userId) {
+            throw new Error("User not authenticated");
+         }
+
+         try {
+            yield {
+               type: "progress",
+               stage: "validation",
+               message: "Validating input...",
+            };
+
+            // Check if there's already a recent plan suggestion
+            yield {
+               type: "progress",
+               stage: "checking",
+               message: "Checking for recent plans...",
+            };
+            const recentPlans = await aiQueries.getRecentByType(userId, "plan", 2);
+            if (recentPlans.length > 0) {
+               const recentPlan = recentPlans[0];
+               yield {
+                  type: "complete",
+                  suggestionId: recentPlan?.id,
+                  content: recentPlan?.content,
+                  isRecent: true,
+                  message:
+                     "Using recently generated plan. Generate new plan in 2 hours if needed.",
+               };
+               return;
+            }
+
+            // Gather user context
+            yield {
+               type: "progress",
+               stage: "context",
+               message: "Gathering your current context...",
+            };
+            const currentTasks = await taskQueries.findToday(userId);
+            yield {
+               type: "progress",
+               stage: "context",
+               message: "Loading habits...",
+            };
+            const habits = await habitQueries.findByUser(userId);
+            yield {
+               type: "progress",
+               stage: "context",
+               message: "Checking calendar events...",
+            };
+            const todayEvents = await calendarQueries.findToday(userId);
+
+            // Prepare context for AI
+            const existingCommitments = [
+               ...currentTasks.map((t: any) => t.title),
+               ...todayEvents.map((e: any) => e.title),
+               ...habits.filter((h: any) => h.frequency === "daily").map((h: any) => h.title),
+            ];
+
+            yield {
+               type: "progress",
+               stage: "generating",
+               message: "Generating your personalized monthly plan...",
+               context: {
+                  currentTasksCount: currentTasks.length,
+                  habitsCount: habits.length,
+                  eventsCount: todayEvents.length,
+                  commitmentsCount: existingCommitments.length,
+               },
+            };
+
+            // Generate plan using AI service
+            const planResult = await AIService.generatePlan(
+               input.userGoals,
+               { userId, model: input.model }
+            );
+
+            if (!planResult.success || !planResult.data) {
+               throw new Error(planResult.error || "Failed to generate plan");
+            }
+
+            const planContent = planResult.data;
+
+            yield {
+               type: "progress",
+               stage: "saving",
+               message: "Saving your plan...",
+            };
+
+            // Save suggestion to database
+            const suggestion = await aiQueries.createSuggestion(
+               userId,
+               "plan",
+               planContent
+            );
+
+            yield {
+               type: "complete",
+               suggestionId: suggestion.id,
+               content: planContent,
+               isRecent: false,
+               message: "Monthly plan generated successfully",
+            };
+         } catch (error) {
+            console.error("Generate plan stream error:", error);
+            yield {
+               type: "error",
+               message: `Failed to generate plan: ${error instanceof Error ? error.message : "Unknown error"}`,
+            };
+            throw new Error(
+               `Failed to generate plan: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+      }),
+};
+
+export type AIRouter = typeof AiRouter;
+export type AIRouterClient = RouterClient<typeof AiRouter>;
