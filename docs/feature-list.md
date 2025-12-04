@@ -14,7 +14,7 @@
 ### C. Calendar Integration
 - **Device Integration**: Sync with Android & iOS device calendars.
 - **Event Management**: Create and update calendar events directly from the app.
-- **Reminders**: Local or calendar notifications to keep users on track.
+- **Reminders**: Local calendar notifications to keep users on track.
 
 ## 2. AI Features
 

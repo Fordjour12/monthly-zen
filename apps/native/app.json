@@ -1,17 +1,52 @@
 {
-	"expo": {
-		"scheme": "my-better-t-app",
-		"userInterfaceStyle": "automatic",
-		"orientation": "default",
-		"web": {
-			"bundler": "metro"
-		},
-		"name": "my-better-t-app",
-		"slug": "my-better-t-app",
-		"plugins": ["expo-font"],
-		"experiments": {
-			"typedRoutes": true,
-			"reactCompiler": true
-		}
-	}
+  "expo": {
+    "scheme": "my-better-t-app",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "bundler": "metro"
+    },
+    "name": "my-better-t-app",
+    "slug": "my-better-t-app",
+    "icons": "./assets/images/icon.png",
+    "plugins": [
+      "expo-font",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "The app needs access to your calendar to create and manage events."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "default"
+          ],
+          "icon": "./assets/images/icon.png"
+        }
+      ]
+    ],
+    "android": {
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
+      ],
+      "package": "com.thedevelophantom.mybettertapp"
+    },
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8b99957d-3922-4890-92b9-4efe3e673a5f"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.thedevelophantom.mybettertapp"
+    }
+  }
 }

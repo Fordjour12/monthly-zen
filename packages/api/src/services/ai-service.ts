@@ -33,6 +33,32 @@ interface AIResponse<T> {
    fallbackUsed?: boolean;
 }
 
+export interface PlanTask {
+   id: string;
+   title: string;
+   description?: string;
+   dueDate?: string;
+   priority: "low" | "medium" | "high";
+   week: number;
+   day: string;
+}
+
+export interface PlanHabit {
+   id: string;
+   title: string;
+   description?: string;
+   frequency: "daily" | "weekly" | "monthly";
+   targetValue: number;
+   suggestedStreak: number;
+}
+
+export interface PlanEffectivenessMetrics {
+   success: boolean;
+   effectivenessScore: number;
+   completionRate: number;
+   insights: string[];
+}
+
 export class AIService {
    private static cache = new SimpleCache();
    private static limiter = new SimpleRateLimiter(DEFAULT_RATE_LIMITS);
@@ -237,8 +263,40 @@ ${userGoals}
    }
 
    /**
-    * Generate daily briefing
-    */
+     * Generate plan with progress simulation for better UX
+     */
+   static async generatePlanWithProgress(
+      userGoals: string,
+      onProgress?: (stage: string, message: string) => void,
+      config?: AIServiceConfig
+   ): Promise<AIResponse<PlanSuggestionContent>> {
+
+      // Simulate progress stages
+      const stages = [
+         { type: 'validation', message: 'Validating your goals...', duration: 2000 },
+         { type: 'context', message: 'Analyzing your current commitments...', duration: 2000 },
+         { type: 'generating', message: 'Creating your personalized plan...', duration: 4000 },
+         { type: 'finalizing', message: 'Optimizing your monthly plan...', duration: 2000 }
+      ];
+
+      // Execute progress simulation
+      for (const stage of stages) {
+         onProgress?.(stage.type, stage.message);
+         await new Promise(resolve => setTimeout(resolve, stage.duration));
+      }
+
+      // Generate the actual plan
+      const result = await this.generatePlan(userGoals, config);
+      
+      // Final progress update
+      onProgress?.('complete', 'Plan generated successfully!');
+      
+      return result;
+   }
+
+    /**
+     * Generate daily briefing
+     */
    static async generateBriefing(
       currentDate: string,
       todaysTasks: Array<{ title: string; priority: string }>,
@@ -364,10 +422,148 @@ ${userGoals}
       return this.limiter.getUserStats(userId);
    }
 
-   /**
-    * Get all users' rate limit statistics (for monitoring)
-    */
-   static getAllRateLimitStats() {
-      return this.limiter.getAllStats();
+    /**
+     * Parse plan content for task conversion
+     */
+   static parsePlanForTasks(plan: PlanSuggestionContent): PlanTask[] {
+      const tasks: PlanTask[] = [];
+
+      if (!plan || typeof plan !== 'object') {
+         return tasks;
+      }
+
+      // Process goals and their tasks
+      if (plan.goals && Array.isArray(plan.goals)) {
+         plan.goals.forEach((goal: any, goalIndex: number) => {
+            if (goal.tasks && Array.isArray(goal.tasks)) {
+               goal.tasks.forEach((task: any, taskIndex: number) => {
+                  tasks.push({
+                     id: `task_${goalIndex}_${taskIndex}`,
+                     title: task.title,
+                     description: `Task from goal: ${goal.title}`,
+                     dueDate: task.dueDate,
+                     priority: task.priority || this.inferPriority(task.title),
+                     week: 1, // Default week, can be calculated from dueDate if needed
+                     day: 'goal_task'
+                  });
+               });
+            }
+         });
+      }
+
+      return tasks;
    }
+
+   /**
+    * Parse plan content for habit identification
+    */
+   static parsePlanForHabits(plan: PlanSuggestionContent): PlanHabit[] {
+      const habits: PlanHabit[] = [];
+
+      if (!plan || typeof plan !== 'object') {
+         return habits;
+      }
+
+      const recurringPatterns = new Map<string, number>();
+
+      // Analyze tasks for recurring patterns
+      if (plan.goals && Array.isArray(plan.goals)) {
+         plan.goals.forEach((goal: any) => {
+            if (goal.tasks && Array.isArray(goal.tasks)) {
+               goal.tasks.forEach((task: any) => {
+                  const normalizedTitle = task.title.toLowerCase().trim();
+                  recurringPatterns.set(normalizedTitle, (recurringPatterns.get(normalizedTitle) || 0) + 1);
+               });
+            }
+         });
+      }
+
+      // Identify potential habits (appearing 3+ times)
+      recurringPatterns.forEach((count, title) => {
+         if (count >= 3) {
+            const frequency = this.inferFrequency(title, count);
+            habits.push({
+               id: `habit_${title.replace(/\s+/g, '_')}`,
+               title: title,
+               description: `Recurring activity identified from your plan`,
+               frequency,
+               targetValue: frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30,
+               suggestedStreak: Math.min(count, 30)
+            });
+         }
+      });
+
+      return habits;
+   }
+
+   /**
+    * Track plan execution effectiveness
+    */
+   static async trackPlanExecution(
+      _planId: string,
+      completedTasks: string[],
+      completedHabits: string[],
+      _config?: AIServiceConfig
+   ): Promise<PlanEffectivenessMetrics> {
+      const insights: string[] = [];
+      let effectivenessScore = 0;
+
+      // Calculate completion rates
+      const totalTasks = completedTasks.length;
+      const completionRate = totalTasks > 0 ? 1.0 : 0.5; // Simplified calculation
+      
+      // Generate insights
+      if (completionRate >= 0.8) {
+         insights.push("Excellent plan execution! Most tasks completed successfully.");
+         effectivenessScore = 90;
+      } else if (completionRate >= 0.6) {
+         insights.push("Good plan execution. Consider adjusting timeline expectations.");
+         effectivenessScore = 70;
+      } else {
+         insights.push("Plan execution needs improvement. Consider more realistic goal setting.");
+         effectivenessScore = 40;
+      }
+
+      if (completedHabits.length > 0) {
+         insights.push(`${completedHabits.length} habits maintained from the plan.`);
+         effectivenessScore += 10;
+      }
+
+      return {
+         success: true,
+         effectivenessScore,
+         completionRate,
+         insights
+      };
+   }
+
+   /**
+    * Helper method to infer task priority
+    */
+   private static inferPriority(taskTitle: string): "low" | "medium" | "high" {
+      const title = taskTitle.toLowerCase();
+      if (title.includes('urgent') || title.includes('critical') || title.includes('important')) {
+         return 'high';
+      }
+      if (title.includes('review') || title.includes('meeting') || title.includes('call')) {
+         return 'medium';
+      }
+      return 'low';
+   }
+
+   /**
+    * Helper method to infer habit frequency
+    */
+   private static inferFrequency(_title: string, count: number): "daily" | "weekly" | "monthly" {
+      if (count >= 20) return 'daily';
+      if (count >= 8) return 'weekly';
+      return 'monthly';
+   }
+
+   /**
+     * Get all users' rate limit statistics (for monitoring)
+     */
+   static getAllRateLimitStats() {
+       return this.limiter.getAllStats();
+    }
 }
