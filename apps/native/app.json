@@ -8,9 +8,10 @@
     },
     "name": "my-better-t-app",
     "slug": "my-better-t-app",
-    "icons": "./assets/images/icon.png",
+    "icon": "./assets/images/icon.png",
     "plugins": [
       "expo-font",
+      "expo-router",
       [
         "expo-calendar",
         {
@@ -20,9 +21,6 @@
       [
         "expo-notifications",
         {
-          "sounds": [
-            "default"
-          ],
           "icon": "./assets/images/icon.png"
         }
       ]

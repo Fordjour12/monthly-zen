@@ -1,72 +1,75 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useThemeColor } from 'heroui-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
 
 interface EventFormProps {
   visible: boolean;
   onClose: () => void;
-  event?: any; // For editing existing events
-  date?: Date; // Pre-selected date
+  event?: any;
+  date?: Date;
 }
 
 interface EventFormData {
+  type: 'task' | 'event';
   title: string;
   description: string;
   startTime: Date;
   endTime: Date;
   location: string;
   allDay: boolean;
+  category: 'urgent' | 'running' | 'ongoing' | null;
 }
 
 export default function EventForm({ visible, onClose, event, date }: EventFormProps) {
-  const themeColorBackground = useThemeColor('background');
-  const themeColorForeground = useThemeColor('foreground');
-  const themeColorPrimary = useThemeColor('foreground');
-  const themeColorSurface = useThemeColor('surface');
-
   const [formData, setFormData] = useState<EventFormData>({
+    type: 'task',
     title: '',
     description: '',
     startTime: date || new Date(),
-    endTime: date || new Date(),
+    endTime: date ? new Date(date.getTime() + 60 * 60 * 1000) : new Date(),
     location: '',
     allDay: false,
+    category: null,
   });
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const queryClient = useQueryClient();
 
-  // Initialize form data when event prop changes
   useEffect(() => {
     if (event) {
       setFormData({
+        type: event.type || 'event',
         title: event.title || '',
         description: event.description || '',
         startTime: new Date(event.startTime),
         endTime: new Date(event.endTime),
         location: event.location || '',
         allDay: event.allDay || false,
+        category: event.category || null,
       });
     } else if (date) {
       setFormData(prev => ({
         ...prev,
         startTime: date,
-        endTime: new Date(date.getTime() + 60 * 60 * 1000), // +1 hour
+        endTime: new Date(date.getTime() + 60 * 60 * 1000),
       }));
     }
   }, [event, date]);
 
   const createEventMutation = useMutation({
     mutationFn: async (data: EventFormData) => {
+      // Map local form data to API structure
+      // Note: API might not support 'type' or 'category' yet, so we might store them in description or metadata if possible
+      // For now, we just send standard fields
       const result = await orpc.calendar.createEvent.call({
         title: data.title,
-        description: data.description,
+        description: data.description, // We could append category here if needed
         startTime: data.startTime.toISOString(),
         endTime: data.endTime.toISOString(),
         location: data.location,
@@ -76,7 +79,6 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
-      Alert.alert('Success', 'Event created successfully');
       onClose();
     },
     onError: (error: any) => {
@@ -84,367 +86,400 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
     },
   });
 
-  const updateEventMutation = useMutation({
-    mutationFn: async (data: { id: string; eventData: EventFormData }) => {
-      const result = await orpc.calendar.updateEvent.call({
-        id: data.id,
-        title: data.eventData.title,
-        description: data.eventData.description,
-        startTime: data.eventData.startTime.toISOString(),
-        endTime: data.eventData.endTime.toISOString(),
-        location: data.eventData.location,
-        allDay: data.eventData.allDay,
-      });
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
-      Alert.alert('Success', 'Event updated successfully');
-      onClose();
-    },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to update event');
-    },
-  });
-
   const handleSubmit = () => {
-    // Validation
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter an event title');
+      Alert.alert('Error', 'Please enter a title');
       return;
     }
+    createEventMutation.mutate(formData);
+  };
 
-    if (formData.startTime >= formData.endTime) {
-      Alert.alert('Error', 'End time must be after start time');
-      return;
-    }
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      // Update both start and end time date part, keep time part
+      const newStart = new Date(formData.startTime);
+      newStart.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
 
-    if (event) {
-      updateEventMutation.mutate({ id: event.id, eventData: formData });
-    } else {
-      createEventMutation.mutate(formData);
+      const newEnd = new Date(formData.endTime);
+      newEnd.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+
+      setFormData(prev => ({ ...prev, startTime: newStart, endTime: newEnd }));
     }
   };
 
   const handleStartTimeChange = (event: any, selectedDate?: Date) => {
+    setShowStartTimePicker(false);
     if (selectedDate) {
       setFormData(prev => ({ ...prev, startTime: selectedDate }));
     }
-    setShowStartTimePicker(false);
   };
 
   const handleEndTimeChange = (event: any, selectedDate?: Date) => {
+    setShowEndTimePicker(false);
     if (selectedDate) {
       setFormData(prev => ({ ...prev, endTime: selectedDate }));
     }
-    setShowEndTimePicker(false);
   };
 
-  const isLoading = createEventMutation.isPending || updateEventMutation.isPending;
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
-  if (!visible) return null;
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
-    <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-      <View style={[styles.container, { backgroundColor: themeColorBackground }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: themeColorSurface }]}>
-          <Text style={[styles.headerTitle, { color: themeColorForeground }]}>
-            {event ? 'Edit Event' : 'New Event'}
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={themeColorForeground} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Form */}
-        <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-          {/* Title */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: themeColorForeground }]}>Title *</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  backgroundColor: themeColorSurface,
-                  color: themeColorForeground,
-                  borderColor: themeColorForeground
-                }
-              ]}
-              value={formData.title}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, title: text }))}
-              placeholder="Event title"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          {/* Description */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: themeColorForeground }]}>Description</Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.textArea,
-                { 
-                  backgroundColor: themeColorSurface,
-                  color: themeColorForeground,
-                  borderColor: themeColorForeground
-                }
-              ]}
-              value={formData.description}
-              onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
-              placeholder="Event description (optional)"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={3}
-            />
-          </View>
-
-          {/* Location */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: themeColorForeground }]}>Location</Text>
-            <View style={styles.inputWithIcon}>
-              <Ionicons name="location" size={20} color={themeColorForeground} style={styles.inputIcon} />
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.inputWithIconText,
-                  { 
-                    backgroundColor: themeColorSurface,
-                    color: themeColorForeground,
-                    borderColor: themeColorForeground
-                  }
-                ]}
-                value={formData.location}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, location: text }))}
-                placeholder="Add location"
-                placeholderTextColor="#999"
-              />
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.overlay}>
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#1A202C" />
+            </TouchableOpacity>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity>
+                <Ionicons name="search-outline" size={24} color="#1A202C" style={{ marginRight: 16 }} />
+              </TouchableOpacity>
+              <View style={styles.avatarSmall}>
+                <Text style={styles.avatarText}>U</Text>
+              </View>
             </View>
           </View>
 
-          {/* All Day Switch */}
-          <View style={[styles.field, styles.switchField]}>
-            <Text style={[styles.label, { color: themeColorForeground }]}>All Day</Text>
-            <Switch
-              value={formData.allDay}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, allDay: value }))}
-              trackColor={{ false: themeColorSurface, true: themeColorPrimary }}
-              thumbColor={themeColorForeground}
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Type Toggle */}
+            <View style={styles.typeToggle}>
+              <TouchableOpacity
+                style={[styles.typeButton, formData.type === 'task' && styles.typeButtonActive]}
+                onPress={() => setFormData(prev => ({ ...prev, type: 'task' }))}
+              >
+                <Text style={[styles.typeText, formData.type === 'task' && styles.typeTextActive]}>Task</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.typeButton, formData.type === 'event' && styles.typeButtonActive]}
+                onPress={() => setFormData(prev => ({ ...prev, type: 'event' }))}
+              >
+                <Text style={[styles.typeText, formData.type === 'event' && styles.typeTextActive]}>Event</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Title Input */}
+            <TextInput
+              style={styles.titleInput}
+              placeholder="Task name"
+              placeholderTextColor="#A0AEC0"
+              value={formData.title}
+              onChangeText={text => setFormData(prev => ({ ...prev, title: text }))}
             />
-          </View>
 
-          {/* Time Pickers */}
-          {!formData.allDay && (
-            <>
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: themeColorForeground }]}>Start Time</Text>
+            {/* All Day Toggle */}
+            <View style={styles.row}>
+              <Text style={styles.label}>All day</Text>
+              <Switch
+                value={formData.allDay}
+                onValueChange={val => setFormData(prev => ({ ...prev, allDay: val }))}
+                trackColor={{ false: '#E2E8F0', true: '#FF6B6B' }}
+              />
+            </View>
+
+            {/* Date Picker */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Date</Text>
+              <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
+                <Text style={styles.dateText}>{formatDate(formData.startTime)}</Text>
+                <Ionicons name="calendar-outline" size={20} color="#1A202C" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Time Pickers */}
+            {!formData.allDay && (
+              <View style={styles.timeRow}>
+                <View style={styles.timeInputContainer}>
+                  <Text style={styles.label}>Start time</Text>
+                  <TouchableOpacity style={styles.timeInput} onPress={() => setShowStartTimePicker(true)}>
+                    <Text style={styles.timeText}>{formatTime(formData.startTime)}</Text>
+                    <Ionicons name="chevron-down" size={16} color="#A0AEC0" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.timeInputContainer}>
+                  <Text style={styles.label}>End time</Text>
+                  <TouchableOpacity style={styles.timeInput} onPress={() => setShowEndTimePicker(true)}>
+                    <Text style={styles.timeText}>{formatTime(formData.endTime)}</Text>
+                    <Ionicons name="chevron-down" size={16} color="#A0AEC0" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Description */}
+            <View style={styles.section}>
+              <Text style={styles.label}>Description</Text>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Add description"
+                placeholderTextColor="#A0AEC0"
+                multiline
+                value={formData.description}
+                onChangeText={text => setFormData(prev => ({ ...prev, description: text }))}
+              />
+            </View>
+
+            {/* Categories */}
+            <View style={styles.section}>
+              <View style={styles.categoriesRow}>
                 <TouchableOpacity
-                  style={[
-                    styles.timeInput,
-                    { 
-                      backgroundColor: themeColorSurface,
-                      borderColor: themeColorForeground
-                    }
-                  ]}
-                  onPress={() => setShowStartTimePicker(true)}
+                  style={[styles.categoryChip, { backgroundColor: '#FFF5F5' }, formData.category === 'urgent' && styles.categoryActive]}
+                  onPress={() => setFormData(prev => ({ ...prev, category: 'urgent' }))}
                 >
-                  <Text style={{ color: themeColorForeground }}>
-                    {formData.startTime.toLocaleString()}
-                  </Text>
-                  <Ionicons name="time" size={20} color={themeColorForeground} />
+                  <Text style={[styles.categoryText, { color: '#FF6B6B' }]}>Urgent</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.categoryChip, { backgroundColor: '#E6FFFA' }, formData.category === 'running' && styles.categoryActive]}
+                  onPress={() => setFormData(prev => ({ ...prev, category: 'running' }))}
+                >
+                  <Text style={[styles.categoryText, { color: '#38B2AC' }]}>Running</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.categoryChip, { backgroundColor: '#E9D8FD' }, formData.category === 'ongoing' && styles.categoryActive]}
+                  onPress={() => setFormData(prev => ({ ...prev, category: 'ongoing' }))}
+                >
+                  <Text style={[styles.categoryText, { color: '#805AD5' }]}>Ongoing</Text>
+                  {formData.category === 'ongoing' && (
+                    <View style={styles.checkBadge}>
+                      <Ionicons name="checkmark" size={10} color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.addCategoryButton}>
+                  <Ionicons name="add" size={20} color="#718096" />
                 </TouchableOpacity>
               </View>
+            </View>
 
-              <View style={styles.field}>
-                <Text style={[styles.label, { color: themeColorForeground }]}>End Time</Text>
-                <TouchableOpacity
-                  style={[
-                    styles.timeInput,
-                    { 
-                      backgroundColor: themeColorSurface,
-                      borderColor: themeColorForeground
-                    }
-                  ]}
-                  onPress={() => setShowEndTimePicker(true)}
-                >
-                  <Text style={{ color: themeColorForeground }}>
-                    {formData.endTime.toLocaleString()}
-                  </Text>
-                  <Ionicons name="time" size={20} color={themeColorForeground} />
-                </TouchableOpacity>
-              </View>
-            </>
+            {/* Create Button */}
+            <TouchableOpacity style={styles.createButton} onPress={handleSubmit}>
+              <Text style={styles.createButtonText}>Create new {formData.type === 'task' ? 'Task' : 'Event'}</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 40 }} />
+          </ScrollView>
+
+          {/* Hidden Date Pickers */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={formData.startTime}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+            />
           )}
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={onClose}
-              disabled={isLoading}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.saveButton,
-                { backgroundColor: themeColorPrimary, opacity: isLoading ? 0.6 : 1 }
-              ]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              <Text style={styles.saveButtonText}>
-                {isLoading ? 'Saving...' : (event ? 'Update' : 'Create')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-
-        {/* Date Time Pickers */}
-        {showStartTimePicker && (
-          <DateTimePicker
-            value={formData.startTime}
-            mode="datetime"
-            display="default"
-            onChange={handleStartTimeChange}
-            minimumDate={new Date()}
-          />
-        )}
-
-        {showEndTimePicker && (
-          <DateTimePicker
-            value={formData.endTime}
-            mode="datetime"
-            display="default"
-            onChange={handleEndTimeChange}
-            minimumDate={formData.startTime}
-          />
-        )}
+          {showStartTimePicker && (
+            <DateTimePicker
+              value={formData.startTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleStartTimeChange}
+            />
+          )}
+          {showEndTimePicker && (
+            <DateTimePicker
+              value={formData.endTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleEndTimeChange}
+            />
+          )}
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
   },
   container: {
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    height: '90%',
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e5e9',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  form: {
-    padding: 16,
-  },
-  field: {
     marginBottom: 20,
   },
-  switchField: {
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2D3748',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  content: {
+    flex: 1,
+  },
+  typeToggle: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    gap: 12,
+  },
+  typeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: '#F7FAFC',
+  },
+  typeButtonActive: {
+    backgroundColor: '#FF6B6B',
+  },
+  typeText: {
+    fontSize: 16,
+    color: '#718096',
+    fontWeight: '500',
+  },
+  typeTextActive: {
+    color: '#fff',
+  },
+  titleInput: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1A202C',
+    marginBottom: 24,
+    paddingVertical: 8,
+  },
+  row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 24,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#2D3748',
     marginBottom: 8,
   },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
+  section: {
+    marginBottom: 24,
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  inputWithIcon: {
+  dateInput: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  inputWithIconText: {
-    flex: 1,
-    paddingHorizontal: 12,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  dateText: {
     fontSize: 16,
-    borderWidth: 0,
+    color: '#1A202C',
+    fontWeight: '500',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 20,
+    marginBottom: 24,
+  },
+  timeInputContainer: {
+    flex: 1,
   },
   timeInput: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  actions: {
+  timeText: {
+    fontSize: 16,
+    color: '#1A202C',
+    fontWeight: '600',
+  },
+  descriptionInput: {
+    fontSize: 16,
+    color: '#4A5568',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  categoriesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
-    marginTop: 20,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
     alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: 'transparent',
+  categoryChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    position: 'relative',
+  },
+  categoryActive: {
     borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
-  saveButton: {
-    backgroundColor: '#007AFF',
-  },
-  cancelButtonText: {
-    fontSize: 16,
+  categoryText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#007AFF',
   },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  checkBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#805AD5',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  addCategoryButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#CBD5E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderStyle: 'dashed',
+  },
+  createButton: {
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  createButtonText: {
     color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

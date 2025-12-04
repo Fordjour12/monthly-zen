@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Calendar, Agenda } from 'react-native-calendars';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from 'heroui-native';
 import CalendarService from '../../lib/calendar-service';
 import NotificationService from '../../lib/notification-service';
-
-type ViewMode = 'month' | 'week' | 'day';
 
 interface CalendarViewProps {
   onEventPress?: (event: any) => void;
@@ -14,98 +12,64 @@ interface CalendarViewProps {
   onEventLongPress?: (event: any) => void;
 }
 
-export default function CalendarView({ 
-  onEventPress, 
-  onDatePress, 
-  onEventLongPress 
+export default function CalendarView({
+  onEventPress,
+  onDatePress,
+  onEventLongPress
 }: CalendarViewProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState<any>({});
-  const [agendaItems, setAgendaItems] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  
+  const [selectedDateEvents, setSelectedDateEvents] = useState<any[]>([]);
+
   const themeColorBackground = useThemeColor('background');
   const themeColorForeground = useThemeColor('foreground');
-  const themeColorPrimary = useThemeColor('foreground');
-  const themeColorSecondary = useThemeColor('surface');
+  const themeColorSurface = useThemeColor('surface');
 
   // Initialize calendar
   useEffect(() => {
     initializeCalendar();
   }, []);
 
-  // Load events when date or view mode changes
+  // Load events when date changes
   useEffect(() => {
-    loadEventsForCurrentView();
-  }, [selectedDate, viewMode]);
+    loadEventsForMonth();
+  }, [selectedDate]);
+
+  // Update selected date events when events or selectedDate changes
+  useEffect(() => {
+    const dateKey = selectedDate.toISOString().split('T')[0];
+    const daysEvents = events[dateKey] || [];
+    setSelectedDateEvents(daysEvents);
+  }, [events, selectedDate]);
 
   const initializeCalendar = async () => {
     try {
-      // Request calendar permissions
       const permissionStatus = await CalendarService.getCalendarPermissionStatus();
       if (!permissionStatus.granted) {
-        const granted = await CalendarService.requestCalendarPermissions();
-        if (!granted) {
-          console.warn('Calendar permissions not granted');
-        }
+        await CalendarService.requestCalendarPermissions();
       }
-
-      // Initialize notifications
       await NotificationService.requestPermissions();
     } catch (error) {
       console.error('Error initializing calendar:', error);
     }
   };
 
-  const loadEventsForCurrentView = async () => {
-    setLoading(true);
+  const loadEventsForMonth = async () => {
     try {
-      let startDate: Date;
-      let endDate: Date;
-
-      switch (viewMode) {
-        case 'day':
-          startDate = new Date(selectedDate);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date(selectedDate);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case 'week':
-          const dayOfWeek = selectedDate.getDay();
-          startDate = new Date(selectedDate);
-          startDate.setDate(selectedDate.getDate() - dayOfWeek);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date(startDate);
-          endDate.setDate(startDate.getDate() + 6);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case 'month':
-        default:
-          startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-          endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-      }
+      const startDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+      endDate.setHours(23, 59, 59, 999);
 
       const calendarEvents = await CalendarService.getEvents(startDate, endDate);
       const formattedEvents = formatEventsForCalendar(calendarEvents);
-      
-      if (viewMode === 'month') {
-        setEvents(formattedEvents);
-      } else {
-        setAgendaItems(formatEventsForAgenda(calendarEvents));
-      }
+      setEvents(formattedEvents);
     } catch (error) {
       console.error('Error loading events:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const formatEventsForCalendar = (calendarEvents: any[]) => {
     const formatted: any = {};
-    
     calendarEvents.forEach(event => {
       const dateKey = event.startDate?.split('T')[0];
       if (dateKey) {
@@ -119,208 +83,161 @@ export default function CalendarView({
           end: event.endDate,
           description: event.notes,
           location: event.location,
-          color: themeColorPrimary,
+          allDay: event.allDay,
+          color: '#FF6B6B', // Primary accent color
         });
       }
     });
-
-    return formatted;
-  };
-
-  const formatEventsForAgenda = (calendarEvents: any[]) => {
-    const formatted: any = {};
-    
-    calendarEvents.forEach(event => {
-      const dateKey = event.startDate?.split('T')[0];
-      if (dateKey) {
-        if (!formatted[dateKey]) {
-          formatted[dateKey] = [];
-        }
-        formatted[dateKey].push({
-          id: event.id,
-          title: event.title,
-          start: event.startDate,
-          end: event.endDate,
-          description: event.notes,
-          location: event.location,
-          color: themeColorPrimary,
-        });
-      }
-    });
-
     return formatted;
   };
 
   const handleDatePress = useCallback((day: any) => {
     const date = new Date(day.dateString);
-    setSelectedDate(date);
+    // Adjust for timezone if needed, but usually dateString is local YYYY-MM-DD
+    // We want to set the selected date to this day
+    const newDate = new Date(date);
+    newDate.setHours(new Date().getHours()); // Keep current time
+    setSelectedDate(newDate);
     onDatePress?.(day.dateString);
   }, [onDatePress]);
 
-  const handleEventPress = useCallback((event: any) => {
-    onEventPress?.(event);
-  }, [onEventPress]);
-
-  const handleEventLongPress = useCallback((event: any) => {
-    onEventLongPress?.(event);
-  }, [onEventLongPress]);
-
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate);
-    
-    switch (viewMode) {
-      case 'day':
-        newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
-        break;
-      case 'week':
-        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-        break;
-      case 'month':
-      default:
-        newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
-        break;
-    }
-    
-    setSelectedDate(newDate);
-  };
-
-  const goToToday = () => {
-    setSelectedDate(new Date());
-  };
-
-  const renderViewModeSelector = () => (
-    <View style={[styles.viewModeSelector, { backgroundColor: themeColorSecondary }]}>
-      {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
-        <TouchableOpacity
-          key={mode}
-          style={[
-            styles.viewModeButton,
-            viewMode === mode && [styles.activeViewMode, { backgroundColor: themeColorPrimary }]
-          ]}
-          onPress={() => setViewMode(mode)}
-        >
-          <Text style={[
-            styles.viewModeText,
-            { color: viewMode === mode ? '#fff' : themeColorForeground }
-          ]}>
-            {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-
-  const renderNavigation = () => (
-    <View style={styles.navigation}>
-      <TouchableOpacity onPress={() => navigateDate('prev')}>
-        <Ionicons name="chevron-back" size={24} color={themeColorForeground} />
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={goToToday}>
-        <Text style={[styles.todayText, { color: themeColorPrimary }]}>Today</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => navigateDate('next')}>
-        <Ionicons name="chevron-forward" size={24} color={themeColorForeground} />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: themeColorBackground }]}>
-      {renderNavigation()}
-      {renderViewModeSelector()}
-    </View>
-  );
-
-  const renderCalendar = () => {
-    if (viewMode === 'month') {
-      return (
-        <Calendar
-          current={selectedDate.toISOString().split('T')[0]}
-          markedDates={Object.keys(events).reduce((acc: any, date) => {
-            acc[date] = { marked: true, dots: events[date] };
-            return acc;
-          }, {})}
-          onDayPress={handleDatePress}
-          style={styles.calendar}
-          theme={{
-            backgroundColor: themeColorBackground,
-            calendarBackground: themeColorBackground,
-            textSectionTitleColor: themeColorForeground,
-            selectedDayBackgroundColor: themeColorPrimary,
-            selectedDayTextColor: '#fff',
-            todayTextColor: themeColorPrimary,
-            dayTextColor: themeColorForeground,
-            textDisabledColor: '#d9e1e8',
-            arrowColor: themeColorPrimary,
-            monthTextColor: themeColorForeground,
-            textDayFontWeight: '300',
-            textMonthFontWeight: 'bold',
-            textDayHeaderFontWeight: '300',
-          }}
-        />
-      );
-    } else {
-      return (
-        <Agenda
-          items={agendaItems}
-          selected={selectedDate.toISOString().split('T')[0]}
-          onDayPress={handleDatePress}
-          onDayChange={(day) => setSelectedDate(new Date(day.dateString))}
-          renderItem={(item) => (
-            <TouchableOpacity
-              style={[styles.agendaItem, { backgroundColor: themeColorSecondary }]}
-              onPress={() => handleEventPress(item)}
-              onLongPress={() => handleEventLongPress(item)}
-            >
-              <Text style={[styles.agendaItemTitle, { color: themeColorForeground }]}>
-                {item.name || 'Event'}
-              </Text>
-              {item.height && (
-                <Text style={[styles.agendaItemDescription, { color: themeColorForeground }]}>
-                  Duration: {item.height} minutes
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
-          style={styles.agenda}
-          theme={{
-            backgroundColor: themeColorBackground,
-            calendarBackground: themeColorBackground,
-            textSectionTitleColor: themeColorForeground,
-            selectedDayBackgroundColor: themeColorPrimary,
-            selectedDayTextColor: '#fff',
-            todayTextColor: themeColorPrimary,
-            dayTextColor: themeColorForeground,
-            textDisabledColor: '#d9e1e8',
-            arrowColor: themeColorPrimary,
-            monthTextColor: themeColorForeground,
-            textDayFontWeight: '300',
-            textMonthFontWeight: 'bold',
-            textDayHeaderFontWeight: '300',
-            agendaDayTextColor: themeColorForeground,
-            agendaDayNumColor: themeColorForeground,
-            agendaTodayColor: themeColorPrimary,
-            agendaKnobColor: themeColorPrimary,
-          }}
-        />
-      );
-    }
-  };
-
-  if (loading) {
+  const renderHeader = () => {
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
     return (
-      <View style={[styles.loading, { backgroundColor: themeColorBackground }]}>
-        <Text style={{ color: themeColorForeground }}>Loading calendar...</Text>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.monthSelector}>
+            <Ionicons name="calendar-outline" size={20} color={themeColorForeground} style={{ marginRight: 8 }} />
+            <Text style={[styles.headerTitle, { color: themeColorForeground }]}>
+              {monthNames[selectedDate.getMonth()]}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={themeColorForeground} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="search" size={22} color={themeColorForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.avatarContainer}>
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>U</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
     );
-  }
+  };
+
+  const renderEventItem = ({ item }: { item: any }) => {
+    const startTime = new Date(item.start);
+    const endTime = new Date(item.end);
+
+    const formatTime = (date: Date) => {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.eventCard}
+        onPress={() => onEventPress?.(item)}
+        onLongPress={() => onEventLongPress?.(item)}
+      >
+        <View style={styles.eventContent}>
+          <Text style={styles.eventTitle}>{item.title}</Text>
+          <View style={styles.eventTimeContainer}>
+            <View style={[styles.statusDot, { backgroundColor: item.color || '#FF6B6B' }]} />
+            <Text style={styles.eventTime}>
+              {item.allDay ? 'All Day' : `${formatTime(startTime)} - ${formatTime(endTime)}`}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.deleteButton}>
+          <Ionicons name="trash-outline" size={20} color="#fff" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+  const markedDates = {
+    ...Object.keys(events).reduce((acc: any, date) => {
+      acc[date] = { marked: true, dotColor: '#FF6B6B' };
+      return acc;
+    }, {}),
+    [selectedDate.toISOString().split('T')[0]]: {
+      selected: true,
+      selectedColor: '#FF6B6B',
+      disableTouchEvent: true
+    }
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColorBackground }]}>
-      {renderHeader()}
-      {renderCalendar()}
+    <View style={[styles.container, { backgroundColor: '#F8F9FB' }]}>
+      {/* Calendar Section */}
+      <View style={styles.calendarContainer}>
+        {renderHeader()}
+        <Calendar
+          current={selectedDate.toISOString().split('T')[0]}
+          onDayPress={handleDatePress}
+          markedDates={markedDates}
+          theme={{
+            backgroundColor: 'transparent',
+            calendarBackground: 'transparent',
+            textSectionTitleColor: '#A0A0A0',
+            selectedDayBackgroundColor: '#FF6B6B',
+            selectedDayTextColor: '#ffffff',
+            todayTextColor: '#FF6B6B',
+            dayTextColor: '#2D3748',
+            textDisabledColor: '#CBD5E0',
+            dotColor: '#FF6B6B',
+            selectedDotColor: '#ffffff',
+            arrowColor: '#2D3748',
+            monthTextColor: '#2D3748',
+            textDayFontFamily: 'System',
+            textMonthFontFamily: 'System',
+            textDayHeaderFontFamily: 'System',
+            textDayFontWeight: '500',
+            textMonthFontWeight: 'bold',
+            textDayHeaderFontWeight: '500',
+            textDayFontSize: 14,
+          }}
+          enableSwipeMonths={true}
+          hideExtraDays={true}
+          style={styles.calendar}
+        />
+        <View style={styles.handleBar} />
+      </View>
+
+      {/* Events Section */}
+      <View style={styles.eventsContainer}>
+        <View style={styles.dateHeader}>
+          <View>
+            <Text style={styles.dateTitle}>{selectedDate.getDate()}</Text>
+            <Text style={styles.dateSubtitle}>Today</Text>
+          </View>
+          <TouchableOpacity style={styles.viewAllButton}>
+            <Text style={styles.viewAllText}>View all</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.eventsSummary}>
+          {selectedDateEvents.length} events
+        </Text>
+
+        <FlatList
+          data={selectedDateEvents}
+          renderItem={renderEventItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.eventsList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No events for this day</Text>
+            </View>
+          }
+        />
+      </View>
     </View>
   );
 }
@@ -329,70 +246,174 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  calendarContainer: {
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    paddingBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 5,
+    zIndex: 10,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e5e9',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-  navigation: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
-  todayText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  viewModeSelector: {
+  headerRight: {
     flexDirection: 'row',
-    borderRadius: 8,
-    padding: 2,
+    alignItems: 'center',
+    gap: 12,
   },
-  viewModeButton: {
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    minWidth: 50,
-    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  activeViewMode: {
-    borderRadius: 6,
-  },
-  viewModeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  calendar: {
-    flex: 1,
-  },
-  agenda: {
-    flex: 1,
-  },
-  agendaItem: {
-    backgroundColor: '#fff',
-    padding: 12,
-    marginVertical: 4,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
-  },
-  agendaItemTitle: {
+  headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
-  agendaItemDescription: {
-    fontSize: 14,
-    opacity: 0.7,
+  iconButton: {
+    padding: 8,
   },
-  loading: {
-    flex: 1,
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2D3748',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  calendar: {
+    marginBottom: 10,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 5,
+  },
+  eventsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  dateTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1A202C',
+  },
+  dateSubtitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#718096',
+  },
+  viewAllButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+  },
+  viewAllText: {
+    color: '#FF6B6B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eventsSummary: {
+    fontSize: 14,
+    color: '#A0AEC0',
+    marginBottom: 20,
+  },
+  eventsList: {
+    paddingBottom: 20,
+  },
+  eventCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eventContent: {
+    flex: 1,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8,
+  },
+  eventTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  eventTime: {
+    fontSize: 14,
+    color: '#718096',
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FF6B6B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 40,
+  },
+  emptyStateText: {
+    color: '#A0AEC0',
+    fontSize: 16,
   },
 });

@@ -266,12 +266,11 @@ export default function Index() {
             <Card variant="secondary" className="mb-6 p-4 w-full">
                <View className="flex-row items-center justify-between mb-3">
                   <Text className="text-foreground text-lg font-semibold">Today's Tasks</Text>
-                  <Pressable
-                     onPress={() => router.push("/(drawer)/(tabs)/tasks")}
-                     className="text-secondary text-sm font-medium"
-                  >
-                     View All
-                  </Pressable>
+                   <Pressable
+                      onPress={() => router.push("/(drawer)/(tabs)/tasks")}
+                   >
+                      <Text className="text-secondary text-sm font-medium">View All</Text>
+                   </Pressable>
                </View>
 
                {todayTasks.length === 0 ? (
@@ -311,12 +310,11 @@ export default function Index() {
             <Card variant="secondary" className="mb-6 p-4 w-full">
                <View className="flex-row items-center justify-between mb-3">
                   <Text className="text-foreground text-lg font-semibold">Today's Habits</Text>
-                  <Pressable
-                     onPress={() => router.push("/(drawer)/(tabs)/habits")}
-                     className="text-secondary text-sm font-medium"
-                  >
-                     View All
-                  </Pressable>
+                   <Pressable
+                      onPress={() => router.push("/(drawer)/(tabs)/habits")}
+                   >
+                      <Text className="text-secondary text-sm font-medium">View All</Text>
+                   </Pressable>
                </View>
 
                {todayHabits.length === 0 ? (
