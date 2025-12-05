@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useThemeColor } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { Home12Icon, PenTool01Icon, CompassIcon, Calendar01Icon, TaskEdit01Icon } from "@hugeicons/core-free-icons";
+import { Home12Icon, TsunamiIcon, PenTool01Icon, CompassIcon, Calendar01Icon, TaskEdit01Icon } from "@hugeicons/core-free-icons";
 
 
 export default function TabLayout() {
@@ -69,15 +69,6 @@ export default function TabLayout() {
             }}
          />
          <Tabs.Screen
-            name="task-red"
-            options={{
-               title: "Tasks (Redesign)",
-               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-                  <Ionicons name="checkbox-outline" size={size} color={color} />
-               ),
-            }}
-         />
-         <Tabs.Screen
             name="habits"
             options={{
                title: "Habits",
@@ -107,6 +98,22 @@ export default function TabLayout() {
                ),
             }}
          />
+         <Tabs.Screen
+            name="suggestion"
+            options={{
+               title: "Suggestion",
+               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+
+                  <HugeiconsIcon
+                     icon={TsunamiIcon}
+                     size={size}
+                     color={color}
+                     strokeWidth={1.5}
+                  />
+               ),
+            }}
+         />
+
          <Tabs.Screen
             name="[id]"
             options={{

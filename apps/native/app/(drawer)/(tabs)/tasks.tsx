@@ -17,6 +17,7 @@ import { MiniSuggestionBadge } from "@/components/suggestion-badge";
 import { Card, useThemeColor } from "heroui-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
+import { useCategorizeTask } from "@/hooks/use-local-cache";
 
 // Mock data - replace with actual API calls
 interface Task {
@@ -51,7 +52,6 @@ export default function TasksScreen() {
     data: tasks = [],
     isLoading,
     refetch,
-    error,
   } = useQuery({
     queryKey: ["tasks", filter, priorityFilter, searchQuery],
     queryFn: async () => {
@@ -99,14 +99,14 @@ export default function TasksScreen() {
       let filteredTasks = mockTasks;
 
       if (searchQuery) {
-        filteredTasks = filteredTasks.filter(task =>
+        filteredTasks = filteredTasks.filter((task: Task) =>
           task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           task.description?.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
 
       if (priorityFilter !== "all") {
-        filteredTasks = filteredTasks.filter(task => task.priority === priorityFilter);
+        filteredTasks = filteredTasks.filter((task: Task) => task.priority === priorityFilter);
       }
 
       if (filter === "today") {
@@ -114,16 +114,16 @@ export default function TasksScreen() {
         today.setHours(0, 0, 0, 0);
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        filteredTasks = filteredTasks.filter(task => 
+        filteredTasks = filteredTasks.filter((task: Task) => 
           task.dueDate && task.dueDate >= today && task.dueDate < tomorrow
         );
       } else if (filter === "overdue") {
         const now = new Date();
-        filteredTasks = filteredTasks.filter(task => 
+        filteredTasks = filteredTasks.filter((task: Task) => 
           task.dueDate && task.dueDate < now && task.status === "pending"
         );
       } else if (filter === "completed") {
-        filteredTasks = filteredTasks.filter(task => task.status === "completed");
+        filteredTasks = filteredTasks.filter((task: Task) => task.status === "completed");
       }
 
       return filteredTasks;
@@ -165,6 +165,10 @@ export default function TasksScreen() {
 
   const handleStatusChange = (taskId: string, newStatus: string, reason?: string) => {
     updateTaskMutation.mutate({ taskId, status: newStatus, reason });
+  };
+
+  const handleStatusChangeForModal = (taskId: string, newStatus: string) => {
+    updateTaskMutation.mutate({ taskId, status: newStatus });
   };
 
   const handleAddTask = () => {
@@ -212,49 +216,7 @@ export default function TasksScreen() {
   };
 
   // AI categorization mutation
-  const categorizeTaskMutation = useMutation({
-    mutationFn: async (text: string) => {
-      setIsAnalyzingTask(true);
-      try {
-        const result = await orpc.AI.categorizeTask.call({ text });
-        return result;
-      } catch (error) {
-        console.error('AI categorization error:', error);
-        return null;
-      } finally {
-        setIsAnalyzingTask(false);
-      }
-    },
-    onSuccess: (result) => {
-      if (result) {
-        setAiSuggestions(result);
-        // Auto-fill task form with AI suggestions
-        if (result.title && result.title !== newTaskTitle) {
-          Alert.alert(
-            "AI Suggestion",
-            `AI suggests: "${result.title}"\nPriority: ${result.priority}\nCategory: ${result.category}`,
-            [
-              {
-                text: "Use Suggestion",
-                onPress: () => {
-                  setNewTaskTitle(result.title);
-                  // TODO: Set priority and category when those fields are added
-                },
-              },
-              {
-                text: "Keep Original",
-                style: "cancel",
-              },
-            ]
-          );
-        }
-      }
-    },
-    onError: (error: any) => {
-      console.error('Task categorization failed:', error);
-      // Silently fail - don't interrupt user flow
-    },
-  });
+  const categorizeTaskMutation = useCategorizeTask();
 
   const handleTaskTitleChange = (text: string) => {
     setNewTaskTitle(text);
@@ -263,7 +225,41 @@ export default function TasksScreen() {
     // Trigger AI analysis after user stops typing (debounced)
     if (text.trim().length > 5) {
       const timeoutId = setTimeout(() => {
-        categorizeTaskMutation.mutate(text);
+        setIsAnalyzingTask(true);
+        categorizeTaskMutation.mutate({ text }, {
+          onSuccess: (result: any) => {
+            if (result) {
+              setAiSuggestions(result);
+              // Auto-fill task form with AI suggestions
+              if (result.title && result.title !== newTaskTitle) {
+                Alert.alert(
+                  "AI Suggestion",
+                  `AI suggests: "${result.title}"\nPriority: ${result.priority}\nCategory: ${result.category}`,
+                  [
+                    {
+                      text: "Use Suggestion",
+                      onPress: () => {
+                        setNewTaskTitle(result.title);
+                        // TODO: Set priority and category when those fields are added
+                      },
+                    },
+                    {
+                      text: "Keep Original",
+                      style: "cancel",
+                    },
+                  ]
+                );
+              }
+            }
+          },
+          onError: (error: any) => {
+            console.error('Task categorization failed:', error);
+            // Silently fail - don't interrupt user flow
+          },
+          onSettled: () => {
+            setIsAnalyzingTask(false);
+          }
+        });
       }, 1000);
       
       // Clear previous timeout
@@ -302,9 +298,9 @@ export default function TasksScreen() {
 
   const getTaskStats = () => {
     const total = tasks.length;
-    const completed = tasks.filter(t => t.status === "completed").length;
-    const pending = tasks.filter(t => t.status === "pending").length;
-    const skipped = tasks.filter(t => t.status === "skipped").length;
+    const completed = tasks.filter((t: Task) => t.status === "completed").length;
+    const pending = tasks.filter((t: Task) => t.status === "pending").length;
+    const skipped = tasks.filter((t: Task) => t.status === "skipped").length;
     
     return { total, completed, pending, skipped };
   };
@@ -375,7 +371,7 @@ export default function TasksScreen() {
                         ? "bg-secondary border-secondary"
                         : "bg-surface border-surface"
                     }`}
-                    onPress={() => setFilter(status as any)}
+                    onPress={() => setFilter(status as "all" | "today" | "overdue" | "completed")}
                   >
                     <Text
                       className={`text-sm capitalize ${
@@ -403,7 +399,7 @@ export default function TasksScreen() {
                         ? "bg-secondary border-secondary"
                         : "bg-surface border-surface"
                     }`}
-                    onPress={() => setPriorityFilter(priority as any)}
+                    onPress={() => setPriorityFilter(priority as "all" | "low" | "medium" | "high")}
                   >
                     <Text
                       className={`text-sm capitalize ${
@@ -475,25 +471,7 @@ export default function TasksScreen() {
             <Ionicons name="time" size={48} color={foregroundColor} />
             <Text className="text-foreground mt-4">Loading tasks...</Text>
           </View>
-        ) : error ? (
-          <Card variant="secondary" className="p-6">
-            <View className="items-center py-8">
-              <Ionicons name="alert-circle" size={48} color="#FF6B6B" />
-              <Text className="text-foreground font-medium text-lg mb-2">
-                Error Loading Tasks
-              </Text>
-              <Text className="text-foreground text-center mb-4">
-                {error.message}
-              </Text>
-              <Pressable
-                className="bg-secondary px-4 py-2 rounded-lg"
-                onPress={() => refetch()}
-              >
-                <Text className="text-foreground text-sm font-medium">Retry</Text>
-              </Pressable>
-            </View>
-          </Card>
-        ) : tasks.length === 0 ? (
+         ) : tasks.length === 0 ? (
           <Card variant="secondary" className="p-6">
             <View className="items-center py-8">
               <Ionicons name="checkbox-outline" size={48} color={foregroundColor} />
@@ -571,7 +549,7 @@ export default function TasksScreen() {
           onClose={handleCloseTaskDetails}
           onEdit={handleEditTask}
           onDelete={handleDeleteTask}
-          onStatusChange={handleStatusChange}
+          onStatusChange={handleStatusChangeForModal}
         />
 
         {/* Task Suggestions Modal */}

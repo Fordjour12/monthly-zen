@@ -6,10 +6,12 @@ import {
    Pressable,
    ScrollView,
    ActivityIndicator,
+   Animated,
 } from "react-native";
+import { useEffect, useRef } from "react";
 import { Container } from "@/components/container";
 import { Card, useThemeColor } from "heroui-native";
-import { orpc } from "@/utils/orpc";
+import { useGeneratePlan } from "@/hooks/use-local-cache";
 
 interface StreamProgress {
    type: "progress" | "complete" | "error";
@@ -28,10 +30,23 @@ export default function Three() {
    const [workHours, setWorkHours] = useState("9 AM - 5 PM, Monday to Friday");
    const [energyPatterns, setEnergyPatterns] = useState("High energy in morning (9-12), moderate after lunch (2-4), low energy in evening");
    const [preferredTimes, setPreferredTimes] = useState("Deep work in morning, exercise at 6 PM, reading before bed");
-   const [isLoading, setIsLoading] = useState(false);
-   const [streamData, setStreamData] = useState<StreamProgress[]>([]);
-   const [finalPlan, setFinalPlan] = useState<string | null>(null);
-   const [error, setError] = useState<string | null>(null);
+    const [finalPlan, setFinalPlan] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [currentStage, setCurrentStage] = useState<{ stage?: string; message: string } | null>(null);
+    
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const generatePlanMutation = useGeneratePlan();
+
+    // Initial fade-in
+    useEffect(() => {
+       if (currentStage) {
+          Animated.timing(fadeAnim, {
+             toValue: 1,
+             duration: 300,
+             useNativeDriver: true,
+          }).start();
+       }
+    }, [currentStage]);
 
    const mutedColor = useThemeColor("muted");
    const foregroundColor = useThemeColor("foreground");
@@ -51,69 +66,93 @@ export default function Three() {
          return;
       }
 
-      setIsLoading(true);
-      setError(null);
-      setStreamData([]);
-      setFinalPlan(null);
+       setError(null);
+       setFinalPlan(null);
+       setCurrentStage(null);
 
-      try {
-         console.log("📡 Calling generatePlanStream API...");
-         const stream = await orpc.AI.generatePlanStream.call({
-            userGoals: userGoals.trim(),
-            workHours: workHours.trim() || undefined,
-            energyPatterns: energyPatterns.trim() || undefined,
-            preferredTimes: preferredTimes.trim() || undefined,
-         });
+      const fullContext = `${userGoals.trim()}\n\nWork Hours: ${workHours.trim() || "Not specified"}\nEnergy Patterns: ${energyPatterns.trim() || "Not specified"}\nPreferred Times: ${preferredTimes.trim() || "Not specified"}`;
 
-         console.log("📡 Stream created, starting to process chunks...");
-         let chunkCount = 0;
-
-         for await (const chunk of stream) {
-            chunkCount++;
-            console.log(`📦 Chunk ${chunkCount}:`, chunk);
-
-            setStreamData((prev) => {
-               const newData = [...prev, chunk as StreamProgress];
-               console.log(`📊 Stream data length: ${newData.length}`);
-               return newData;
-            });
-
-            if (chunk.type === "complete") {
-               console.log("✅ Stream completed successfully");
-               console.log("Final plan content:", (chunk as any).content);
-               setFinalPlan((chunk as any).content || null);
-            } else if (chunk.type === "error") {
-               console.log("❌ Stream error:", chunk.message);
-               setError(chunk.message);
-            }
+      generatePlanMutation.mutate(
+         {
+            userGoals: fullContext,
+             onProgress: (stage: string, message: string) => {
+                console.log(`📊 Progress: ${stage} - ${message}`);
+                
+                // Fade out, update stage, then fade in
+                Animated.timing(fadeAnim, {
+                   toValue: 0,
+                   duration: 150,
+                   useNativeDriver: true,
+                }).start(() => {
+                   setCurrentStage({ stage, message });
+                   Animated.timing(fadeAnim, {
+                      toValue: 1,
+                      duration: 300,
+                      useNativeDriver: true,
+                   }).start();
+                });
+             }
+         },
+         {
+             onSuccess: (result: any) => {
+                console.log("✅ Plan generation successful:", result);
+                if (result.success && result.data) {
+                   const planContent = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+                   setFinalPlan(planContent);
+                   setCurrentStage({ stage: "complete", message: "Plan generated successfully!" });
+                } else {
+                   setError(result.error || "Failed to generate plan");
+                   setCurrentStage({ stage: "error", message: "Failed to generate plan" });
+                }
+             },
+             onError: (error: any) => {
+                console.error("💥 Error in generatePlan:", error);
+                setError(error.message || "Failed to generate plan");
+                setCurrentStage({ stage: "error", message: "Failed to generate plan" });
+             }
          }
-
-         console.log(`🏁 Finished processing ${chunkCount} chunks`);
-      } catch (err) {
-         console.error("💥 Error in generatePlan:", err);
-         setError(err instanceof Error ? err.message : "Failed to generate plan");
-      } finally {
-         console.log("🔚 Generation process finished");
-         setIsLoading(false);
-      }
+      );
    };
 
-   const getStageIcon = (stage?: string) => {
-      switch (stage) {
-         case "validation":
-            return "🔍";
-         case "checking":
-            return "📋";
-         case "context":
-            return "📊";
-         case "generating":
-            return "🤖";
-         case "saving":
-            return "💾";
-         default:
-            return "⏳";
-      }
-   };
+    const getStageIcon = (stage?: string) => {
+       switch (stage) {
+          case "validation":
+             return "🔍";
+          case "checking":
+             return "📋";
+          case "context":
+             return "📊";
+          case "generating":
+             return "🤖";
+          case "saving":
+             return "💾";
+          case "complete":
+             return "✅";
+          case "error":
+             return "❌";
+          default:
+             return "⏳";
+       }
+    };
+
+    const getStageProgress = (stage?: string) => {
+       const stages = ["validation", "checking", "context", "generating", "saving", "complete"];
+       const currentIndex = stages.indexOf(stage || "");
+       return currentIndex >= 0 ? ((currentIndex + 1) / stages.length) * 100 : 0;
+    };
+
+    const formatPlanContent = (content: string) => {
+       // Enhanced formatting for better readability
+       return content
+          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
+          .replace(/\*(.*?)\*/g, '$1') // Remove italic markdown
+          .replace(/#{1,6}\s/g, '') // Remove markdown headers
+          .replace(/-\s/g, '• ') // Convert dashes to bullets
+          .replace(/\d+\.\s/g, '• ') // Convert numbered lists to bullets
+          .replace(/\n\n+/g, '\n\n') // Normalize multiple newlines
+          .replace(/\n{3,}/g, '\n\n') // Limit consecutive newlines
+          .trim();
+    };
 
    return (
       <Container className="p-6">
@@ -171,10 +210,10 @@ export default function Three() {
 
                <Pressable
                   onPress={handleGeneratePlan}
-                  disabled={isLoading || !userGoals.trim()}
+                  disabled={generatePlanMutation.isPending || !userGoals.trim()}
                   className="bg-accent p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50"
                >
-                  {isLoading ? (
+                  {generatePlanMutation.isPending ? (
                      <ActivityIndicator size="small" color={foregroundColor} />
                   ) : (
                      <Text className="text-foreground font-medium text-center">
@@ -182,40 +221,87 @@ export default function Three() {
                      </Text>
                   )}
                </Pressable>
-            </Card>
+             </Card>
 
-            {(streamData.length > 0 || finalPlan) && (
-               <Card variant="secondary" className="p-4">
-                  <Card.Title className="mb-4">Generation Progress</Card.Title>
+             {(currentStage || finalPlan || generatePlanMutation.isPending) && (
+                <Card variant="secondary" className="p-4">
+                   <Card.Title className="mb-4">
+                      {generatePlanMutation.isPending ? "Generating Your Plan..." : 
+                       finalPlan ? "Plan Generated!" : "Generation Progress"}
+                   </Card.Title>
 
-                  {streamData.map((chunk, index) => (
-                     <View key={index} className="mb-3 p-3 bg-surface/50 rounded-lg">
-                        <View className="flex-row items-center mb-1">
-                           <Text className="text-lg mr-2">{getStageIcon(chunk.stage)}</Text>
-                           <Text className="text-foreground font-medium capitalize">
-                              {chunk.stage || "Processing"}
-                           </Text>
-                        </View>
-                        <Text className="text-muted-foreground text-sm">{chunk.message}</Text>
-                        {chunk.context && (
-                           <View className="mt-2 p-2 bg-surface rounded">
-                              <Text className="text-xs text-muted-foreground">
-                                 Context: {JSON.stringify(chunk.context, null, 2)}
-                              </Text>
-                           </View>
-                        )}
-                     </View>
-                  ))}
+                   {/* Current Stage Display */}
+                   {currentStage && (
+                      <Animated.View 
+                         className="mb-4 p-4 bg-surface/50 rounded-lg"
+                         style={{ opacity: fadeAnim }}
+                      >
+                         {/* Progress Bar */}
+                         <View className="mb-3">
+                            <View className="flex-row justify-between items-center mb-2">
+                               <Text className="text-xs text-muted-foreground">Progress</Text>
+                               <Text className="text-xs text-muted-foreground">
+                                  {Math.round(getStageProgress(currentStage.stage))}%
+                               </Text>
+                            </View>
+                            <View className="h-2 bg-surface rounded-full overflow-hidden">
+                               <Animated.View 
+                                  className="h-full bg-accent rounded-full"
+                                  style={{ 
+                                     width: `${getStageProgress(currentStage.stage)}%`,
+                                     backgroundColor: currentStage.stage === 'error' ? '#ef4444' : undefined
+                                  }}
+                               />
+                            </View>
+                         </View>
 
-                  {finalPlan && (
-                     <View className="mt-4 p-4 bg-accent/10 rounded-lg">
-                        <Text className="text-foreground font-medium mb-2">📋 Your Monthly Plan</Text>
-                        <Text className="text-foreground whitespace-pre-wrap">{finalPlan}</Text>
-                     </View>
-                  )}
-               </Card>
-            )}
-         </ScrollView>
-      </Container>
-   );
+                         <View className="flex-row items-center mb-3">
+                            <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
+                            <View className="flex-1">
+                               <Text className="text-foreground font-medium text-lg capitalize">
+                                  {currentStage.stage || "Processing"}
+                               </Text>
+                               <Text className="text-muted-foreground text-sm mt-1">
+                                  {currentStage.message}
+                               </Text>
+                            </View>
+                            {generatePlanMutation.isPending && (
+                               <ActivityIndicator size="small" color={foregroundColor} />
+                            )}
+                         </View>
+                      </Animated.View>
+                   )}
+
+                   {finalPlan && (
+                      <View className="mt-4 p-4 bg-accent/10 rounded-lg border border-accent/20">
+                         <View className="flex-row items-center mb-3">
+                            <Text className="text-foreground font-medium text-lg mr-2">📋</Text>
+                            <Text className="text-foreground font-medium text-lg">Your Monthly Plan</Text>
+                            <View className="ml-auto">
+                               <Text className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">
+                                  Ready
+                               </Text>
+                            </View>
+                         </View>
+                         <View className="bg-surface/30 rounded-lg p-4">
+                            <Text className="text-foreground leading-relaxed whitespace-pre-wrap">
+                               {formatPlanContent(finalPlan)}
+                            </Text>
+                         </View>
+                         {generatePlanMutation.data?.suggestionId && (
+                            <View className="mt-3 flex-row items-center">
+                               <Text className="text-xs text-muted-foreground mr-2">Plan ID:</Text>
+                               <Text className="text-xs text-muted-foreground font-mono">
+                                  {generatePlanMutation.data.suggestionId}
+                               </Text>
+                            </View>
+                         )}
+                      </View>
+                   )}
+                </Card>
+             )}
+
+          </ScrollView>
+       </Container>
+    );
 }
