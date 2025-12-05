@@ -2,10 +2,67 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-nati
 import { Container } from '@/components/container';
 import { Card, useThemeColor } from 'heroui-native';
 import { useSuggestions, useApplySuggestion } from '@/hooks/use-suggestions';
+import { useRouter } from 'expo-router';
+
+// Helper function to parse suggestion content like monthly-plan.tsx
+const parseSuggestionContent = (content: any) => {
+   try {
+      // If content is already an object, return as is
+      if (typeof content === 'object') {
+         return content;
+      }
+
+      // If content is a string, try to parse as JSON
+      if (typeof content === 'string') {
+         // Try to parse as JSON first
+         try {
+            return JSON.parse(content);
+         } catch {
+            // If JSON parsing fails, return as plain text
+            return content;
+         }
+      }
+
+      return content;
+   } catch (error) {
+      console.error('Error parsing suggestion content:', error);
+      return content;
+   }
+};
+
+// Helper function to extract monthly summary for preview
+const getPreviewContent = (suggestion: any) => {
+   const parsedContent = parseSuggestionContent(suggestion.content);
+
+   // For plan type suggestions, extract monthly summary
+   if (suggestion.type === 'plan') {
+      // If it's a plain text string, use it directly
+      if (typeof parsedContent === 'string') {
+         return parsedContent;
+      }
+
+      // If it's an object with monthly_summary, use that
+      if (parsedContent && typeof parsedContent === 'object' && parsedContent.monthly_summary) {
+         return parsedContent.monthly_summary;
+      }
+
+      // Fallback to stringified content
+      return typeof parsedContent === 'object'
+         ? `${JSON.stringify(parsedContent).substring(0, 200)} ...`
+         : String(parsedContent);
+   }
+
+   // For other types, use existing logic
+   return typeof parsedContent === 'string'
+      ? parsedContent
+      : `${JSON.stringify(parsedContent).substring(0, 200)}  ...`
+};
 
 export default function Index() {
    const mutedColor = useThemeColor("muted");
    const foregroundColor = useThemeColor("foreground");
+
+   const router = useRouter();
 
    // Use custom hook for suggestions with persistence
    const {
@@ -86,30 +143,29 @@ export default function Index() {
    }
 
    return (
-      <Container className="p-6">
-         <ScrollView showsVerticalScrollIndicator={false}>
-            <Card variant="secondary" className="mb-6 p-4">
-               <Card.Title className="mb-4 text-2xl">AI Suggestions</Card.Title>
-               <Text className="text-muted-foreground mb-4">
-                  Your personalized AI suggestions and plans
-               </Text>
-               
-               <View className="flex-row justify-between items-center">
-                  <Text className="text-sm text-muted-foreground">
-                     {count} suggestion{count !== 1 ? 's' : ''}
-                  </Text>
-                  <Pressable
-                     onPress={() => refetch()}
-                     disabled={isFetching}
-                     className="bg-surface px-3 py-1 rounded-lg disabled:opacity-50"
-                  >
-                     <Text className="text-xs text-foreground">
-                        {isFetching ? 'Refreshing...' : 'Refresh'}
-                     </Text>
-                  </Pressable>
-               </View>
-            </Card>
+      <Container className="p-2">
+        <Card  className="mb-6 p-2">
+                       <Card.Title className="mb-4 pb-3 text-2xl">AI Suggestions</Card.Title>
+                       <Text className="text-foreground mb-4">
+                          Your personalized AI suggestions and plans
+                       </Text>
 
+                       <View className="flex-row justify-between items-center">
+                          <Text className="text-sm text-foreground">
+                             {count} suggestion{count !== 1 ? 's' : ''}
+                          </Text>
+                          <Pressable
+                             onPress={() => refetch()}
+                             disabled={isFetching}
+                             className="bg-orange-500 px-3 py-1 rounded-lg disabled:opacity-50"
+                          >
+                             <Text className="text-xs text-foreground">
+                                {isFetching ? 'Refreshing...' : 'Refresh'}
+                             </Text>
+                          </Pressable>
+                       </View>
+                    </Card>
+         <ScrollView showsVerticalScrollIndicator={false}>
             {suggestions.length === 0 ? (
                <Card variant="secondary" className="p-6">
                   <View className="items-center">
@@ -132,7 +188,7 @@ export default function Index() {
                               <Text className="text-foreground font-medium capitalize">
                                  {suggestion.type} Suggestion
                               </Text>
-                              <Text className="text-xs text-muted-foreground">
+                              <Text className="text-xs text-orange-500">
                                  {formatDate(suggestion.createdAt)}
                               </Text>
                            </View>
@@ -150,15 +206,12 @@ export default function Index() {
                         </View>
                      </View>
 
-                     {/* Preview of content */}
-                     <View className="bg-surface/50 rounded-lg p-3 mb-3">
-                        <Text className="text-foreground text-sm leading-relaxed" numberOfLines={3}>
-                           {typeof suggestion.content === 'string' 
-                              ? suggestion.content 
-                              : JSON.stringify(suggestion.content).substring(0, 200) + '...'
-                           }
-                        </Text>
-                     </View>
+                      {/* Preview of content */}
+                      <View className="bg-surface/50 rounded-lg p-3 mb-3">
+                         <Text className="text-foreground text-sm leading-relaxed" numberOfLines={3}>
+                            {getPreviewContent(suggestion)}
+                         </Text>
+                      </View>
 
                      {/* Action buttons */}
                      <View className="flex-row space-x-2">
@@ -167,11 +220,12 @@ export default function Index() {
                            onPress={() => {
                               // Navigate to suggestion detail or open modal
                               console.log('View suggestion:', suggestion.id);
+                              router.push(`/suggestion/${suggestion.id}`);
                            }}
                         >
                            <Text className="text-foreground font-medium text-sm">View Details</Text>
                         </Pressable>
-                        
+
                         {!suggestion.isApplied && (
                            <Pressable
                               className="flex-1 bg-surface p-2 rounded-lg flex-row justify-center items-center"

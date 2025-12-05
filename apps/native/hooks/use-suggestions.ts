@@ -13,7 +13,7 @@ export function useSuggestions(options: {
    enabled?: boolean;
 } = {}) {
    const queryKey = ['ai', 'suggestions', options] as const;
-   
+
    const {
       data,
       isLoading,
@@ -22,7 +22,7 @@ export function useSuggestions(options: {
       isFetching,
    } = useQuery({
       queryKey,
-      queryFn: () => orpc.AI.getSuggestions(options),
+      queryFn: () => orpc.AI.getSuggestions.call(options),
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 30 * 60 * 1000, // 30 minutes
       enabled: options.enabled !== false,
@@ -44,7 +44,7 @@ export function useSuggestions(options: {
  */
 export function useSuggestion(suggestionId: string, enabled: boolean = true) {
    const queryKey = ['ai', 'suggestion', suggestionId] as const;
-   
+
    const {
       data,
       isLoading,
@@ -58,9 +58,9 @@ export function useSuggestion(suggestionId: string, enabled: boolean = true) {
          if (cached) {
             return cached;
          }
-         
+
          // If not cached, fetch from server
-         return orpc.AI.getSuggestions({}).then(result => 
+         return orpc.AI.getSuggestions.call({}).then(result =>
             result.suggestions.find(s => s.id === suggestionId)
          );
       },
@@ -82,24 +82,24 @@ export function useSuggestion(suggestionId: string, enabled: boolean = true) {
  */
 export function useApplySuggestion() {
    const queryClient = useQueryClient();
-   
+
    const applySuggestion = async (suggestionId: string) => {
       try {
-         const result = await orpc.AI.applySuggestion({ suggestionId });
-         
+         const result = await orpc.AI.applySuggestion.call({ suggestionId });
+
          // Invalidate and refetch suggestions list
          queryClient.invalidateQueries({ queryKey: ['ai', 'suggestions'] });
-         
+
          // Update the specific suggestion cache
          queryClient.setQueryData(['ai', 'suggestion', suggestionId], result.suggestion);
-         
+
          return result;
       } catch (error) {
          console.error('Failed to apply suggestion:', error);
          throw error;
       }
    };
-   
+
    return {
       applySuggestion,
    };
@@ -114,7 +114,7 @@ export function usePlanHistory(options: {
    enabled?: boolean;
 } = {}) {
    const queryKey = ['ai', 'plan-history', options] as const;
-   
+
    const {
       data,
       isLoading,
@@ -122,7 +122,7 @@ export function usePlanHistory(options: {
       refetch,
    } = useQuery({
       queryKey,
-      queryFn: () => orpc.AI.getPlanHistory(options),
+      queryFn: () => orpc.AI.getPlanHistory.call(options),
       staleTime: 15 * 60 * 1000, // 15 minutes
       gcTime: 60 * 60 * 1000, // 1 hour
       enabled: options.enabled !== false,
@@ -144,7 +144,7 @@ export function prefetchSuggestions(queryClient: any, options: any = {}) {
    return prefetchForOffline(
       queryClient,
       ['ai', 'suggestions', options],
-      () => orpc.AI.getSuggestions(options),
+      () => orpc.AI.getSuggestions.call(options),
       24 * 60 * 60 * 1000 // 24 hours
    );
 }

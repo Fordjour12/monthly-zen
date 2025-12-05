@@ -113,15 +113,6 @@ export default function TabLayout() {
                ),
             }}
          />
-
-         <Tabs.Screen
-            name="[id]"
-            options={{
-               title: "Suggestion Details",
-               href: null,
-               tabBarStyle: { display: "none" },
-            }}
-         />
       </Tabs>
    );
 }

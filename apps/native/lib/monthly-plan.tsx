@@ -1,7 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { HugeiconsIcon } from '@hugeicons/react-native';
-import { Calendar03Icon } from '@hugeicons/core-free-icons';
 
 // Helper function to format dates beautifully
 const formatWeekDates = (weekNumber: number) => {
@@ -40,20 +38,12 @@ export const MonthlyPlanViewer = ({ data }) => {
 
       // If it's a simple object with just monthly_summary
       if (data && typeof data === 'object' && data.monthly_summary && !data.weekly_breakdown) {
-         return (
-            <View style={styles.simpleContainer}>
-             <View>
-              <HugeiconsIcon
-                    icon={Calendar03Icon}
-                    size={20}
-                    color={"#fff"}
-                    strokeWidth={1.5}
-                  />
-               <Text style={styles.heading2}>Monthly Plan Summary</Text>
+          return (
+             <View style={styles.simpleContainer}>
+                <Text style={styles.heading2}>📅 Monthly Plan Summary</Text>
+                <Text style={styles.summaryText}>{data.monthly_summary}</Text>
              </View>
-               <Text style={styles.summaryText}>{data.monthly_summary}</Text>
-            </View>
-         );
+          );
       }
 
       // Full structured plan

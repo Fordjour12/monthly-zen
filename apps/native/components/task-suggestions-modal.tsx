@@ -7,7 +7,8 @@ import { Card, useThemeColor } from "heroui-native";
 import { Platform } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
-import { formatSuggestion } from "@/lib/suggestion-formatter";
+import { formatSuggestion, getSuggestionIcon, getSuggestionColor, formatSuggestionPreview } from "@/lib/suggestion-formatter";
+import { SuggestionDetailModal } from "./suggestion-detail-modal";
 
 interface Task {
   id: string;
@@ -34,6 +35,8 @@ export function TaskSuggestionsModal({
   onApplySuggestion,
 }: TaskSuggestionsModalProps) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const queryClient = useQueryClient();
   
   const foregroundColor = useThemeColor("foreground");
@@ -105,33 +108,32 @@ export function TaskSuggestionsModal({
     Alert.alert("Dismiss", "Dismiss functionality coming soon!");
   };
 
-  const getSuggestionIcon = (type: string) => {
+  const handleViewDetails = (suggestion: any) => {
+    if (Platform.OS === "ios") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    
+    setSelectedSuggestion(suggestion);
+    setShowDetailModal(true);
+  };
+
+  // Use the centralized icon and color functions from suggestion-formatter
+  const getIonIconName = (type: string) => {
     switch (type) {
+      case "plan":
+        return "document-text";
+      case "briefing":
+        return "chatbubble";
+      case "reschedule":
+        return "calendar";
       case "prioritization":
         return "flag";
       case "breakdown":
         return "list";
-      case "rescheduling":
-        return "calendar";
       case "improvement":
         return "trending-up";
       default:
         return "sparkles";
-    }
-  };
-
-  const getSuggestionColor = (type: string) => {
-    switch (type) {
-      case "prioritization":
-        return "#FF6B6B";
-      case "breakdown":
-        return successColor;
-      case "rescheduling":
-        return warningColor;
-      case "improvement":
-        return "#007AFF";
-      default:
-        return "#FF6B6B";
     }
   };
 
@@ -211,23 +213,21 @@ export function TaskSuggestionsModal({
                       <Animated.View key={suggestion.id} entering={FadeIn.delay(index * 100)}>
                         <Card variant="tertiary" className="p-3">
                           <View className="flex-row items-start gap-3">
-                            <View
-                              className="w-8 h-8 rounded-full items-center justify-center"
-                              style={{ backgroundColor: getSuggestionColor(suggestion.type) }}
-                            >
-                              <Ionicons
-                                name={getSuggestionIcon(suggestion.type) as any}
-                                size={16}
-                                color="#FFFFFF"
-                              />
-                            </View>
+                             <View
+                               className="w-8 h-8 rounded-full items-center justify-center"
+                               style={{ backgroundColor: getSuggestionColor(suggestion.type) }}
+                             >
+                               <Text className="text-white text-sm font-bold">
+                                  {getSuggestionIcon(suggestion.type)}
+                               </Text>
+                             </View>
                             <View className="flex-1">
-                              <Text className="text-foreground text-sm font-semibold mb-1">
-                                {formattedSuggestion.title}
-                              </Text>
-                              <Text className="text-foreground text-xs text-muted-foreground mb-2 leading-relaxed">
-                                {formattedSuggestion.content}
-                              </Text>
+                               <Text className="text-foreground text-sm font-semibold mb-1">
+                                 {formattedSuggestion.title}
+                               </Text>
+                               <Text className="text-foreground text-xs text-muted-foreground mb-2 leading-relaxed">
+                                 {formatSuggestionPreview(suggestion, 100)}
+                               </Text>
                               <View className="flex-row items-center justify-between">
                                 <View className="flex-row items-center gap-2">
                                   <Text 
@@ -242,25 +242,31 @@ export function TaskSuggestionsModal({
                                     </Text>
                                   )}
                                 </View>
-                                <View className="flex-row gap-2">
-                                  <Pressable
-                                    onPress={() => handleDismissSuggestion(suggestion.id)}
-                                    className="p-1"
-                                  >
-                                    <Ionicons name="close" size={16} color={foregroundColor} />
-                                  </Pressable>
-                                  <Pressable
-                                    onPress={() => handleApplySuggestion(suggestion)}
-                                    disabled={applySuggestionMutation.isPending}
-                                    className="p-1"
-                                  >
-                                    <Ionicons 
-                                      name="checkmark" 
-                                      size={16} 
-                                      color={successColor} 
-                                    />
-                                  </Pressable>
-                                </View>
+                                 <View className="flex-row gap-2">
+                                   <Pressable
+                                     onPress={() => handleViewDetails(suggestion)}
+                                     className="p-1"
+                                   >
+                                     <Ionicons name="eye" size={16} color={foregroundColor} />
+                                   </Pressable>
+                                   <Pressable
+                                     onPress={() => handleDismissSuggestion(suggestion.id)}
+                                     className="p-1"
+                                   >
+                                     <Ionicons name="close" size={16} color={foregroundColor} />
+                                   </Pressable>
+                                   <Pressable
+                                     onPress={() => handleApplySuggestion(suggestion)}
+                                     disabled={applySuggestionMutation.isPending}
+                                     className="p-1"
+                                   >
+                                     <Ionicons 
+                                       name="checkmark" 
+                                       size={16} 
+                                       color={successColor} 
+                                     />
+                                   </Pressable>
+                                 </View>
                               </View>
                             </View>
                           </View>
@@ -298,6 +304,16 @@ export function TaskSuggestionsModal({
           </Card>
         </Animated.View>
       </View>
+
+      {/* Suggestion Detail Modal */}
+      <SuggestionDetailModal
+         visible={showDetailModal}
+         suggestion={selectedSuggestion}
+         onClose={() => {
+            setShowDetailModal(false);
+            setSelectedSuggestion(null);
+         }}
+      />
     </Modal>
   );
 }
