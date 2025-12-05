@@ -11,8 +11,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Container } from "@/components/container";
 import { TaskStatusToggle, TaskStatusBadge } from "@/components/task-status-toggle";
+import { TaskDetailsModal } from "@/components/task-details-modal";
+import { TaskSuggestionsModal } from "@/components/task-suggestions-modal";
+import { MiniSuggestionBadge } from "@/components/suggestion-badge";
 import { Card, useThemeColor } from "heroui-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
 
 // Mock data - replace with actual API calls
 interface Task {
@@ -32,6 +36,12 @@ export default function TasksScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showTaskDetails, setShowTaskDetails] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedTaskForSuggestions, setSelectedTaskForSuggestions] = useState<Task | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<any>(null);
+  const [isAnalyzingTask, setIsAnalyzingTask] = useState(false);
   
   const queryClient = useQueryClient();
   const foregroundColor = useThemeColor("foreground");
@@ -160,6 +170,104 @@ export default function TasksScreen() {
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
       addTaskMutation.mutate(newTaskTitle.trim());
+    }
+  };
+
+  const handleTaskDetails = (task: Task) => {
+    setSelectedTask(task);
+    setShowTaskDetails(true);
+  };
+
+  const handleCloseTaskDetails = () => {
+    setShowTaskDetails(false);
+    setSelectedTask(null);
+  };
+
+  const handleEditTask = (task: Task) => {
+    // TODO: Implement edit task functionality
+    Alert.alert("Edit Task", "Edit functionality coming soon!");
+    handleCloseTaskDetails();
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    // TODO: Implement delete task functionality
+    Alert.alert("Delete Task", "Delete functionality coming soon!");
+    handleCloseTaskDetails();
+  };
+
+  const handleTaskSuggestions = (task: Task) => {
+    setSelectedTaskForSuggestions(task);
+    setShowSuggestions(true);
+  };
+
+  const handleCloseSuggestions = () => {
+    setShowSuggestions(false);
+    setSelectedTaskForSuggestions(null);
+  };
+
+  const handleApplySuggestion = (suggestion: any) => {
+    // TODO: Implement suggestion application logic
+    Alert.alert("Suggestion Applied", "Suggestion functionality coming soon!");
+    handleCloseSuggestions();
+  };
+
+  // AI categorization mutation
+  const categorizeTaskMutation = useMutation({
+    mutationFn: async (text: string) => {
+      setIsAnalyzingTask(true);
+      try {
+        const result = await orpc.AI.categorizeTask.call({ text });
+        return result;
+      } catch (error) {
+        console.error('AI categorization error:', error);
+        return null;
+      } finally {
+        setIsAnalyzingTask(false);
+      }
+    },
+    onSuccess: (result) => {
+      if (result) {
+        setAiSuggestions(result);
+        // Auto-fill task form with AI suggestions
+        if (result.title && result.title !== newTaskTitle) {
+          Alert.alert(
+            "AI Suggestion",
+            `AI suggests: "${result.title}"\nPriority: ${result.priority}\nCategory: ${result.category}`,
+            [
+              {
+                text: "Use Suggestion",
+                onPress: () => {
+                  setNewTaskTitle(result.title);
+                  // TODO: Set priority and category when those fields are added
+                },
+              },
+              {
+                text: "Keep Original",
+                style: "cancel",
+              },
+            ]
+          );
+        }
+      }
+    },
+    onError: (error: any) => {
+      console.error('Task categorization failed:', error);
+      // Silently fail - don't interrupt user flow
+    },
+  });
+
+  const handleTaskTitleChange = (text: string) => {
+    setNewTaskTitle(text);
+    setAiSuggestions(null); // Clear previous suggestions
+    
+    // Trigger AI analysis after user stops typing (debounced)
+    if (text.trim().length > 5) {
+      const timeoutId = setTimeout(() => {
+        categorizeTaskMutation.mutate(text);
+      }, 1000);
+      
+      // Clear previous timeout
+      return () => clearTimeout(timeoutId);
     }
   };
 
@@ -315,14 +423,32 @@ export default function TasksScreen() {
         {showAddTask && (
           <Card variant="secondary" className="mb-4 p-4">
             <Text className="text-foreground text-lg font-semibold mb-3">Add New Task</Text>
-            <TextInput
-              className="w-full p-3 rounded-lg bg-surface border border-divider text-foreground mb-3"
-              placeholder="Task title..."
-              value={newTaskTitle}
-              onChangeText={setNewTaskTitle}
-              autoFocus
-              placeholderTextColor={foregroundColor}
-            />
+            <View className="relative">
+              <TextInput
+                className="w-full p-3 rounded-lg bg-surface border border-divider text-foreground mb-3"
+                placeholder="Task title..."
+                value={newTaskTitle}
+                onChangeText={handleTaskTitleChange}
+                autoFocus
+                placeholderTextColor={foregroundColor}
+              />
+              {isAnalyzingTask && (
+                <View className="absolute right-3 top-3">
+                  <Ionicons name="time" size={16} color={foregroundColor} />
+                </View>
+              )}
+              {aiSuggestions && (
+                <Pressable
+                  onPress={() => {
+                    setNewTaskTitle(aiSuggestions.title);
+                    setAiSuggestions(null);
+                  }}
+                  className="absolute right-3 top-3"
+                >
+                  <Ionicons name="sparkles" size={16} color="#FF6B6B" />
+                </Pressable>
+              )}
+            </View>
             <View className="flex-row gap-2">
               <Pressable
                 onPress={() => setShowAddTask(false)}
@@ -386,10 +512,20 @@ export default function TasksScreen() {
             {tasks.map((task) => (
               <Card key={task.id} variant="secondary" className="p-4">
                 <View className="flex-row items-start justify-between mb-3">
-                  <View className="flex-1 mr-3">
-                    <Text className="text-foreground font-semibold text-base mb-1">
-                      {task.title}
-                    </Text>
+                  <Pressable 
+                    className="flex-1 mr-3"
+                    onPress={() => handleTaskDetails(task)}
+                  >
+                    <View className="flex-row items-center gap-2 mb-1">
+                      <Text className="text-foreground font-semibold text-base flex-1">
+                        {task.title}
+                      </Text>
+                      <MiniSuggestionBadge
+                        hasSuggestion={Math.random() > 0.7} // Mock: 30% chance of having suggestions
+                        onPress={() => handleTaskSuggestions(task)}
+                      />
+                      <Ionicons name="chevron-forward" size={16} color={foregroundColor} />
+                    </View>
                     {task.description && (
                       <Text className="text-foreground text-sm mb-2">
                         {task.description}
@@ -415,7 +551,7 @@ export default function TasksScreen() {
                         </View>
                       )}
                     </View>
-                  </View>
+                  </Pressable>
                   <TaskStatusToggle
                     taskId={task.id}
                     initialStatus={task.status}
@@ -427,6 +563,24 @@ export default function TasksScreen() {
             ))}
           </View>
         )}
+
+        {/* Task Details Modal */}
+        <TaskDetailsModal
+          visible={showTaskDetails}
+          task={selectedTask}
+          onClose={handleCloseTaskDetails}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+          onStatusChange={handleStatusChange}
+        />
+
+        {/* Task Suggestions Modal */}
+        <TaskSuggestionsModal
+          visible={showSuggestions}
+          task={selectedTaskForSuggestions}
+          onClose={handleCloseSuggestions}
+          onApplySuggestion={handleApplySuggestion}
+        />
       </ScrollView>
     </Container>
   );
