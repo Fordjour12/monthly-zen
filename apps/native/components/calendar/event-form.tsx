@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView,
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useThemeColor } from 'heroui-native';
 import { orpc } from '@/utils/orpc';
 
 interface EventFormProps {
@@ -40,6 +41,10 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   const queryClient = useQueryClient();
+  
+  const themeColorBackground = useThemeColor('background');
+  const themeColorForeground = useThemeColor('foreground');
+  const themeColorSurface = useThemeColor('surface');
 
   useEffect(() => {
     if (event) {
@@ -133,17 +138,17 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: themeColorSurface }]}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#1A202C" />
+              <Ionicons name="close" size={24} color={themeColorForeground} />
             </TouchableOpacity>
             <View style={styles.headerIcons}>
               <TouchableOpacity>
-                <Ionicons name="search-outline" size={24} color="#1A202C" style={{ marginRight: 16 }} />
+                <Ionicons name="search-outline" size={24} color={themeColorForeground} style={{ marginRight: 16 }} />
               </TouchableOpacity>
-              <View style={styles.avatarSmall}>
+              <View style={[styles.avatarSmall, { backgroundColor: themeColorForeground }]}>
                 <Text style={styles.avatarText}>U</Text>
               </View>
             </View>
@@ -168,7 +173,7 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
 
             {/* Title Input */}
             <TextInput
-              style={styles.titleInput}
+              style={[styles.titleInput, { color: themeColorForeground }]}
               placeholder="Task name"
               placeholderTextColor="#A0AEC0"
               value={formData.title}
@@ -177,7 +182,7 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
 
             {/* All Day Toggle */}
             <View style={styles.row}>
-              <Text style={styles.label}>All day</Text>
+              <Text style={[styles.label, { color: themeColorForeground }]}>All day</Text>
               <Switch
                 value={formData.allDay}
                 onValueChange={val => setFormData(prev => ({ ...prev, allDay: val }))}
@@ -187,10 +192,10 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
 
             {/* Date Picker */}
             <View style={styles.section}>
-              <Text style={styles.label}>Date</Text>
-              <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-                <Text style={styles.dateText}>{formatDate(formData.startTime)}</Text>
-                <Ionicons name="calendar-outline" size={20} color="#1A202C" />
+              <Text style={[styles.label, { color: themeColorForeground }]}>Date</Text>
+              <TouchableOpacity style={[styles.dateInput, { borderBottomColor: themeColorForeground }]} onPress={() => setShowDatePicker(true)}>
+                <Text style={[styles.dateText, { color: themeColorForeground }]}>{formatDate(formData.startTime)}</Text>
+                <Ionicons name="calendar-outline" size={20} color={themeColorForeground} />
               </TouchableOpacity>
             </View>
 
@@ -198,17 +203,17 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
             {!formData.allDay && (
               <View style={styles.timeRow}>
                 <View style={styles.timeInputContainer}>
-                  <Text style={styles.label}>Start time</Text>
-                  <TouchableOpacity style={styles.timeInput} onPress={() => setShowStartTimePicker(true)}>
-                    <Text style={styles.timeText}>{formatTime(formData.startTime)}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#A0AEC0" />
+                  <Text style={[styles.label, { color: themeColorForeground }]}>Start time</Text>
+                  <TouchableOpacity style={[styles.timeInput, { borderBottomColor: themeColorForeground }]} onPress={() => setShowStartTimePicker(true)}>
+                    <Text style={[styles.timeText, { color: themeColorForeground }]}>{formatTime(formData.startTime)}</Text>
+                    <Ionicons name="chevron-down" size={16} color={themeColorForeground} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.timeInputContainer}>
-                  <Text style={styles.label}>End time</Text>
-                  <TouchableOpacity style={styles.timeInput} onPress={() => setShowEndTimePicker(true)}>
-                    <Text style={styles.timeText}>{formatTime(formData.endTime)}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#A0AEC0" />
+                  <Text style={[styles.label, { color: themeColorForeground }]}>End time</Text>
+                  <TouchableOpacity style={[styles.timeInput, { borderBottomColor: themeColorForeground }]} onPress={() => setShowEndTimePicker(true)}>
+                    <Text style={[styles.timeText, { color: themeColorForeground }]}>{formatTime(formData.endTime)}</Text>
+                    <Ionicons name="chevron-down" size={16} color={themeColorForeground} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -216,9 +221,9 @@ export default function EventForm({ visible, onClose, event, date }: EventFormPr
 
             {/* Description */}
             <View style={styles.section}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={[styles.label, { color: themeColorForeground }]}>Description</Text>
               <TextInput
-                style={styles.descriptionInput}
+                style={[styles.descriptionInput, { color: themeColorForeground }]}
                 placeholder="Add description"
                 placeholderTextColor="#A0AEC0"
                 multiline
@@ -305,7 +310,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     height: '90%',
@@ -325,7 +329,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2D3748',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -362,7 +365,6 @@ const styles = StyleSheet.create({
   titleInput: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#1A202C',
     marginBottom: 24,
     paddingVertical: 8,
   },
@@ -375,7 +377,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2D3748',
     marginBottom: 8,
   },
   section: {
@@ -387,11 +388,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   dateText: {
     fontSize: 16,
-    color: '#1A202C',
     fontWeight: '500',
   },
   timeRow: {
@@ -409,16 +408,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   timeText: {
     fontSize: 16,
-    color: '#1A202C',
     fontWeight: '600',
   },
   descriptionInput: {
     fontSize: 16,
-    color: '#4A5568',
     minHeight: 60,
     textAlignVertical: 'top',
   },

@@ -169,7 +169,7 @@ export default function CalendarView({
                    textSectionTitleColor: themeColorForeground,
                    selectedDayBackgroundColor: themeColorForeground,
                    selectedDayTextColor: themeColorBackground,
-                   todayTextColor: themeColorForeground,
+                    todayTextColor: '#FF6B6B',
                    dayTextColor: themeColorForeground,
                    textDisabledColor: '#CBD5E0',
                    dotColor: themeColorForeground,
