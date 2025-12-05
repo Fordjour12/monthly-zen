@@ -104,15 +104,6 @@ export function PlanDisplayLibrary({
     },
     taskRow: {
       flexDirection: 'row',
-      marginBottom: compactMode ?4 : 6,
-      paddingVertical: compactMode ? 2 : 4,
-      backgroundColor: compactMode ? 'transparent' : surfaceColor + '05',
-      borderRadius: compactMode ? 4 : 6,
-      paddingHorizontal: compactMode ? 6 : 8,
-      alignItems: 'flex-start',
-    },
-    taskRow: {
-      flexDirection: 'row',
       marginBottom: compactMode ? 4 : 6,
       paddingVertical: compactMode ? 2 : 4,
       backgroundColor: compactMode ? 'transparent' : `${surfaceColor}05`,
@@ -160,14 +151,14 @@ export function PlanDisplayLibrary({
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
+    <ScrollView
+      style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 20 }}
     >
       {data.weekly_breakdown.map((weekItem, index) => (
-        <Pressable 
-          key={index} 
+        <Pressable
+          key={index}
           style={styles.weekContainer}
           onPress={() => onWeekPress?.(weekItem, index)}
         >
@@ -184,7 +175,7 @@ export function PlanDisplayLibrary({
           <View style={styles.goalsContainer}>
             {weekItem.goals.map((goal, gIndex) => (
               <Pressable
-                key={gIndex} 
+                key={gIndex}
                 onPress={() => onGoalPress?.(goal, index, gIndex)}
               >
                 <Text style={styles.goalItem}>
@@ -215,14 +206,14 @@ export function PlanDisplayLibrary({
 }
 
 // Export individual components for more granular control
-export function WeekCard({ 
-  weekData, 
-  index, 
+export function WeekCard({
+  weekData,
+  index,
   compactMode = false,
-  onPress 
-}: { 
-  weekData: WeekData; 
-  index: number; 
+  onPress
+}: {
+  weekData: WeekData;
+  index: number;
   compactMode?: boolean;
   onPress?: () => void;
 }) {
@@ -269,12 +260,12 @@ export function WeekCard({
   );
 }
 
-export function GoalsList({ 
-  goals, 
+export function GoalsList({
+  goals,
   compactMode = false,
-  onGoalPress 
-}: { 
-  goals: string[]; 
+  onGoalPress
+}: {
+  goals: string[];
   compactMode?: boolean;
   onGoalPress?: (goal: string, index: number) => void;
 }) {
@@ -301,7 +292,7 @@ export function GoalsList({
     <View style={styles.container}>
       {goals.map((goal, index) => (
         <Pressable
-          key={index} 
+          key={index}
           onPress={() => onGoalPress?.(goal, index)}
         >
           <Text style={styles.goal}>
@@ -313,12 +304,12 @@ export function GoalsList({
   );
 }
 
-export function DailyTasksList({ 
-  dailyTasks, 
+export function DailyTasksList({
+  dailyTasks,
   compactMode = false,
-  onTaskPress 
-}: { 
-  dailyTasks: DailyTask; 
+  onTaskPress
+}: {
+  dailyTasks: DailyTask;
   compactMode?: boolean;
   onTaskPress?: (task: string, day: string) => void;
 }) {
@@ -388,7 +379,7 @@ export const planUtils = {
   // Get total tasks across all weeks
   getTotalTasks: (data: PlanData): number => {
     return data?.weekly_breakdown?.reduce((total, week) => {
-      return total + Object.values(week.daily_tasks).reduce((weekTotal, dayTasks) => 
+      return total + Object.values(week.daily_tasks).reduce((weekTotal, dayTasks) =>
         weekTotal + dayTasks.length, 0);
     }, 0) || 0;
   },
@@ -409,7 +400,7 @@ export const planUtils = {
 
   // Filter weeks by focus keyword
   filterWeeksByFocus: (data: PlanData, keyword: string): WeekData[] => {
-    return data?.weekly_breakdown?.filter(week => 
+    return data?.weekly_breakdown?.filter(week =>
       week.focus.toLowerCase().includes(keyword.toLowerCase())
     ) || [];
   },
