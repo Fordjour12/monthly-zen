@@ -18,7 +18,7 @@ interface AIServiceConfig {
 }
 
 interface AIRequest<T> {
-   type: "plan" | "briefing" | "reschedule";
+   type: "plan" | "briefing" | "reschedule" | "categorization" | "analysis";
    input: T;
    prompt: string;
    systemPrompt?: string;
@@ -287,16 +287,16 @@ ${userGoals}
 
       // Generate the actual plan
       const result = await this.generatePlan(userGoals, config);
-      
+
       // Final progress update
       onProgress?.('complete', 'Plan generated successfully!');
-      
+
       return result;
    }
 
-    /**
-     * Generate daily briefing
-     */
+   /**
+    * Generate daily briefing
+    */
    static async generateBriefing(
       currentDate: string,
       todaysTasks: Array<{ title: string; priority: string }>,
@@ -422,9 +422,9 @@ ${userGoals}
       return this.limiter.getUserStats(userId);
    }
 
-    /**
-     * Parse plan content for task conversion
-     */
+   /**
+    * Parse plan content for task conversion
+    */
    static parsePlanForTasks(plan: PlanSuggestionContent): PlanTask[] {
       const tasks: PlanTask[] = [];
 
@@ -511,7 +511,7 @@ ${userGoals}
       // Calculate completion rates
       const totalTasks = completedTasks.length;
       const completionRate = totalTasks > 0 ? 1.0 : 0.5; // Simplified calculation
-      
+
       // Generate insights
       if (completionRate >= 0.8) {
          insights.push("Excellent plan execution! Most tasks completed successfully.");
@@ -564,6 +564,49 @@ ${userGoals}
      * Get all users' rate limit statistics (for monitoring)
      */
    static getAllRateLimitStats() {
-       return this.limiter.getAllStats();
-    }
+      return this.limiter.getAllStats();
+   }
+   /**
+    * Categorize a task from text input
+    */
+   static async categorizeTask(
+      taskText: string,
+      config?: AIServiceConfig
+   ): Promise<AIResponse<{ title: string; category: string; dueDate?: string; priority: string }>> {
+      const prompt = `Analyze this task input: "${taskText}"
+      
+      Return a JSON object with:
+      - title: Cleaned task title
+      - category: Suggested category (e.g., Work, Health, Personal, Learning)
+      - dueDate: ISO date string if mentioned (assume current year), null otherwise
+      - priority: inferred priority (low, medium, high)`;
+
+      return this.executeAIRequest<string, { title: string; category: string; dueDate?: string; priority: string }>({
+         type: "categorization",
+         input: taskText,
+         prompt,
+         config
+      });
+   }
+
+   /**
+    * Generate weekly summary
+    */
+   static async generateWeeklySummary(
+      weekData: any,
+      config?: AIServiceConfig
+   ): Promise<AIResponse<{ summary: string; highlights: string[] }>> {
+      const prompt = `Generate a motivational weekly summary based on this data: ${JSON.stringify(weekData)}
+      
+      Return JSON:
+      - summary: 2-3 sentences summarizing performance
+      - highlights: Array of 2-3 key achievements`;
+
+      return this.executeAIRequest<any, { summary: string; highlights: string[] }>({
+         type: "analysis",
+         input: weekData,
+         prompt,
+         config
+      });
+   }
 }

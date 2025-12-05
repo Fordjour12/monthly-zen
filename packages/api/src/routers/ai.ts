@@ -247,12 +247,12 @@ export const AiRouter = {
             // Filter by selected weeks and milestones if provided
             let filteredTasks = tasks;
             if (input.selectedWeeks && input.selectedWeeks.length > 0) {
-               filteredTasks = tasks.filter(task => 
+               filteredTasks = tasks.filter(task =>
                   input.selectedWeeks!.includes(task.week)
                );
             }
             if (input.selectedMilestones && input.selectedMilestones.length > 0) {
-               filteredTasks = filteredTasks.filter(task => 
+               filteredTasks = filteredTasks.filter(task =>
                   task.day === 'milestone' && input.selectedMilestones!.includes(task.title)
                );
             }
@@ -347,9 +347,9 @@ export const AiRouter = {
             if (input.month) {
                filteredSuggestions = suggestions.filter(suggestion => {
                   const suggestionDate = new Date(suggestion.createdAt);
-                  return suggestionDate.toLocaleDateString('en-US', { 
-                     month: 'long', 
-                     year: 'numeric' 
+                  return suggestionDate.toLocaleDateString('en-US', {
+                     month: 'long',
+                     year: 'numeric'
                   }) === input.month;
                });
             }
@@ -415,6 +415,55 @@ export const AiRouter = {
          }
       }),
 
+   /**
+    * Categorize a task
+    */
+   categorizeTask: protectedProcedure
+      .input(
+         z.object({
+            text: z.string().min(1),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) throw new Error("User not authenticated");
+
+         try {
+            const result = await AIService.categorizeTask(input.text, { userId });
+            if (!result.success || !result.data) {
+               throw new Error(result.error || "Failed to categorize task");
+            }
+            return result.data;
+         } catch (error) {
+            console.error("Categorize task error:", error);
+            throw new Error("Failed to categorize task");
+         }
+      }),
+
+   /**
+    * Generate weekly summary
+    */
+   generateWeeklySummary: protectedProcedure
+      .input(
+         z.object({
+            weekData: z.any(),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) throw new Error("User not authenticated");
+
+         try {
+            const result = await AIService.generateWeeklySummary(input.weekData, { userId });
+            if (!result.success || !result.data) {
+               throw new Error(result.error || "Failed to generate summary");
+            }
+            return result.data;
+         } catch (error) {
+            console.error("Generate summary error:", error);
+            throw new Error("Failed to generate summary");
+         }
+      }),
 };
 
 export type AIRouter = typeof AiRouter;

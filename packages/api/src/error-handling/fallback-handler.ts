@@ -9,6 +9,8 @@ import type {
    RescheduleSuggestionContent,
 } from "@my-better-t-app/db";
 
+export type AIRequestType = "plan" | "briefing" | "reschedule" | "categorization" | "analysis";
+
 export interface FallbackOptions {
    preserveInput?: boolean; // Save input for later retry
    notifyUser?: boolean; // Show user that fallback was used
@@ -169,6 +171,44 @@ export class FallbackHandler {
    }
 
    /**
+    * Generate fallback categorization when AI service fails
+    */
+   static generateCategorizationFallback(
+      taskText: string,
+      _options: FallbackOptions = {}
+   ): FallbackResult<{ title: string; category: string; dueDate?: string; priority: string }> {
+      return {
+         success: true,
+         data: {
+            title: taskText,
+            category: "General",
+            priority: "medium",
+            dueDate: undefined
+         },
+         fallbackUsed: true,
+         message: "AI service unavailable - used default categorization"
+      };
+   }
+
+   /**
+    * Generate fallback analysis when AI service fails
+    */
+   static generateAnalysisFallback(
+      _weekData: any,
+      _options: FallbackOptions = {}
+   ): FallbackResult<{ summary: string; highlights: string[] }> {
+      return {
+         success: true,
+         data: {
+            summary: "Weekly analysis unavailable (AI service offline).",
+            highlights: ["Tracked your progress", "Stayed consistent"]
+         },
+         fallbackUsed: true,
+         message: "AI service unavailable - used default analysis"
+      };
+   }
+
+   /**
     * Extract goals from user input text
     */
    private static extractGoals(userGoals: string): string[] {
@@ -254,7 +294,7 @@ export class FallbackHandler {
     */
    static async saveInputForRetry(
       userId: string,
-      type: "plan" | "briefing" | "reschedule",
+      type: AIRequestType,
       _input: any
    ): Promise<string> {
       const retryId = `retry_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -279,7 +319,7 @@ export class FallbackHandler {
     */
    static async handleAIError<T>(
       error: Error,
-      type: "plan" | "briefing" | "reschedule",
+      type: AIRequestType,
       input: any,
       options: FallbackOptions = {}
    ): Promise<FallbackResult<T>> {
@@ -317,6 +357,18 @@ export class FallbackHandler {
          case "reschedule":
             return FallbackHandler.generateRescheduleFallback(
                input.backlogTasks,
+               options
+            ) as unknown as FallbackResult<T>;
+
+         case "categorization":
+            return FallbackHandler.generateCategorizationFallback(
+               typeof input === "string" ? input : JSON.stringify(input),
+               options
+            ) as unknown as FallbackResult<T>;
+
+         case "analysis":
+            return FallbackHandler.generateAnalysisFallback(
+               input,
                options
             ) as unknown as FallbackResult<T>;
 

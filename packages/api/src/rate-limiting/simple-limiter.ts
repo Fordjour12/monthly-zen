@@ -17,6 +17,8 @@ export interface UserRateLimit {
   plan: number; // Per day
   briefing: number; // Per day
   reschedule: number; // Per day
+  categorization: number; // Per day
+  analysis: number; // Per day
 }
 
 export class SimpleRateLimiter {
@@ -24,7 +26,7 @@ export class SimpleRateLimiter {
   private dailyUsage = new Map<string, Map<string, number>>();
   private monthlyUsage = new Map<string, number>();
 
-  constructor(private defaultLimits: UserRateLimit) {}
+  constructor(private defaultLimits: UserRateLimit) { }
 
   /**
    * Check if user is allowed to make a request
@@ -185,6 +187,8 @@ export const DEFAULT_RATE_LIMITS: UserRateLimit = {
   plan: 5, // 5 plans per day
   briefing: 10, // 10 briefings per day
   reschedule: 5, // 5 reschedules per day
+  categorization: 20, // 20 categorizations per day
+  analysis: 10, // 10 analyses per day
 };
 
 // Global rate limiter instance
