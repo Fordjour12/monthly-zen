@@ -215,7 +215,7 @@ export default function DashboardScreen() {
                   <Text className="text-2xl font-bold text-foreground mb-1">
                      {taskStats.completed}/{taskStats.total}
                   </Text>
-                  <Text className="text-muted-foreground text-xs">
+                  <Text className="text-foreground text-xs">
                      {taskStats.pending} pending
                   </Text>
                </View>
@@ -228,7 +228,7 @@ export default function DashboardScreen() {
                   <Text className="text-2xl font-bold text-foreground mb-1">
                      {habitStats.completed}/{habitStats.total}
                   </Text>
-                  <Text className="text-muted-foreground text-xs">
+                  <Text className="text-foreground text-xs">
                      {habitStats.longestStreak} day streak
                   </Text>
                </View>
@@ -252,7 +252,7 @@ export default function DashboardScreen() {
                </Pressable>
                <Pressable
                   onPress={() => handleQuickAction("generate-plan")}
-                  className="flex-1 py-2.5 rounded-lg bg-secondary border border-secondary flex-row items-center justify-center gap-2"
+                  className="flex-1 py-2.5 rounded-lg bg-secondary border border-foreground flex-row items-center justify-center gap-2"
                >
                   <Ionicons name="create" size={16} color={themeColorForeground} />
                   <Text className="text-foreground text-sm font-medium">Plan</Text>

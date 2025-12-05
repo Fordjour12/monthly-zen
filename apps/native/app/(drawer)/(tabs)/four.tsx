@@ -218,7 +218,7 @@ export default function Four() {
                      <Text className="text-2xl font-bold text-foreground mb-1">
                         {taskStats.completed}/{taskStats.total}
                      </Text>
-                     <Text className="text-muted-foreground text-xs">
+                     <Text className="text-xs">
                         {taskStats.pending} pending
                      </Text>
                   </View>
@@ -231,7 +231,7 @@ export default function Four() {
                      <Text className="text-2xl font-bold text-foreground mb-1">
                         {habitStats.completed}/{habitStats.total}
                      </Text>
-                     <Text className="text-muted-foreground text-xs">
+                     <Text className="text-foreground text-xs">
                         {habitStats.longestStreak} day streak
                      </Text>
                   </View>
