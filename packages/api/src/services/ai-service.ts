@@ -101,7 +101,7 @@ export async function executeAIRequest<TInput = any, TOutput = any>(
    const { type, input, prompt, systemPrompt, config = {} } = request;
    const {
       maxRetries = 3,
-      model = "openai/gpt-oss-120b",
+      model = "google/gemini-2.0-flash-001",
    } = config;
 
    try {
@@ -207,9 +207,6 @@ export async function generatePlan(
    userGoals: string,
    config?: AIServiceConfig
 ): Promise<AIResponse<PlanSuggestionContent>> {
-
-   //TODO: Send from your userApp as serverless can be stick sometimes
-
    const currentDate = new Date().toISOString().split('T')[0];
    const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -256,7 +253,6 @@ ${userGoals}
 - Flag any unrealistic timelines`;
 
    const systemPrompt = "You are an intelligent monthly planning assistant. Create comprehensive, actionable monthly plans with weekly breakdowns and daily tasks. Focus on realistic timelines and balanced workloads.";
-
    return await executeAIRequest<string, PlanSuggestionContent>({
       type: "plan",
       input: userGoals,
@@ -2707,7 +2703,7 @@ Provide 3-4 specific, actionable insights in JSON format:
 {
   "insights": [
     "Specific insight about task completion patterns",
-    "Insight about habit formation and consistency", 
+    "Insight about habit formation and consistency",
     "Recommendation for improving future plan execution",
     "Positive reinforcement or area for improvement"
   ]
@@ -2764,7 +2760,7 @@ async function analyzeTrends(userId: string, currentCompletionRate: number): Pro
          };
       }
 
-      // Calculate historical completion rates (simplified - in real implementation, 
+      // Calculate historical completion rates (simplified - in real implementation,
       // we'd need to track actual completion rates for each plan)
       const historicalRates = historicalPlans
          .slice(0, -1) // Exclude current plan

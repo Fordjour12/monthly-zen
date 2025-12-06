@@ -114,26 +114,9 @@ export function useGeneratePlan() {
          options?: {
             userId?: string;
             model?: string;
-            forceRefresh?: boolean;
          };
       }) => {
-         const { userId = 'anonymous', model, forceRefresh = false } = options || {};
-
-         // Generate cache key
-         const cacheKey = `plan:${JSON.stringify({ userGoals, userId, model })}`;
-
-         // Check local cache first
-         if (!forceRefresh) {
-            const cached = localKV.get(cacheKey, StorageCategory.CACHE);
-            if (cached) {
-               console.log('🎯 Using cached AI plan');
-               return {
-                  success: true,
-                  data: cached,
-                  cached: true,
-               };
-            }
-         }
+         const { userId = 'anonymous', model } = options || {};
 
          // Simulate progress
          const stages = [
@@ -150,23 +133,11 @@ export function useGeneratePlan() {
          }
 
          try {
-            // Call server API
+            // Always call server API - NO CACHING
             const result = await orpc.AI.generatePlan.call({
                userGoals,
                model,
             });
-
-            if (result.suggestionId) {
-               // Cache response locally
-               localKV.set(
-                  cacheKey,
-                  result.content,
-                  STORAGE_TTL.CACHE_AI_RESPONSE,
-                  StorageCategory.CACHE
-               );
-
-               console.log('💾 AI plan cached locally');
-            }
 
             // Invalidate related queries
             queryClient.invalidateQueries({ queryKey: ['ai-suggestions'] });
@@ -179,18 +150,6 @@ export function useGeneratePlan() {
             };
          } catch (error) {
             console.error('❌ Failed to generate plan:', error);
-
-            // Try to return stale cache if available
-            const staleCache = localKV.get(cacheKey, StorageCategory.CACHE);
-            if (staleCache) {
-               console.log('🔄 Using stale cache as fallback');
-               return {
-                  success: true,
-                  data: staleCache,
-                  cached: true,
-                  stale: true,
-               };
-            }
 
             return {
                success: false,

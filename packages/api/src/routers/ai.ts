@@ -79,9 +79,6 @@ export const AiRouter = {
       .input(
          z.object({
             userGoals: z.string().min(10, "Please provide more detailed goals"),
-            workHours: z.string().optional(),
-            energyPatterns: z.string().optional(),
-            preferredTimes: z.string().optional(),
             model: z.string().optional(),
          })
       )
@@ -103,6 +100,7 @@ export const AiRouter = {
             }
 
             const PlanContent = PlanResult.data;
+            console.log("PlanContent", PlanContent);
 
             // Save suggestion to database
             const suggestion = await aiQueries.createSuggestion(

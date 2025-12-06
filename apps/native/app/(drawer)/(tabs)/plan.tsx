@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
    View,
    Text,
@@ -7,40 +7,51 @@ import {
    ScrollView,
    ActivityIndicator,
    Animated,
+   Alert,
 } from "react-native";
-import { useEffect, useRef } from "react";
 import { Container } from "@/components/container";
 import { Card, useThemeColor } from "heroui-native";
 import { useGeneratePlan } from "@/hooks/use-local-cache";
 import { MonthlyPlanViewer } from "@/lib/monthly-plan";
 import { checkPlanGenerationLimit, consumePlanGeneration, getTimeUntilReset } from "@/lib/rate-limiter";
+import { useRouter } from "expo-router";
+import { orpc } from "@/utils/orpc";
 
 export default function Plan() {
+   // Form state
    const [userGoals, setUserGoals] = useState(
       "I want to learn React Native development, exercise 3 times per week, read 2 technical books, and improve my TypeScript skills. I also want to build a mobile app portfolio project and maintain a healthy work-life balance."
    );
    const [workHours, setWorkHours] = useState("9 AM - 5 PM, Monday to Friday");
    const [energyPatterns, setEnergyPatterns] = useState("High energy in morning (9-12), moderate after lunch (2-4), low energy in evening");
    const [preferredTimes, setPreferredTimes] = useState("Deep work in morning, exercise at 6 PM, reading before bed");
+
+   // Plan state
    const [finalPlan, setFinalPlan] = useState<any | null>(null);
+   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
    const [error, setError] = useState<string | null>(null);
    const [currentStage, setCurrentStage] = useState<{ stage?: string; message: string } | null>(null);
    const [isGenerating, setIsGenerating] = useState(false);
+   const [isApplying, setIsApplying] = useState(false);
+
+   // Rate limit state
    const [rateLimitStatus, setRateLimitStatus] = useState(checkPlanGenerationLimit());
 
+   // Hooks
+   const router = useRouter();
    const fadeAnim = useRef(new Animated.Value(0)).current;
    const generatePlanMutation = useGeneratePlan();
+   const mutedColor = useThemeColor("muted");
 
    // Update rate limit status periodically
    useEffect(() => {
       const interval = setInterval(() => {
          setRateLimitStatus(checkPlanGenerationLimit());
-      }, 1000); // Update every second
-
+      }, 1000);
       return () => clearInterval(interval);
    }, []);
 
-   // Initial fade-in
+   // Fade animation for stage updates
    useEffect(() => {
       if (currentStage) {
          Animated.timing(fadeAnim, {
@@ -51,28 +62,17 @@ export default function Plan() {
       }
    }, [currentStage]);
 
-   const mutedColor = useThemeColor("muted");
-   const foregroundColor = useThemeColor("foreground");
-
    const handleGeneratePlan = async () => {
-      console.log("🚀 Starting plan generation");
-      console.log("Input data:", {
-         userGoals: userGoals.trim(),
-         workHours: workHours.trim() || undefined,
-         energyPatterns: energyPatterns.trim() || undefined,
-         preferredTimes: preferredTimes.trim() || undefined,
-      });
-
-      // Check rate limit first
-      const currentRateLimit = checkPlanGenerationLimit();
-      if (currentRateLimit.isLimited) {
-         setError(`Rate limit reached. Please wait ${getTimeUntilReset()} before generating another plan.`);
+      // Validate input
+      if (!userGoals.trim() || userGoals.length < 10) {
+         setError("Please provide more detailed goals (at least 10 characters)");
          return;
       }
 
-      if (!userGoals.trim() || userGoals.length < 10) {
-         console.log("❌ Validation failed: goals too short");
-         setError("Please provide more detailed goals (at least 10 characters)");
+      // Check rate limit
+      const currentRateLimit = checkPlanGenerationLimit();
+      if (currentRateLimit.isLimited) {
+         setError(`Rate limit reached. Please wait ${getTimeUntilReset()} before generating another plan.`);
          return;
       }
 
@@ -83,23 +83,22 @@ export default function Plan() {
          return;
       }
 
-      // Update rate limit status after consumption
+      // Update rate limit status
       setRateLimitStatus(checkPlanGenerationLimit());
 
+      // Reset state
       setError(null);
       setFinalPlan(null);
       setCurrentStage(null);
       setIsGenerating(true);
 
+      // Build context
       const fullContext = `${userGoals.trim()}\n\nWork Hours: ${workHours.trim() || "Not specified"}\nEnergy Patterns: ${energyPatterns.trim() || "Not specified"}\nPreferred Times: ${preferredTimes.trim() || "Not specified"}`;
 
       generatePlanMutation.mutate(
          {
             userGoals: fullContext,
             onProgress: (stage: string, message: string) => {
-               console.log(`📊 Progress: ${stage} - ${message}`);
-
-               // Fade out, update stage, then fade in
                Animated.timing(fadeAnim, {
                   toValue: 0,
                   duration: 150,
@@ -116,17 +115,15 @@ export default function Plan() {
          },
          {
             onSuccess: (result: any) => {
-               console.log("✅ Plan generation successful:", result);
                if (result.success && result.data) {
                   try {
-                     // Try to parse as JSON first
                      const parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
                      setFinalPlan(parsedData);
+                     setCurrentPlanId(result.suggestionId || null);
                      setCurrentStage({ stage: "complete", message: "Plan generated successfully!" });
                   } catch (error) {
-                     console.log("⚠️ Could not parse as JSON, treating as plain text");
-                     // If parsing fails, treat as plain text
                      setFinalPlan({ monthly_summary: result.data });
+                     setCurrentPlanId(result.suggestionId || null);
                      setCurrentStage({ stage: "complete", message: "Plan generated successfully!" });
                   }
                } else {
@@ -136,7 +133,6 @@ export default function Plan() {
                }
             },
             onError: (error: any) => {
-               console.error("💥 Error in generatePlan:", error);
                setError(error.message || "Failed to generate plan");
                setCurrentStage({ stage: "error", message: "Failed to generate plan" });
                setIsGenerating(false);
@@ -145,25 +141,61 @@ export default function Plan() {
       );
    };
 
-   const getStageIcon = (stage?: string) => {
-      switch (stage) {
-         case "validation":
-            return "🔍";
-         case "checking":
-            return "📋";
-         case "context":
-            return "📊";
-         case "generating":
-            return "🤖";
-         case "saving":
-            return "💾";
-         case "complete":
-            return "✅";
-         case "error":
-            return "❌";
-         default:
-            return "⏳";
+   const handleApplyPlan = async () => {
+      if (!currentPlanId) {
+         Alert.alert("Error", "No plan ID available. Please regenerate the plan.");
+         return;
       }
+
+      setIsApplying(true);
+      try {
+         const result = await orpc.AI.applySuggestionAsItems.call({
+            suggestionId: currentPlanId,
+            applyAs: "auto",
+         });
+
+         Alert.alert(
+            "Success",
+            `Plan applied successfully! Created ${result.createdCount} items.`,
+            [
+               {
+                  text: "View Suggestions",
+                  onPress: () => router.push("/suggestion"),
+               },
+               {
+                  text: "Generate New Plan",
+                  onPress: resetPlanState,
+               },
+            ]
+         );
+      } catch (error) {
+         Alert.alert(
+            "Error",
+            `Failed to apply plan: ${error instanceof Error ? error.message : "Unknown error"}`
+         );
+      } finally {
+         setIsApplying(false);
+      }
+   };
+
+   const resetPlanState = () => {
+      setIsGenerating(false);
+      setFinalPlan(null);
+      setCurrentPlanId(null);
+      setCurrentStage(null);
+   };
+
+   const getStageIcon = (stage?: string) => {
+      const icons: Record<string, string> = {
+         validation: "🔍",
+         checking: "📋",
+         context: "📊",
+         generating: "🤖",
+         saving: "💾",
+         complete: "✅",
+         error: "❌",
+      };
+      return icons[stage || ""] || "⏳";
    };
 
    const getStageProgress = (stage?: string) => {
@@ -174,28 +206,22 @@ export default function Plan() {
 
    const formatDateRange = () => {
       const today = new Date();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-      const options: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric' };
-      const monthYear = today.toLocaleDateString('en-US', options);
-
-      return monthYear;
+      return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
    };
 
    return (
       <Container className="p-2">
          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Input Form */}
             {!isGenerating && (
                <Card variant="secondary" className="mb-6 p-4">
                   <Card.Title className="mb-4 text-2xl">AI Monthly Plan Generator</Card.Title>
-                  <Text className="text-foreground mb-2">
-                     {formatDateRange()}
-                  </Text>
+                  <Text className="text-foreground mb-2">{formatDateRange()}</Text>
                   <Text className="text-foreground mb-4">
                      Get a personalized monthly plan based on your goals and current commitments
                   </Text>
 
+                  {/* Error Message */}
                   {error && (
                      <View className="mb-4 p-3 bg-danger/10 rounded-lg">
                         <Text className="text-danger text-sm">{error}</Text>
@@ -212,9 +238,7 @@ export default function Plan() {
                      </View>
                      <View className="h-2 bg-surface rounded-full overflow-hidden mb-2">
                         <View
-                           className={`h-full rounded-full ${
-                              rateLimitStatus.isLimited ? 'bg-red-500' : 'bg-orange-500'
-                           }`}
+                           className={`h-full rounded-full ${rateLimitStatus.isLimited ? 'bg-red-500' : 'bg-orange-500'}`}
                            style={{ width: `${(rateLimitStatus.remaining / rateLimitStatus.limit) * 100}%` }}
                         />
                      </View>
@@ -225,6 +249,7 @@ export default function Plan() {
                      )}
                   </View>
 
+                  {/* Goals Input */}
                   <Text className="text-foreground font-medium mb-2">Your Goals *</Text>
                   <TextInput
                      className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
@@ -237,6 +262,7 @@ export default function Plan() {
                      textAlignVertical="top"
                   />
 
+                  {/* Work Hours Input */}
                   <Text className="text-foreground font-medium mb-2">Work Hours (optional)</Text>
                   <TextInput
                      className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
@@ -246,6 +272,7 @@ export default function Plan() {
                      placeholderTextColor={mutedColor}
                   />
 
+                  {/* Energy Patterns Input */}
                   <Text className="text-foreground font-medium mb-2">Energy Patterns (optional)</Text>
                   <TextInput
                      className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
@@ -255,6 +282,7 @@ export default function Plan() {
                      placeholderTextColor={mutedColor}
                   />
 
+                  {/* Preferred Times Input */}
                   <Text className="text-foreground font-medium mb-2">Preferred Times (optional)</Text>
                   <TextInput
                      className="mb-6 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
@@ -264,12 +292,12 @@ export default function Plan() {
                      placeholderTextColor={mutedColor}
                   />
 
+                  {/* Generate Button */}
                   <Pressable
                      onPress={handleGeneratePlan}
                      disabled={generatePlanMutation.isPending || !userGoals.trim() || rateLimitStatus.isLimited}
-                     className={`p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50 ${
-                        rateLimitStatus.isLimited ? 'bg-red-500/20' : 'bg-orange-500'
-                     }`}
+                     className={`p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50 ${rateLimitStatus.isLimited ? 'bg-red-500/20' : 'bg-orange-500'
+                        }`}
                   >
                      {generatePlanMutation.isPending ? (
                         <ActivityIndicator size="small" color="#fff" />
@@ -286,6 +314,7 @@ export default function Plan() {
                </Card>
             )}
 
+            {/* Plan Generation Progress & Results */}
             {(currentStage || generatePlanMutation.isPending || finalPlan) && (
                <Card className="p-2">
                   <Card.Title className="mb-4">
@@ -293,72 +322,95 @@ export default function Plan() {
                         finalPlan ? `${formatDateRange()} Plan` : "Generation Progress"}
                   </Card.Title>
 
-                  {/* Current Stage Display */}
+                  {/* Progress Display */}
                   {currentStage && (
                      <Animated.View
                         className="mb-4 p-4 bg-surface/50 rounded-lg"
                         style={{ opacity: fadeAnim }}
                      >
-{/* Progress Bar */}
-                         <View className="mb-3">
-                            <View className="flex-row justify-between items-center mb-2">
-                               <Text className="text-xs text-orange-600">Progress</Text>
-                               <Text className="text-xs text-orange-600">
-                                  {Math.round(getStageProgress(currentStage.stage))}%
-                               </Text>
-                            </View>
-                            <View className="h-2 bg-surface rounded-full overflow-hidden">
-                               <Animated.View
-                                  className="h-full bg-orange-500 rounded-full"
-                                  style={{
-                                     width: `${getStageProgress(currentStage.stage)}%`,
-                                     backgroundColor: currentStage.stage === 'error' ? '#ef4444' : undefined
-                                  }}
-                               />
-                            </View>
-                         </View>
+                        {/* Progress Bar */}
+                        <View className="mb-3">
+                           <View className="flex-row justify-between items-center mb-2">
+                              <Text className="text-xs text-orange-600">Progress</Text>
+                              <Text className="text-xs text-orange-600">
+                                 {Math.round(getStageProgress(currentStage.stage))}%
+                              </Text>
+                           </View>
+                           <View className="h-2 bg-surface rounded-full overflow-hidden">
+                              <Animated.View
+                                 className="h-full bg-orange-500 rounded-full"
+                                 style={{
+                                    width: `${getStageProgress(currentStage.stage)}%`,
+                                    backgroundColor: currentStage.stage === 'error' ? '#ef4444' : undefined
+                                 }}
+                              />
+                           </View>
+                        </View>
 
-<View className="flex-row items-center mb-3">
-                            <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
-                            <View className="flex-1">
-                               <Text className="text-orange-600 font-medium text-lg capitalize">
-                                  {currentStage.stage || "Processing"}
-                               </Text>
-                               <Text className="text-orange-500 text-sm mt-1">
-                                  {currentStage.message}
-                               </Text>
-                            </View>
-                            {generatePlanMutation.isPending && (
-                               <ActivityIndicator size="small" color="#ea580c" />
-                            )}
-                         </View>
+                        {/* Stage Info */}
+                        <View className="flex-row items-center mb-3">
+                           <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
+                           <View className="flex-1">
+                              <Text className="text-orange-600 font-medium text-lg capitalize">
+                                 {currentStage.stage || "Processing"}
+                              </Text>
+                              <Text className="text-orange-500 text-sm mt-1">
+                                 {currentStage.message}
+                              </Text>
+                           </View>
+                           {generatePlanMutation.isPending && (
+                              <ActivityIndicator size="small" color="#ea580c" />
+                           )}
+                        </View>
                      </Animated.View>
                   )}
 
-                  {/* Display the generated plan */}
+                  {/* Generated Plan Display */}
                   {finalPlan && (
-                     <MonthlyPlanViewer data={finalPlan} />
-                  )}
+                     <>
+                        <MonthlyPlanViewer data={finalPlan} />
 
-                  {finalPlan && (
-                     <View className="mt-4">
-                        <Pressable
-                           onPress={() => {
-                              setIsGenerating(false);
-                              setFinalPlan(null);
-                              setCurrentStage(null);
-                           }}
-                           className="bg-surface p-3 rounded-lg flex-row justify-center items-center active:opacity-70"
-                        >
-                           <Text className="text-foreground font-medium">
-                              ← Generate New Plan
-                           </Text>
-                        </Pressable>
-                     </View>
+                        {/* Action Buttons */}
+                        <View className="mt-4 space-y-3">
+                           {/* Apply Plan Button */}
+                           <Pressable
+                              onPress={handleApplyPlan}
+                              disabled={isApplying}
+                              className="bg-green-600 mb-4 p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50"
+                           >
+                              {isApplying ? (
+                                 <ActivityIndicator size="small" color="#fff" />
+                              ) : (
+                                 <Text className="text-foreground font-medium text-center">
+                                    ✓ Apply This Plan
+                                 </Text>
+                              )}
+                           </Pressable>
+
+                           {/* View All Plans Button */}
+                           <Pressable
+                              onPress={() => router.push("/suggestion")}
+                              className="bg-surface p-4 rounded-lg flex-row justify-center items-center active:opacity-70 border border-divider"
+                           >
+                              <Text className="text-foreground font-medium text-center">
+                                 📋 View All My Plans
+                              </Text>
+                           </Pressable>
+
+                           {/* Generate New Plan Button */}
+                           <Pressable
+                              onPress={resetPlanState}
+                              className="bg-surface/50 p-3 rounded-lg flex-row justify-center items-center active:opacity-70"
+                           >
+                              <Text className="text-foreground font-medium">
+                                 ← Generate Another Plan
+                              </Text>
+                           </Pressable>
+                        </View>
+                     </>
                   )}
                </Card>
             )}
-
          </ScrollView>
       </Container>
    );
