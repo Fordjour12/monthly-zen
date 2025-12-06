@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, lt, lte, sql } from "drizzle-orm";
 import { db } from "./index";
 import {
   aiSuggestions,
@@ -131,7 +131,7 @@ export const taskQueries = {
       title: task.title,
       description: task.description || null,
       priority: task.priority || "medium",
-      dueDate: task.dueDate ? task.dueDate.getTime() : null,
+      dueDate: task.dueDate || null,
       isRecurring: task.isRecurring || false,
       recurrenceRule: task.recurrenceRule || null,
       goalId: task.goalId || null,
@@ -168,7 +168,7 @@ export const taskQueries = {
     if (status === "completed") {
       updateData.completedAt = Date.now();
     }
-    
+
     await db.update(tasks).set(updateData).where(eq(tasks.id, taskId));
   },
 
@@ -285,7 +285,7 @@ export const habitQueries = {
    * Update habit streak
    */
   async updateStreak(habitId: string, streak: number): Promise<void> {
-    await db.update(habits).set({ 
+    await db.update(habits).set({
       currentStreak: streak,
       updatedAt: new Date()
     }).where(eq(habits.id, habitId));
@@ -297,11 +297,11 @@ export const habitQueries = {
   async logCompletion(habitId: string, value: number = 1): Promise<void> {
     const id = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date();
-    
+
     await db.insert(habitLogs).values({
       id,
       habitId,
-      date: now.getTime(),
+      date: now,
       value,
       status: "completed" as const,
     });
@@ -311,11 +311,11 @@ export const habitQueries = {
     if (habit) {
       const newStreak = habit.currentStreak + 1;
       await habitQueries.updateStreak(habitId, newStreak);
-      
+
       // Update longest streak if needed
       if (newStreak > (habit.longestStreak || 0)) {
-        await db.update(habits).set({ 
-          longestStreak: newStreak 
+        await db.update(habits).set({
+          longestStreak: newStreak
         }).where(eq(habits.id, habitId));
       }
     }
@@ -365,7 +365,7 @@ export const habitQueries = {
   /**
    * Calculate and update habit streak
    */
-  async updateStreak(habitId: string): Promise<number> {
+  async recalculateStreak(habitId: string): Promise<number> {
     const logs = await db.query.habitLogs.findMany({
       where: eq(habitLogs.habitId, habitId),
       orderBy: [desc(habitLogs.date)],
@@ -460,8 +460,8 @@ export const calendarQueries = {
       userId,
       title: event.title,
       description: event.description || null,
-      startTime: event.startTime.getTime(),
-      endTime: event.endTime.getTime(),
+      startTime: event.startTime,
+      endTime: event.endTime,
       taskId: event.taskId || null,
       externalId: event.externalId || null,
     };
@@ -482,11 +482,11 @@ export const calendarQueries = {
     externalId?: string;
   }): Promise<CalendarEvent> {
     const updateData: any = {};
-    
+
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.startTime !== undefined) updateData.startTime = updates.startTime.getTime();
-    if (updates.endTime !== undefined) updateData.endTime = updates.endTime.getTime();
+    if (updates.startTime !== undefined) updateData.startTime = updates.startTime;
+    if (updates.endTime !== undefined) updateData.endTime = updates.endTime;
     if (updates.taskId !== undefined) updateData.taskId = updates.taskId;
     if (updates.externalId !== undefined) updateData.externalId = updates.externalId;
 
@@ -495,11 +495,11 @@ export const calendarQueries = {
       .set(updateData)
       .where(eq(calendarEvents.id, eventId))
       .returning();
-    
+
     if (result.length === 0) {
       throw new Error(`Event with ID ${eventId} not found`);
     }
-    
+
     return result[0]!;
   },
 
@@ -509,9 +509,10 @@ export const calendarQueries = {
   async deleteEvent(eventId: string): Promise<void> {
     const result = await db
       .delete(calendarEvents)
-      .where(eq(calendarEvents.id, eventId));
-    
-    if (result.changes === 0) {
+      .where(eq(calendarEvents.id, eventId))
+      .returning({ id: calendarEvents.id });
+
+    if (result.length === 0) {
       throw new Error(`Event with ID ${eventId} not found`);
     }
   },
@@ -665,12 +666,12 @@ export const aiQueries = {
   ): Promise<void> {
     const suggestion = await aiQueries.getSuggestionById(suggestionId);
     if (suggestion) {
-      const history = suggestion.applicationHistory || [];
+      const history = (suggestion.applicationHistory as any[]) || [];
       history.push({
         timestamp: Date.now(),
         ...applicationData,
       });
-      
+
       await db.update(aiSuggestions).set({
         applicationHistory: history,
         updatedAt: new Date(),
@@ -973,98 +974,97 @@ export const aiQueries = {
     });
   },
 
-/**
-   * Permanently delete a suggestion
+  /**
+     * Permanently delete a suggestion
+     */
+  async deleteSuggestion(suggestionId: string): Promise<void> {
+    await db.delete(aiSuggestions).where(eq(aiSuggestions.id, suggestionId));
+  },
+
+  /**
+   * Update suggestion content
    */
-   async deleteSuggestion(suggestionId: string): Promise<void> {
-      await db.delete(aiSuggestions).where(eq(aiSuggestions.id, suggestionId));
-   },
+  async updateSuggestionContent(suggestionId: string, content: any): Promise<void> {
+    await db
+      .update(aiSuggestions)
+      .set({ content, updatedAt: new Date() })
+      .where(eq(aiSuggestions.id, suggestionId));
+  },
 
-   /**
-    * Update suggestion content
-    */
-   async updateSuggestionContent(suggestionId: string, content: any): Promise<void> {
-      await db
-         .update(aiSuggestions)
-         .set({ content, updatedAt: new Date() })
-         .where(eq(aiSuggestions.id, suggestionId));
-   },
+  /**
+   * Add plan version for tracking modifications
+   */
+  async addPlanVersion(planId: string, version: any): Promise<void> {
+    const suggestion = await aiQueries.getSuggestionById(planId);
+    if (!suggestion) return;
 
-   /**
-    * Add plan version for tracking modifications
-    */
-   async addPlanVersion(planId: string, version: any): Promise<void> {
-      const suggestion = await aiQueries.getSuggestionById(planId);
-      if (!suggestion) return;
+    const history = (suggestion.applicationHistory as any[]) || [];
+    history.push({
+      type: "version",
+      timestamp: Date.now(),
+      version,
+    });
 
-      const history = suggestion.applicationHistory || [];
-      history.push({
-         type: "version",
-         timestamp: Date.now(),
-         version,
-      });
+    await db
+      .update(aiSuggestions)
+      .set({ applicationHistory: history, updatedAt: new Date() })
+      .where(eq(aiSuggestions.id, planId));
+  },
 
-      await db
-         .update(aiSuggestions)
-         .set({ applicationHistory: history, updatedAt: new Date() })
-         .where(eq(aiSuggestions.id, planId));
-   },
+  /**
+   * Get suggestion effectiveness metrics
+   */
+  async getSuggestionEffectiveness(userId: string): Promise<{
+    totalApplied: number;
+    totalGenerated: number;
+    applicationRate: number;
+    byType: Record<
+      AISuggestionType,
+      {
+        generated: number;
+        applied: number;
+        rate: number;
+      }
+    >;
+  }> {
+    const allSuggestions = await db.query.aiSuggestions.findMany({
+      where: eq(aiSuggestions.userId, userId),
+    });
 
-   /**
-    * Get suggestion effectiveness metrics
-    */
-   async getSuggestionEffectiveness(userId: string): Promise<{
-      totalApplied: number;
-      totalGenerated: number;
-      applicationRate: number;
-      byType: Record<
-         AISuggestionType,
-         {
-            generated: number;
-            applied: number;
-            rate: number;
-         }
-      >;
-    }> {
-      const allSuggestions = await db.query.aiSuggestions.findMany({
-         where: eq(aiSuggestions.userId, userId),
-      });
+    const totalGenerated = allSuggestions.length;
+    const totalApplied = allSuggestions.filter((s) => s.isApplied).length;
+    const applicationRate =
+      totalGenerated > 0 ? (totalApplied / totalGenerated) * 100 : 0;
 
-      const totalGenerated = allSuggestions.length;
-      const totalApplied = allSuggestions.filter((s) => s.isApplied).length;
-      const applicationRate =
-         totalGenerated > 0 ? (totalApplied / totalGenerated) * 100 : 0;
+    const byType = {
+      plan: { generated: 0, applied: 0, rate: 0 },
+      briefing: { generated: 0, applied: 0, rate: 0 },
+      reschedule: { generated: 0, applied: 0, rate: 0 },
+    } as Record<
+      AISuggestionType,
+      { generated: number; applied: number; rate: number }
+    >;
 
-      const byType = {
-         plan: { generated: 0, applied: 0, rate: 0 },
-         briefing: { generated: 0, applied: 0, rate: 0 },
-         reschedule: { generated: 0, applied: 0, rate: 0 },
-      } as Record<
-         AISuggestionType,
-         { generated: number; applied: number; rate: number }
-      >;
+    allSuggestions.forEach((suggestion) => {
+      byType[suggestion.type].generated++;
+      if (suggestion.isApplied) {
+        byType[suggestion.type].applied++;
+      }
+    });
 
-      allSuggestions.forEach((suggestion) => {
-         byType[suggestion.type].generated++;
-         if (suggestion.isApplied) {
-            byType[suggestion.type].applied++;
-         }
-      });
+    // Calculate rates
+    Object.keys(byType).forEach((type) => {
+      const typeKey = type as AISuggestionType;
+      const generated = byType[typeKey].generated;
+      byType[typeKey].rate = generated > 0 ? (byType[typeKey].applied / generated) * 100 : 0;
+    });
 
-      // Calculate rates
-      Object.keys(byType).forEach((type) => {
-         const typeKey = type as AISuggestionType;
-         const generated = byType[typeKey].generated;
-         byType[typeKey].rate = generated > 0 ? (byType[typeKey].applied / generated) * 100 : 0;
-      });
-
-      return {
-         totalApplied,
-         totalGenerated,
-         applicationRate,
-         byType,
-      };
-   },
-};
+    return {
+      totalApplied,
+      totalGenerated,
+      applicationRate,
+      byType,
+    };
   },
 };
+
