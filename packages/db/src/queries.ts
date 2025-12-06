@@ -105,6 +105,74 @@ export const taskQueries = {
   },
 
   /**
+   * Get user tasks (alias for findByUser with no filters)
+   */
+  async getUserTasks(userId: string): Promise<Task[]> {
+    return await taskQueries.findByUser(userId);
+  },
+
+  /**
+   * Create a new task
+   */
+  async createTask(userId: string, task: {
+    title: string;
+    description?: string;
+    priority?: "low" | "medium" | "high";
+    dueDate?: Date;
+    isRecurring?: boolean;
+    recurrenceRule?: string;
+    goalId?: string;
+    suggestionId?: string;
+  }): Promise<Task> {
+    const id = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newTask = {
+      id,
+      userId,
+      title: task.title,
+      description: task.description || null,
+      priority: task.priority || "medium",
+      dueDate: task.dueDate ? task.dueDate.getTime() : null,
+      isRecurring: task.isRecurring || false,
+      recurrenceRule: task.recurrenceRule || null,
+      goalId: task.goalId || null,
+      suggestionId: task.suggestionId || null,
+      status: "pending" as const,
+    };
+
+    const result = await db.insert(tasks).values(newTask).returning();
+    return result[0]!;
+  },
+
+  /**
+   * Create a new recurring task
+   */
+  async createRecurringTask(userId: string, task: {
+    title: string;
+    description?: string;
+    priority?: "low" | "medium" | "high";
+    recurrenceRule: string;
+    goalId?: string;
+    suggestionId?: string;
+  }): Promise<Task> {
+    return await taskQueries.createTask(userId, {
+      ...task,
+      isRecurring: true,
+    });
+  },
+
+  /**
+   * Update task status
+   */
+  async updateStatus(taskId: string, status: "pending" | "completed" | "skipped"): Promise<void> {
+    const updateData: any = { status };
+    if (status === "completed") {
+      updateData.completedAt = Date.now();
+    }
+    
+    await db.update(tasks).set(updateData).where(eq(tasks.id, taskId));
+  },
+
+  /**
    * Get tasks due within a date range
    */
   async findByDateRange(
@@ -173,6 +241,84 @@ export const habitQueries = {
       where: eq(habits.userId, userId),
       orderBy: [desc(habits.createdAt)],
     });
+  },
+
+  /**
+   * Get user habits (alias for findByUser)
+   */
+  async getUserHabits(userId: string): Promise<Habit[]> {
+    return await habitQueries.findByUser(userId);
+  },
+
+  /**
+   * Create a new habit
+   */
+  async createHabit(userId: string, habit: {
+    title: string;
+    description?: string;
+    frequency?: "daily" | "weekly" | "monthly";
+    targetValue?: number;
+    bestTime?: "morning" | "afternoon" | "evening";
+    triggerActivity?: string;
+    suggestionId?: string;
+  }): Promise<Habit> {
+    const id = `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newHabit = {
+      id,
+      userId,
+      title: habit.title,
+      description: habit.description || null,
+      frequency: habit.frequency || "daily",
+      targetValue: habit.targetValue || 1,
+      currentStreak: 0,
+      longestStreak: 0,
+      bestTime: habit.bestTime || null,
+      triggerActivity: habit.triggerActivity || null,
+      suggestionId: habit.suggestionId || null,
+    };
+
+    const result = await db.insert(habits).values(newHabit).returning();
+    return result[0]!;
+  },
+
+  /**
+   * Update habit streak
+   */
+  async updateStreak(habitId: string, streak: number): Promise<void> {
+    await db.update(habits).set({ 
+      currentStreak: streak,
+      updatedAt: new Date()
+    }).where(eq(habits.id, habitId));
+  },
+
+  /**
+   * Log habit completion
+   */
+  async logCompletion(habitId: string, value: number = 1): Promise<void> {
+    const id = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    
+    await db.insert(habitLogs).values({
+      id,
+      habitId,
+      date: now.getTime(),
+      value,
+      status: "completed" as const,
+    });
+
+    // Update streak
+    const habit = await habitQueries.findById(habitId);
+    if (habit) {
+      const newStreak = habit.currentStreak + 1;
+      await habitQueries.updateStreak(habitId, newStreak);
+      
+      // Update longest streak if needed
+      if (newStreak > (habit.longestStreak || 0)) {
+        await db.update(habits).set({ 
+          longestStreak: newStreak 
+        }).where(eq(habits.id, habitId));
+      }
+    }
   },
 
   /**
@@ -326,6 +472,45 @@ export const aiQueries = {
       .returning();
 
     return suggestions[0]!;
+  },
+
+  /**
+   * Update suggestion with applied items
+   */
+  async updateSuggestionAppliedItems(
+    suggestionId: string,
+    appliedItems: Array<{
+      itemId: string;
+      itemType: "task" | "habit" | "recurring-task";
+      originalTitle: string;
+    }>
+  ): Promise<void> {
+    await db.update(aiSuggestions).set({
+      appliedItems,
+      updatedAt: new Date(),
+    }).where(eq(aiSuggestions.id, suggestionId));
+  },
+
+  /**
+   * Add to application history
+   */
+  async addToApplicationHistory(
+    suggestionId: string,
+    applicationData: any
+  ): Promise<void> {
+    const suggestion = await aiQueries.getSuggestionById(suggestionId);
+    if (suggestion) {
+      const history = suggestion.applicationHistory || [];
+      history.push({
+        timestamp: Date.now(),
+        ...applicationData,
+      });
+      
+      await db.update(aiSuggestions).set({
+        applicationHistory: history,
+        updatedAt: new Date(),
+      }).where(eq(aiSuggestions.id, suggestionId));
+    }
   },
 
   /**

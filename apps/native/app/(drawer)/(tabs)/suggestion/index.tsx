@@ -216,7 +216,7 @@ export default function Index() {
                      {/* Action buttons */}
                      <View className="flex-row space-x-2">
                         <Pressable
-                           className="flex-1 bg-accent p-2 rounded-lg flex-row justify-center items-center"
+                           className="flex-1 bg-orange-500  p-2 rounded-lg flex-row justify-center items-center"
                            onPress={() => {
                               // Navigate to suggestion detail or open modal
                               console.log('View suggestion:', suggestion.id);

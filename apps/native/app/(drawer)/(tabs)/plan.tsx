@@ -13,6 +13,7 @@ import { Container } from "@/components/container";
 import { Card, useThemeColor } from "heroui-native";
 import { useGeneratePlan } from "@/hooks/use-local-cache";
 import { MonthlyPlanViewer } from "@/lib/monthly-plan";
+import { checkPlanGenerationLimit, consumePlanGeneration, getTimeUntilReset } from "@/lib/rate-limiter";
 
 export default function Plan() {
    const [userGoals, setUserGoals] = useState(
@@ -25,9 +26,19 @@ export default function Plan() {
    const [error, setError] = useState<string | null>(null);
    const [currentStage, setCurrentStage] = useState<{ stage?: string; message: string } | null>(null);
    const [isGenerating, setIsGenerating] = useState(false);
+   const [rateLimitStatus, setRateLimitStatus] = useState(checkPlanGenerationLimit());
 
    const fadeAnim = useRef(new Animated.Value(0)).current;
    const generatePlanMutation = useGeneratePlan();
+
+   // Update rate limit status periodically
+   useEffect(() => {
+      const interval = setInterval(() => {
+         setRateLimitStatus(checkPlanGenerationLimit());
+      }, 1000); // Update every second
+
+      return () => clearInterval(interval);
+   }, []);
 
    // Initial fade-in
    useEffect(() => {
@@ -52,11 +63,28 @@ export default function Plan() {
          preferredTimes: preferredTimes.trim() || undefined,
       });
 
+      // Check rate limit first
+      const currentRateLimit = checkPlanGenerationLimit();
+      if (currentRateLimit.isLimited) {
+         setError(`Rate limit reached. Please wait ${getTimeUntilReset()} before generating another plan.`);
+         return;
+      }
+
       if (!userGoals.trim() || userGoals.length < 10) {
          console.log("❌ Validation failed: goals too short");
          setError("Please provide more detailed goals (at least 10 characters)");
          return;
       }
+
+      // Consume a generation
+      if (!consumePlanGeneration()) {
+         setError(`Rate limit reached. Please wait ${getTimeUntilReset()} before generating another plan.`);
+         setRateLimitStatus(checkPlanGenerationLimit());
+         return;
+      }
+
+      // Update rate limit status after consumption
+      setRateLimitStatus(checkPlanGenerationLimit());
 
       setError(null);
       setFinalPlan(null);
@@ -174,6 +202,29 @@ export default function Plan() {
                      </View>
                   )}
 
+                  {/* Rate Limit Status */}
+                  <View className="mb-4 p-3 bg-surface/50 rounded-lg">
+                     <View className="flex-row justify-between items-center mb-2">
+                        <Text className="text-orange-300 text-sm font-medium">Generations Remaining</Text>
+                        <Text className="text-orange-300 text-sm">
+                           {rateLimitStatus.remaining} / {rateLimitStatus.limit}
+                        </Text>
+                     </View>
+                     <View className="h-2 bg-surface rounded-full overflow-hidden mb-2">
+                        <View
+                           className={`h-full rounded-full ${
+                              rateLimitStatus.isLimited ? 'bg-red-500' : 'bg-orange-500'
+                           }`}
+                           style={{ width: `${(rateLimitStatus.remaining / rateLimitStatus.limit) * 100}%` }}
+                        />
+                     </View>
+                     {rateLimitStatus.isLimited && (
+                        <Text className="text-red-500 text-xs text-center">
+                           Rate limited. Resets in {getTimeUntilReset()}
+                        </Text>
+                     )}
+                  </View>
+
                   <Text className="text-foreground font-medium mb-2">Your Goals *</Text>
                   <TextInput
                      className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
@@ -215,14 +266,20 @@ export default function Plan() {
 
                   <Pressable
                      onPress={handleGeneratePlan}
-                     disabled={generatePlanMutation.isPending || !userGoals.trim()}
-                     className="bg-accent p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50"
+                     disabled={generatePlanMutation.isPending || !userGoals.trim() || rateLimitStatus.isLimited}
+                     className={`p-4 rounded-lg flex-row justify-center items-center active:opacity-70 disabled:opacity-50 ${
+                        rateLimitStatus.isLimited ? 'bg-red-500/20' : 'bg-orange-500'
+                     }`}
                   >
                      {generatePlanMutation.isPending ? (
-                        <ActivityIndicator size="small" color={foregroundColor} />
+                        <ActivityIndicator size="small" color="#fff" />
+                     ) : rateLimitStatus.isLimited ? (
+                        <Text className="text-red-600 font-medium text-center">
+                           Rate Limited ({getTimeUntilReset()})
+                        </Text>
                      ) : (
-                        <Text className="text-foreground font-medium text-center">
-                           Generate Monthly Plan
+                        <Text className="text-white font-medium text-center">
+                           Generate Monthly Plan ({rateLimitStatus.remaining} left)
                         </Text>
                      )}
                   </Pressable>
@@ -242,39 +299,39 @@ export default function Plan() {
                         className="mb-4 p-4 bg-surface/50 rounded-lg"
                         style={{ opacity: fadeAnim }}
                      >
-                        {/* Progress Bar */}
-                        <View className="mb-3">
-                           <View className="flex-row justify-between items-center mb-2">
-                              <Text className="text-xs text-foreground">Progress</Text>
-                              <Text className="text-xs text-foreground">
-                                 {Math.round(getStageProgress(currentStage.stage))}%
-                              </Text>
-                           </View>
-                           <View className="h-2 bg-surface rounded-full overflow-hidden">
-                              <Animated.View
-                                 className="h-full bg-accent rounded-full"
-                                 style={{
-                                    width: `${getStageProgress(currentStage.stage)}%`,
-                                    backgroundColor: currentStage.stage === 'error' ? '#ef4444' : undefined
-                                 }}
-                              />
-                           </View>
-                        </View>
+{/* Progress Bar */}
+                         <View className="mb-3">
+                            <View className="flex-row justify-between items-center mb-2">
+                               <Text className="text-xs text-orange-600">Progress</Text>
+                               <Text className="text-xs text-orange-600">
+                                  {Math.round(getStageProgress(currentStage.stage))}%
+                               </Text>
+                            </View>
+                            <View className="h-2 bg-surface rounded-full overflow-hidden">
+                               <Animated.View
+                                  className="h-full bg-orange-500 rounded-full"
+                                  style={{
+                                     width: `${getStageProgress(currentStage.stage)}%`,
+                                     backgroundColor: currentStage.stage === 'error' ? '#ef4444' : undefined
+                                  }}
+                               />
+                            </View>
+                         </View>
 
-                        <View className="flex-row items-center mb-3">
-                           <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
-                           <View className="flex-1">
-                              <Text className="text-foreground font-medium text-lg capitalize">
-                                 {currentStage.stage || "Processing"}
-                              </Text>
-                              <Text className="text-foreground text-sm mt-1">
-                                 {currentStage.message}
-                              </Text>
-                           </View>
-                           {generatePlanMutation.isPending && (
-                              <ActivityIndicator size="small" color={foregroundColor} />
-                           )}
-                        </View>
+<View className="flex-row items-center mb-3">
+                            <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
+                            <View className="flex-1">
+                               <Text className="text-orange-600 font-medium text-lg capitalize">
+                                  {currentStage.stage || "Processing"}
+                               </Text>
+                               <Text className="text-orange-500 text-sm mt-1">
+                                  {currentStage.message}
+                               </Text>
+                            </View>
+                            {generatePlanMutation.isPending && (
+                               <ActivityIndicator size="small" color="#ea580c" />
+                            )}
+                         </View>
                      </Animated.View>
                   )}
 

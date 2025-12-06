@@ -8,6 +8,8 @@ import { Home12Icon, TsunamiIcon, PenTool01Icon, CompassIcon, Calendar01Icon, Ta
 export default function TabLayout() {
    const themeColorForeground = useThemeColor("foreground");
    const themeColorBackground = useThemeColor("background");
+   const themeOrange = useThemeColor("orange-500");
+   const themeOrangeLighter = useThemeColor("background-quaternary")
 
    return (
       <Tabs
@@ -24,6 +26,10 @@ export default function TabLayout() {
             tabBarStyle: {
                backgroundColor: themeColorBackground,
             },
+            tabBarActiveTintColor: themeOrange,
+            tabBarInactiveTintColor: themeColorForeground,
+            tabBarActiveBackgroundColor:themeOrangeLighter ,
+            tabBarInactiveBackgroundColor: themeColorBackground,
          }}
       >
          <Tabs.Screen

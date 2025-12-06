@@ -464,4 +464,105 @@ All prompts use `{variable_name}` placeholders that should be replaced with actu
 
 ---
 
+## 10. Suggestion Application & Classification Prompt
+
+```prompt
+You are an intelligent task and habit classifier. Analyze plan suggestions and classify them for optimal application as tasks, habits, or recurring tasks.
+
+**Input Suggestion:**
+{suggestion_content}
+
+**User Context:**
+- Existing tasks: {current_tasks}
+- Existing habits: {current_habits}
+- User preferences: {user_preferences}
+- Completion patterns: {completion_history}
+
+**Classification Rules:**
+1. **Tasks**: One-time activities with specific outcomes and deadlines
+2. **Habits**: Recurring activities that build skills/behaviors over time
+3. **Recurring Tasks**: Regular responsibilities that need completion but aren't habit-forming
+
+**Task Identification Criteria:**
+- Has specific deadline or due date
+- One-time completion required
+- Clear deliverable or outcome
+- Project-based activities
+- Learning milestones
+
+**Habit Identification Criteria:**
+- Daily/weekly recurring activities
+- Skill-building exercises
+- Health and wellness activities
+- Personal development practices
+- Activities that benefit from consistency
+
+**Recurring Task Identification Criteria:**
+- Regular maintenance activities
+- Review and reporting tasks
+- Administrative responsibilities
+- Meetings and check-ins
+- Cleanup and organization
+
+**Output Format (JSON):**
+{
+  "classifications": [
+    {
+      "title": "Item title",
+      "type": "task|habit|recurring-task",
+      "confidence": 0.95,
+      "reasoning": "Why this classification makes sense",
+      "suggested_priority": "low|medium|high",
+      "suggested_frequency": "daily|weekly|monthly",
+      "estimated_duration": "30 min",
+      "due_date": "ISO date if applicable",
+      "recurrence_rule": "RRULE or custom pattern for recurring tasks",
+      "habit_potential": {
+        "is_habit": true,
+        "frequency": "daily",
+        "target_value": 1,
+        "streak_suggestion": 21,
+        "best_time": "morning/afternoon/evening",
+        "trigger_activity": "existing habit to stack with"
+      },
+      "dependencies": ["Items that should be completed first"],
+      "quick_win": true/false,
+      "long_term_build": true/false
+    }
+  ],
+  "application_strategy": {
+    "recommended_order": ["Suggested order of application"],
+    "dependencies": ["Items that depend on others"],
+    "quick_wins": ["Items for immediate success"],
+    "long_term_builds": ["Items that develop over time"],
+    "total_estimated_time": "Total time commitment per week",
+    "balance_score": "How well this balances different life areas"
+  },
+  "warnings": [
+    "Potential conflicts or overload warnings",
+    "Items that might be too ambitious",
+    "Timing considerations"
+  ],
+  "success_metrics": [
+    "How to measure successful application",
+    "Key performance indicators for each item type"
+  ]
+}
+```
+
+**Confidence Scoring Guidelines:**
+- **0.9-1.0**: Very clear classification, strong pattern match
+- **0.7-0.89**: Good classification with reasonable confidence
+- **0.5-0.69**: Moderate confidence, multiple interpretations possible
+- **0.3-0.49**: Low confidence, user input recommended
+- **0.0-0.29**: Very uncertain, manual classification needed
+
+**Recurrence Rule Examples:**
+- Daily: `"FREQ=DAILY"`
+- Weekly: `"FREQ=WEEKLY;BYDAY=MO,WE,FR"`
+- Monthly: `"FREQ=MONTHLY;BYMONTHDAY=1"`
+- Workdays: `"FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR"`
+
+---
+
 These prompt templates provide a comprehensive foundation for building an intelligent monthly planning app that can understand user goals, track progress intelligently, and adapt to changing circumstances automatically.

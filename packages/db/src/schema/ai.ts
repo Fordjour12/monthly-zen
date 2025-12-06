@@ -26,6 +26,8 @@ export const aiSuggestions = sqliteTable(
       .default("active"),
     metadata: text("metadata", { mode: "json" }),
     effectivenessScore: integer("effectiveness_score").default(0),
+    appliedItems: text("applied_items", { mode: "json" }),
+    applicationHistory: text("application_history", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -49,9 +51,58 @@ export const aiSuggestions = sqliteTable(
   ]
 );
 
-export const aiSuggestionsRelations = relations(aiSuggestions, ({ one }) => ({
+export const suggestionAppliedItems = sqliteTable(
+  "suggestion_applied_items",
+  {
+    id: text("id").primaryKey(),
+    suggestionId: text("suggestion_id")
+      .notNull()
+      .references(() => aiSuggestions.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    itemType: text("item_type", {
+      enum: ["task", "habit", "recurring-task"],
+    }).notNull(),
+    itemId: text("item_id").notNull(),
+    originalTitle: text("original_title").notNull(),
+    appliedAt: integer("applied_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    confidenceScore: integer("confidence_score"), // Store as 0-100 for easier querying
+    metadata: text("metadata", { mode: "json" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("suggestionAppliedItems_suggestionId_idx").on(table.suggestionId),
+    index("suggestionAppliedItems_userId_idx").on(table.userId),
+    index("suggestionAppliedItems_itemType_idx").on(table.itemType),
+    index("suggestionAppliedItems_itemId_idx").on(table.itemId),
+    index("suggestionAppliedItems_appliedAt_idx").on(table.appliedAt),
+    index("suggestionAppliedItems_suggestionUser_idx").on(
+      table.suggestionId,
+      table.userId
+    ),
+  ]
+);
+
+export const aiSuggestionsRelations = relations(aiSuggestions, ({ one, many }) => ({
   user: one(user, {
     fields: [aiSuggestions.userId],
+    references: [user.id],
+  }),
+  appliedItems: many(suggestionAppliedItems),
+}));
+
+export const suggestionAppliedItemsRelations = relations(suggestionAppliedItems, ({ one }) => ({
+  suggestion: one(aiSuggestions, {
+    fields: [suggestionAppliedItems.suggestionId],
+    references: [aiSuggestions.id],
+  }),
+  user: one(user, {
+    fields: [suggestionAppliedItems.userId],
     references: [user.id],
   }),
 }));

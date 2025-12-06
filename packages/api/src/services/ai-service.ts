@@ -53,10 +53,47 @@ export interface PlanHabit {
 }
 
 export interface PlanEffectivenessMetrics {
-   success: boolean;
-   effectivenessScore: number;
-   completionRate: number;
-   insights: string[];
+    success: boolean;
+    effectivenessScore: number;
+    completionRate: number;
+    insights: string[];
+}
+
+export interface SuggestionItemClassification {
+   title: string;
+   type: "task" | "habit" | "recurring-task";
+   confidence: number;
+   reasoning: string;
+   suggested_priority: "low" | "medium" | "high";
+   suggested_frequency?: "daily" | "weekly" | "monthly";
+   estimated_duration?: string;
+   due_date?: string;
+   recurrence_rule?: string;
+   habit_potential?: {
+      is_habit: boolean;
+      frequency?: "daily" | "weekly" | "monthly";
+      target_value?: number;
+      streak_suggestion?: number;
+      best_time?: "morning" | "afternoon" | "evening";
+      trigger_activity?: string;
+   };
+   dependencies?: string[];
+   quick_win?: boolean;
+   long_term_build?: boolean;
+}
+
+export interface SuggestionApplicationStrategy {
+   classifications: SuggestionItemClassification[];
+   application_strategy: {
+      recommended_order: string[];
+      dependencies: string[];
+      quick_wins: string[];
+      long_term_builds: string[];
+      total_estimated_time: string;
+      balance_score: number;
+   };
+   warnings: string[];
+   success_metrics: string[];
 }
 
 export class AIService {
@@ -574,7 +611,7 @@ ${userGoals}
       config?: AIServiceConfig
    ): Promise<AIResponse<{ title: string; category: string; dueDate?: string; priority: string }>> {
       const prompt = `Analyze this task input: "${taskText}"
-      
+
       Return a JSON object with:
       - title: Cleaned task title
       - category: Suggested category (e.g., Work, Health, Personal, Learning)
@@ -589,24 +626,400 @@ ${userGoals}
       });
    }
 
-   /**
-    * Generate weekly summary
-    */
-   static async generateWeeklySummary(
-      weekData: any,
-      config?: AIServiceConfig
-   ): Promise<AIResponse<{ summary: string; highlights: string[] }>> {
-      const prompt = `Generate a motivational weekly summary based on this data: ${JSON.stringify(weekData)}
-      
-      Return JSON:
-      - summary: 2-3 sentences summarizing performance
-      - highlights: Array of 2-3 key achievements`;
+/**
+     * Generate weekly summary
+     */
+    static async generateWeeklySummary(
+       weekData: any,
+       config?: AIServiceConfig
+    ): Promise<AIResponse<{ summary: string; highlights: string[] }>> {
+       const prompt = `Generate a motivational weekly summary based on this data: ${JSON.stringify(weekData)}
 
-      return this.executeAIRequest<any, { summary: string; highlights: string[] }>({
+       Return JSON:
+       - summary: 2-3 sentences summarizing performance
+       - highlights: Array of 2-3 key achievements`;
+
+       return this.executeAIRequest<any, { summary: string; highlights: string[] }>({
+          type: "analysis",
+          input: weekData,
+          prompt,
+          confi
+       });
+    }
+
+   /**
+    * Classify suggestion items for application as tasks, habits, or recurring tasks
+    */
+   static async classifySuggestionItems(
+      suggestionContent: any,
+      userContext?: {
+         current_tasks?: any[];
+         current_habits?: any[];
+         user_preferences?: any;
+         completion_history?: any;
+      },
+      config?: AIServiceConfig
+   ): Promise<AIResponse<SuggestionApplicationStrategy>> {
+      const prompt = `You are an intelligent task and habit classifier. Analyze plan suggestions and classify them for optimal application as tasks, habits, or recurring tasks.
+
+**Input Suggestion:**
+${JSON.stringify(suggestionContent)}
+
+**User Context:**
+- Existing tasks: ${JSON.stringify(userContext?.current_tasks || [])}
+- Existing habits: ${JSON.stringify(userContext?.current_habits || [])}
+- User preferences: ${JSON.stringify(userContext?.user_preferences || {})}
+- Completion patterns: ${JSON.stringify(userContext?.completion_history || {})}
+
+**Classification Rules:**
+1. **Tasks**: One-time activities with specific outcomes and deadlines
+2. **Habits**: Recurring activities that build skills/behaviors over time
+3. **Recurring Tasks**: Regular responsibilities that need completion but aren't habit-forming
+
+**Task Identification Criteria:**
+- Has specific deadline or due date
+- One-time completion required
+- Clear deliverable or outcome
+- Project-based activities
+- Learning milestones
+
+**Habit Identification Criteria:**
+- Daily/weekly recurring activities
+- Skill-building exercises
+- Health and wellness activities
+- Personal development practices
+- Activities that benefit from consistency
+
+**Recurring Task Identification Criteria:**
+- Regular maintenance activities
+- Review and reporting tasks
+- Administrative responsibilities
+- Meetings and check-ins
+- Cleanup and organization
+
+**Output Format (JSON):**
+{
+  "classifications": [
+    {
+      "title": "Item title",
+      "type": "task|habit|recurring-task",
+      "confidence": 0.95,
+      "reasoning": "Why this classification makes sense",
+      "suggested_priority": "low|medium|high",
+      "suggested_frequency": "daily|weekly|monthly",
+      "estimated_duration": "30 min",
+      "due_date": "ISO date if applicable",
+      "recurrence_rule": "RRULE or custom pattern for recurring tasks",
+      "habit_potential": {
+        "is_habit": true,
+        "frequency": "daily",
+        "target_value": 1,
+        "streak_suggestion": 21,
+        "best_time": "morning|afternoon|evening",
+        "trigger_activity": "existing habit to stack with"
+      },
+      "dependencies": ["Items that should be completed first"],
+      "quick_win": true/false,
+      "long_term_build": true/false
+    }
+  ],
+  "application_strategy": {
+    "recommended_order": ["Suggested order of application"],
+    "dependencies": ["Items that depend on others"],
+    "quick_wins": ["Items for immediate success"],
+    "long_term_builds": ["Items that develop over time"],
+    "total_estimated_time": "Total time commitment per week",
+    "balance_score": "How well this balances different life areas"
+  },
+  "warnings": [
+    "Potential conflicts or overload warnings",
+    "Items that might be too ambitious",
+    "Timing considerations"
+  ],
+  "success_metrics": [
+    "How to measure successful application",
+    "Key performance indicators for each item type"
+  ]
+}
+
+**Confidence Scoring Guidelines:**
+- **0.9-1.0**: Very clear classification, strong pattern match
+- **0.7-0.89**: Good classification with reasonable confidence
+- **0.5-0.69**: Moderate confidence, multiple interpretations possible
+- **0.3-0.49**: Low confidence, user input recommended
+- **0.0-0.29**: Very uncertain, manual classification needed
+
+**Recurrence Rule Examples:**
+- Daily: "FREQ=DAILY"
+- Weekly: "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+- Monthly: "FREQ=MONTHLY;BYMONTHDAY=1"
+- Workdays: "FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR"`;
+
+      const systemPrompt = "You are an intelligent task and habit classifier. Analyze plan suggestions and provide detailed classifications with confidence scores and application strategies. Focus on realistic categorization and practical implementation guidance.";
+
+      return this.executeAIRequest<any, SuggestionApplicationStrategy>({
          type: "analysis",
-         input: weekData,
+         input: { suggestionContent, userContext },
          prompt,
-         config
+         systemPrompt,
+         config,
       });
+   }
+
+   /**
+    * Extract items from suggestion content for application
+    */
+   static extractItemsFromSuggestion(
+      suggestion: any,
+      applyAs: "task" | "habit" | "recurring-task"
+   ): SuggestionItemClassification[] {
+      const items: SuggestionItemClassification[] = [];
+
+      if (!suggestion || typeof suggestion !== 'object') {
+         return items;
+      }
+
+      // Extract from plan suggestions
+      if (suggestion.weekly_breakdown && Array.isArray(suggestion.weekly_breakdown)) {
+         suggestion.weekly_breakdown.forEach((week: any, weekIndex: number) => {
+            // Extract from goals
+            if (week.goals && Array.isArray(week.goals)) {
+               week.goals.forEach((goal: any, goalIndex: number) => {
+                  if (goal.tasks && Array.isArray(goal.tasks)) {
+                     goal.tasks.forEach((task: any, taskIndex: number) => {
+                        const classification: SuggestionItemClassification = {
+                           title: task.title,
+                           type: applyAs,
+                           confidence: this.calculateConfidence(task.title, applyAs),
+                           reasoning: this.generateReasoning(task.title, applyAs),
+                           suggested_priority: task.priority || this.inferPriority(task.title),
+                           estimated_duration: task.duration || "30 min",
+                           due_date: task.dueDate,
+                           quick_win: this.isQuickWin(task.title),
+                           long_term_build: this.isLongTermBuild(task.title),
+                        };
+
+                        if (applyAs === "recurring-task") {
+                           classification.recurrence_rule = this.generateRecurrenceRule(task.title);
+                        } else if (applyAs === "habit") {
+                           classification.habit_potential = this.analyzeHabitPotential(task.title);
+                           classification.suggested_frequency = classification.habit_potential.frequency;
+                        }
+
+                        items.push(classification);
+                     });
+                  }
+               });
+            }
+
+            // Extract from daily tasks
+            if (week.daily_tasks && typeof week.daily_tasks === 'object') {
+               Object.entries(week.daily_tasks).forEach(([day, tasks]: [string, any]) => {
+                  if (Array.isArray(tasks)) {
+                     tasks.forEach((taskTitle: string, index: number) => {
+                        const classification: SuggestionItemClassification = {
+                           title: taskTitle,
+                           type: applyAs,
+                           confidence: this.calculateConfidence(taskTitle, applyAs),
+                           reasoning: this.generateReasoning(taskTitle, applyAs),
+                           suggested_priority: this.inferPriority(taskTitle),
+                           estimated_duration: "30 min",
+                           due_date: this.calculateDueDate(weekIndex, day),
+                           quick_win: this.isQuickWin(taskTitle),
+                           long_term_build: this.isLongTermBuild(taskTitle),
+                        };
+
+                        if (applyAs === "recurring-task") {
+                           classification.recurrence_rule = this.generateRecurrenceRule(taskTitle);
+                        } else if (applyAs === "habit") {
+                           classification.habit_potential = this.analyzeHabitPotential(taskTitle);
+                           classification.suggested_frequency = classification.habit_potential.frequency;
+                        }
+
+                        items.push(classification);
+                     });
+                  }
+               });
+            }
+         });
+      }
+
+      return items;
+   }
+
+   /**
+    * Calculate confidence score for item classification
+    */
+   private static calculateConfidence(title: string, type: "task" | "habit" | "recurring-task"): number {
+      const lowerTitle = title.toLowerCase();
+
+      if (type === "task") {
+         const taskKeywords = ["complete", "finish", "submit", "deliver", "create", "build", "develop"];
+         const matches = taskKeywords.filter(keyword => lowerTitle.includes(keyword)).length;
+         return Math.min(0.9, 0.5 + (matches * 0.1));
+      }
+
+      if (type === "habit") {
+         const habitKeywords = ["exercise", "meditate", "read", "write", "practice", "study", "daily", "every"];
+         const matches = habitKeywords.filter(keyword => lowerTitle.includes(keyword)).length;
+         return Math.min(0.95, 0.6 + (matches * 0.1));
+      }
+
+      if (type === "recurring-task") {
+         const recurringKeywords = ["review", "meeting", "report", "check", "update", "weekly", "monthly"];
+         const matches = recurringKeywords.filter(keyword => lowerTitle.includes(keyword)).length;
+         return Math.min(0.9, 0.5 + (matches * 0.1));
+      }
+
+      return 0.5;
+   }
+
+   /**
+    * Generate reasoning for classification
+    */
+   private static generateReasoning(title: string, type: "task" | "habit" | "recurring-task"): string {
+      const lowerTitle = title.toLowerCase();
+
+      if (type === "task") {
+         if (lowerTitle.includes("complete") || lowerTitle.includes("finish")) {
+            return "Contains completion-oriented language indicating a one-time task";
+         }
+         return "Appears to be a specific activity with clear deliverable";
+      }
+
+      if (type === "habit") {
+         if (lowerTitle.includes("daily") || lowerTitle.includes("every")) {
+            return "Contains frequency indicators suggesting a recurring habit";
+         }
+         return "Represents an activity that benefits from consistent practice";
+      }
+
+      if (type === "recurring-task") {
+         if (lowerTitle.includes("review") || lowerTitle.includes("meeting")) {
+            return "Contains maintenance or coordination language typical of recurring tasks";
+         }
+         return "Represents a regular responsibility that needs periodic completion";
+      }
+
+      return "Classification based on pattern analysis";
+   }
+
+   /**
+    * Generate recurrence rule for recurring tasks
+    */
+   private static generateRecurrenceRule(title: string): string {
+      const lowerTitle = title.toLowerCase();
+
+      if (lowerTitle.includes("daily")) return "FREQ=DAILY";
+      if (lowerTitle.includes("weekly")) return "FREQ=WEEKLY";
+      if (lowerTitle.includes("monthly")) return "FREQ=MONTHLY";
+      if (lowerTitle.includes("workday") || lowerTitle.includes("weekday")) {
+         return "FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR";
+      }
+
+      // Default to weekly for recurring tasks
+      return "FREQ=WEEKLY";
+   }
+
+   /**
+    * Analyze habit potential of an item
+    */
+   private static analyzeHabitPotential(title: string) {
+      const lowerTitle = title.toLowerCase();
+
+      const dailyHabits = ["exercise", "meditate", "read", "write", "practice", "study"];
+      const weeklyHabits = ["review", "plan", "organize", "clean", "shop"];
+
+      let frequency: "daily" | "weekly" | "monthly" = "daily";
+      let targetValue = 1;
+
+      if (dailyHabits.some(habit => lowerTitle.includes(habit))) {
+         frequency = "daily";
+         targetValue = 1;
+      } else if (weeklyHabits.some(habit => lowerTitle.includes(habit))) {
+         frequency = "weekly";
+         targetValue = 7;
+      } else {
+         frequency = "monthly";
+         targetValue = 30;
+      }
+
+      return {
+         is_habit: true,
+         frequency,
+         target_value: targetValue,
+         streak_suggestion: 21,
+         best_time: this.inferBestTime(lowerTitle),
+         trigger_activity: this.inferTriggerActivity(lowerTitle),
+      };
+   }
+
+   /**
+    * Infer best time for habit
+    */
+   private static inferBestTime(title: string): "morning" | "afternoon" | "evening" {
+      const lowerTitle = title.toLowerCase();
+
+      if (lowerTitle.includes("morning") || lowerTitle.includes("breakfast")) return "morning";
+      if (lowerTitle.includes("evening") || lowerTitle.includes("night")) return "evening";
+      if (lowerTitle.includes("afternoon") || lowerTitle.includes("lunch")) return "afternoon";
+
+      // Default based on activity type
+      if (lowerTitle.includes("exercise") || lowerTitle.includes("meditate")) return "morning";
+      if (lowerTitle.includes("read") || lowerTitle.includes("study")) return "evening";
+
+      return "morning";
+   }
+
+   /**
+    * Infer trigger activity for habit stacking
+    */
+   private static inferTriggerActivity(title: string): string {
+      const lowerTitle = title.toLowerCase();
+
+      if (lowerTitle.includes("exercise")) return "after waking up";
+      if (lowerTitle.includes("meditate")) return "after waking up";
+      if (lowerTitle.includes("read")) return "before bed";
+      if (lowerTitle.includes("write")) return "after morning coffee";
+      if (lowerTitle.includes("study")) return "after dinner";
+
+      return "daily";
+   }
+
+   /**
+    * Check if item is a quick win
+    */
+   private static isQuickWin(title: string): boolean {
+      const lowerTitle = title.toLowerCase();
+      const quickWinKeywords = ["quick", "simple", "easy", "short", "brief", "review", "check"];
+      return quickWinKeywords.some(keyword => lowerTitle.includes(keyword));
+   }
+
+   /**
+    * Check if item is a long term build
+    */
+   private static isLongTermBuild(title: string): boolean {
+      const lowerTitle = title.toLowerCase();
+      const longTermKeywords = ["learn", "develop", "build", "create", "master", "practice", "study"];
+      return longTermKeywords.some(keyword => lowerTitle.includes(keyword));
+   }
+
+   /**
+    * Calculate due date from week and day
+    */
+   private static calculateDueDate(weekIndex: number, day: string): string {
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const weekStart = new Date(startOfMonth.getTime() + (weekIndex * 7 * 24 * 60 * 60 * 1000));
+
+      const dayMap: { [key: string]: number } = {
+         'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
+         'friday': 5, 'saturday': 6, 'sunday': 0
+      };
+
+      const dayOffset = dayMap[day.toLowerCase()] || 0;
+      const dueDate = new Date(weekStart.getTime() + (dayOffset * 24 * 60 * 60 * 1000));
+
+      return dueDate.toISOString().split('T')[0];
    }
 }

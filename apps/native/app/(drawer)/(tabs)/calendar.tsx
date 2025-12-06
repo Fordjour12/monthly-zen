@@ -16,18 +16,24 @@ export default function CalendarScreen() {
    const themeColorBackground = useThemeColor('background');
    const themeColorForeground = useThemeColor('foreground');
 
-   // Fetch calendar events from backend
-   const {
-      data: events = [],
-      isLoading,
-      refetch
-   } = useQuery({
-      queryKey: ['calendar-events'],
-      queryFn: async () => {
-         const result = await orpc.calendar.getTodayEvents.call();
-         return result.success ? result.data : [];
-      },
-   });
+// Fetch calendar events from backend
+    const {
+       data: events = [],
+       isLoading,
+       refetch
+    } = useQuery({
+       queryKey: ['calendar-events'],
+       queryFn: async () => {
+          try {
+             const result = await orpc.calendar.getTodayEvents.call();
+             return result.success ? result.data : [];
+          } catch (error) {
+             console.error("Failed to fetch calendar events:", error);
+             // Fallback to empty array for now
+             return [];
+          }
+       },
+    });
 
    // Refresh events when screen comes into focus
    useFocusEffect(

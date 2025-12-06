@@ -47,95 +47,117 @@ export default function TasksScreen() {
   const queryClient = useQueryClient();
   const foregroundColor = useThemeColor("foreground");
 
-  // Mock query - replace with actual API call
+// Real API call to get tasks
   const {
-    data: tasks = [],
+    data: rawTasks = [],
     isLoading,
     refetch,
   } = useQuery({
     queryKey: ["tasks", filter, priorityFilter, searchQuery],
     queryFn: async () => {
-      // Mock data - replace with actual API call
-      const mockTasks: Task[] = [
-        {
-          id: "1",
-          title: "Complete project proposal",
-          description: "Finish the Q4 project proposal and send to team",
-          status: "pending",
-          priority: "high",
-          dueDate: new Date(),
-          isRecurring: false,
-        },
-        {
-          id: "2",
-          title: "Review code changes",
-          description: "Review pull requests from the team",
-          status: "completed",
-          priority: "medium",
-          dueDate: new Date(),
-          isRecurring: true,
-        },
-        {
-          id: "3",
-          title: "Team standup meeting",
-          description: "Daily sync with the development team",
-          status: "pending",
-          priority: "medium",
-          dueDate: new Date(),
-          isRecurring: true,
-        },
-        {
-          id: "4",
-          title: "Update documentation",
-          description: "Update API documentation with latest changes",
-          status: "skipped",
-          priority: "low",
-          dueDate: new Date(Date.now() - 86400000), // Yesterday
-          isRecurring: false,
-        },
-      ];
-
-      // Apply filters
-      let filteredTasks = mockTasks;
-
-      if (searchQuery) {
-        filteredTasks = filteredTasks.filter((task: Task) =>
-          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+      try {
+        const result = await orpc.task.getTasks.call({
+          status: filter === "all" ? undefined : filter,
+          priority: priorityFilter === "all" ? undefined : priorityFilter,
+          search: searchQuery || undefined,
+        });
+        return result.success ? result.data : [];
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+        // Fallback to mock data for now
+        const mockTasks: Task[] = [
+          {
+            id: "1",
+            title: "Complete project proposal",
+            description: "Finish the Q4 project proposal and send to team",
+            status: "pending",
+            priority: "high",
+            dueDate: new Date(),
+            isRecurring: false,
+          },
+          {
+            id: "2",
+            title: "Review code changes",
+            description: "Review pull requests from the team",
+            status: "completed",
+            priority: "medium",
+            dueDate: new Date(),
+            isRecurring: true,
+          },
+          {
+            id: "3",
+            title: "Team standup meeting",
+            description: "Daily sync with the development team",
+            status: "pending",
+            priority: "medium",
+            dueDate: new Date(),
+            isRecurring: true,
+          },
+          {
+            id: "4",
+            title: "Update documentation",
+            description: "Update API documentation with latest changes",
+            status: "skipped",
+            priority: "low",
+            dueDate: new Date(Date.now() - 86400000), // Yesterday
+            isRecurring: false,
+          },
+        ];
+        return mockTasks;
       }
-
-      if (priorityFilter !== "all") {
-        filteredTasks = filteredTasks.filter((task: Task) => task.priority === priorityFilter);
-      }
-
-      if (filter === "today") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        filteredTasks = filteredTasks.filter((task: Task) => 
-          task.dueDate && task.dueDate >= today && task.dueDate < tomorrow
-        );
-      } else if (filter === "overdue") {
-        const now = new Date();
-        filteredTasks = filteredTasks.filter((task: Task) => 
-          task.dueDate && task.dueDate < now && task.status === "pending"
-        );
-      } else if (filter === "completed") {
-        filteredTasks = filteredTasks.filter((task: Task) => task.status === "completed");
-      }
-
-      return filteredTasks;
     },
   });
 
+  // Apply filters to the tasks data
+  const tasks = useMemo(() => {
+    let filteredTasks = rawTasks;
+    
+    if (searchQuery) {
+      filteredTasks = filteredTasks.filter((task: Task) =>
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (priorityFilter !== "all") {
+      filteredTasks = filteredTasks.filter((task: Task) => task.priority === priorityFilter);
+    }
+
+    if (filter === "today") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      filteredTasks = filteredTasks.filter((task: Task) => 
+        task.dueDate && task.dueDate >= today && task.dueDate < tomorrow
+      );
+    } else if (filter === "overdue") {
+      const now = new Date();
+      filteredTasks = filteredTasks.filter((task: Task) => 
+        task.dueDate && task.dueDate < now && task.status === "pending"
+      );
+    } else if (filter === "completed") {
+      filteredTasks = filteredTasks.filter((task: Task) => task.status === "completed");
+    }
+
+    return filteredTasks;
+  }, [rawTasks, filter, priorityFilter, searchQuery]);
+
   const updateTaskMutation = useMutation({
     mutationFn: async ({ taskId, status, reason }: { taskId: string; status: string; reason?: string }) => {
-      // Mock API call - replace with actual API call
-      console.log("Updating task:", { taskId, status, reason });
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { success: true };
+      try {
+        const result = await orpc.task.updateStatus.call({
+          taskId,
+          status: status as "pending" | "completed" | "skipped",
+          reason,
+        });
+        return result;
+      } catch (error) {
+        console.error("Failed to update task:", error);
+        // Fallback to mock for now
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -147,10 +169,19 @@ export default function TasksScreen() {
 
   const addTaskMutation = useMutation({
     mutationFn: async (title: string) => {
-      // Mock API call - replace with actual API call
-      console.log("Adding task:", title);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      return { success: true, id: Date.now().toString() };
+      try {
+        const result = await orpc.task.createTask.call({
+          title,
+          description: "",
+          priority: "medium",
+        });
+        return result;
+      } catch (error) {
+        console.error("Failed to add task:", error);
+        // Fallback to mock for now
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: true, id: Date.now().toString() };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });

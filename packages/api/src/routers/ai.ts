@@ -2,7 +2,7 @@ import { protectedProcedure, publicProcedure } from "../index";
 import type { RouterClient } from "@orpc/server";
 import { z } from "zod";
 import { AIService } from "../services/ai-service";
-import { aiQueries } from "@my-better-t-app/db/queries";
+import { aiQueries,taskQueries,habitQueries } from "@my-better-t-app/db/queries";
 import type { PlanSuggestionContent } from "@my-better-t-app/db";
 
 export const AiRouter = {
@@ -440,13 +440,44 @@ export const AiRouter = {
          }
       }),
 
+/**
+     * Generate weekly summary
+     */
+    generateWeeklySummary: protectedProcedure
+       .input(
+          z.object({
+             weekData: z.any(),
+          })
+       )
+       .handler(async ({ input, context }) => {
+          const userId = context.session?.user?.id;
+          if (!userId) throw new Error("User not authenticated");
+
+          try {
+             const result = await AIService.generateWeeklySummary(input.weekData, { userId });
+             if (!result.success || !result.data) {
+                throw new Error(result.error || "Failed to generate summary");
+             }
+             return result.data;
+          } catch (error) {
+             console.error("Generate summary error:", error);
+             throw new Error("Failed to generate summary");
+          }
+       }),
+
    /**
-    * Generate weekly summary
-    */
-   generateWeeklySummary: protectedProcedure
+     * Classify suggestion items for application
+     */
+   classifySuggestionItems: protectedProcedure
       .input(
          z.object({
-            weekData: z.any(),
+            suggestionId: z.string(),
+            userContext: z.object({
+               current_tasks: z.array(z.any()).optional(),
+               current_habits: z.array(z.any()).optional(),
+               user_preferences: z.any().optional(),
+               completion_history: z.any().optional(),
+            }).optional(),
          })
       )
       .handler(async ({ input, context }) => {
@@ -454,14 +485,188 @@ export const AiRouter = {
          if (!userId) throw new Error("User not authenticated");
 
          try {
-            const result = await AIService.generateWeeklySummary(input.weekData, { userId });
-            if (!result.success || !result.data) {
-               throw new Error(result.error || "Failed to generate summary");
+            // Get the suggestion
+            const suggestion = await aiQueries.getSuggestionById(input.suggestionId);
+            if (!suggestion) {
+               throw new Error("Suggestion not found");
             }
-            return result.data;
+            if (suggestion.userId !== userId) {
+               throw new Error("You don't have permission to access this suggestion");
+            }
+
+            // Classify items using AI service
+            const result = await AIService.classifySuggestionItems(
+               suggestion.content,
+               input.userContext,
+               { userId }
+            );
+
+            if (!result.success || !result.data) {
+               throw new Error(result.error || "Failed to classify suggestion items");
+            }
+
+            return {
+               success: true,
+               classifications: result.data.classifications,
+               application_strategy: result.data.application_strategy,
+               warnings: result.data.warnings,
+               success_metrics: result.data.success_metrics,
+            };
          } catch (error) {
-            console.error("Generate summary error:", error);
-            throw new Error("Failed to generate summary");
+            console.error("Classify suggestion items error:", error);
+            throw new Error(
+               `Failed to classify suggestion items: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+      }),
+
+   /**
+     * Apply suggestion as tasks, habits, or recurring tasks
+     */
+   applySuggestionAsItems: protectedProcedure
+      .input(
+         z.object({
+            suggestionId: z.string(),
+            applyAs: z.enum(["task", "habit", "recurring-task"]),
+            selectedItems: z.array(z.object({
+               title: z.string(),
+               description: z.string().optional(),
+               priority: z.enum(["low", "medium", "high"]).optional(),
+               dueDate: z.string().optional(),
+               frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
+               recurrenceRule: z.string().optional(),
+               habitPotential: z.object({
+                  isHabit: z.boolean(),
+                  frequency: z.enum(["daily", "weekly", "monthly"]).optional(),
+                  targetValue: z.number().optional(),
+                  streakSuggestion: z.number().optional(),
+                  bestTime: z.enum(["morning", "afternoon", "evening"]).optional(),
+                  triggerActivity: z.string().optional(),
+               }).optional(),
+            })).optional(),
+            applyAll: z.boolean().default(true),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) throw new Error("User not authenticated");
+
+         try {
+            // Get the suggestion
+            const suggestion = await aiQueries.getSuggestionById(input.suggestionId);
+            if (!suggestion) {
+               throw new Error("Suggestion not found");
+            }
+            if (suggestion.userId !== userId) {
+               throw new Error("You don't have permission to access this suggestion");
+            }
+
+            // Get user context for better classification
+            const userTasks = await taskQueries.getUserTasks(userId);
+            const userHabits = await habitQueries.getUserHabits(userId);
+
+            // Classify items if not provided
+            let itemsToApply = input.selectedItems;
+            if (!itemsToApply || itemsToApply.length === 0) {
+               const classificationResult = await AIService.classifySuggestionItems(
+                  suggestion.content,
+                  {
+                     current_tasks: userTasks,
+                     current_habits: userHabits,
+                  },
+                  { userId }
+               );
+
+               if (!classificationResult.success || !classificationResult.data) {
+                  throw new Error("Failed to classify suggestion items");
+               }
+
+               // Filter by applyAs type
+               itemsToApply = classificationResult.data.classifications
+                  .filter(item => item.type === input.applyAs)
+                  .map(item => ({
+                     title: item.title,
+                     description: item.reasoning,
+                     priority: item.suggested_priority,
+                     dueDate: item.due_date,
+                     frequency: item.suggested_frequency,
+                     recurrenceRule: item.recurrence_rule,
+                     habitPotential: item.habit_potential ? {
+                        isHabit: item.habit_potential.is_habit,
+                        frequency: item.habit_potential.frequency,
+                        targetValue: item.habit_potential.target_value,
+                        streakSuggestion: item.habit_potential.streak_suggestion,
+                        bestTime: item.habit_potential.best_time,
+                        triggerActivity: item.habit_potential.trigger_activity,
+                     } : undefined,
+                  }));
+            }
+
+            const createdItems: any[] = [];
+            const appliedItems: any[] = [];
+
+            // Apply items based on type
+            for (const item of itemsToApply) {
+               try {
+                  if (input.applyAs === "task") {
+                     const task = await taskQueries.createTask(userId, {
+                        title: item.title,
+                        description: item.description,
+                        priority: item.priority || "medium",
+                        dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+                        isRecurring: false,
+                     });
+                     createdItems.push({ type: "task", id: task.id, ...task });
+                     appliedItems.push({ itemId: task.id, itemType: "task", originalTitle: item.title });
+                  } else if (input.applyAs === "recurring-task") {
+                     const task = await taskQueries.createRecurringTask(userId, {
+                        title: item.title,
+                        description: item.description,
+                        priority: item.priority || "medium",
+                        recurrenceRule: item.recurrenceRule || "FREQ=WEEKLY",
+                        isRecurring: true,
+                     });
+                     createdItems.push({ type: "recurring-task", id: task.id, ...task });
+                     appliedItems.push({ itemId: task.id, itemType: "recurring-task", originalTitle: item.title });
+                  } else if (input.applyAs === "habit") {
+                     const habit = await habitQueries.createHabit(userId, {
+                        title: item.title,
+                        description: item.description,
+                        frequency: item.frequency || "daily",
+                        targetValue: item.habitPotential?.targetValue || 1,
+                        currentStreak: 0,
+                        bestTime: item.habitPotential?.bestTime,
+                        triggerActivity: item.habitPotential?.triggerActivity,
+                     });
+                     createdItems.push({ type: "habit", id: habit.id, ...habit });
+                     appliedItems.push({ itemId: habit.id, itemType: "habit", originalTitle: item.title });
+                  }
+               } catch (itemError) {
+                  console.error(`Failed to create ${input.applyAs} "${item.title}":`, itemError);
+                  // Continue with other items, but log the error
+               }
+            }
+
+            // Update suggestion with applied items
+            await aiQueries.updateSuggestionAppliedItems(input.suggestionId, appliedItems);
+
+            // Mark suggestion as applied if all items were processed
+            if (createdItems.length > 0) {
+               await aiQueries.markAsApplied(input.suggestionId);
+            }
+
+            return {
+               success: true,
+               createdItems,
+               createdCount: createdItems.length,
+               appliedItems: appliedItems.length,
+               message: `Successfully created ${createdItems.length} ${input.applyAs}${createdItems.length !== 1 ? 's' : ''}`,
+            };
+         } catch (error) {
+            console.error("Apply suggestion as items error:", error);
+            throw new Error(
+               `Failed to apply suggestion: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
          }
       }),
 };

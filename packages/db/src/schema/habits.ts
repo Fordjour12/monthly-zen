@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { user } from "./auth";
+import { aiSuggestions } from "./ai";
 
 export const habits = sqliteTable(
   "habits",
@@ -18,6 +19,12 @@ export const habits = sqliteTable(
       .default("daily"),
     targetValue: integer("target_value").notNull().default(1),
     currentStreak: integer("current_streak").notNull().default(0),
+    longestStreak: integer("longest_streak").notNull().default(0),
+    bestTime: text("best_time", {
+      enum: ["morning", "afternoon", "evening"],
+    }),
+    triggerActivity: text("trigger_activity"),
+    suggestionId: text("suggestion_id").references(() => aiSuggestions.id, { onDelete: "set null" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
@@ -29,6 +36,8 @@ export const habits = sqliteTable(
   (table) => [
     index("habits_userId_idx").on(table.userId),
     index("habits_frequency_idx").on(table.frequency),
+    index("habits_suggestionId_idx").on(table.suggestionId),
+    index("habits_currentStreak_idx").on(table.currentStreak),
   ]
 );
 
@@ -67,6 +76,10 @@ export const habitsRelations = relations(habits, ({ one, many }) => ({
     references: [user.id],
   }),
   logs: many(habitLogs),
+  suggestion: one(aiSuggestions, {
+    fields: [habits.suggestionId],
+    references: [aiSuggestions.id],
+  }),
 }));
 
 export const habitLogsRelations = relations(habitLogs, ({ one }) => ({
