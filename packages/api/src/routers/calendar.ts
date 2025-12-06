@@ -130,11 +130,48 @@ export const calendarRouter = {
       }
 
       try {
-        // TODO: Implement calendar event creation
-        // This would need to be added to calendarQueries
+        const startTime = new Date(input.startTime);
+        const endTime = new Date(input.endTime);
+
+        // Validate date logic
+        if (startTime >= endTime) {
+          return {
+            success: false,
+            error: "Start time must be before end time",
+          };
+        }
+
+        // Check for overlapping events
+        const overlappingEvents = await calendarQueries.findOverlappingEvents(
+          userId,
+          startTime,
+          endTime
+        );
+
+        if (overlappingEvents.length > 0) {
+          return {
+            success: false,
+            error: "Event conflicts with existing calendar events",
+            conflicts: overlappingEvents.map(event => ({
+              id: event.id,
+              title: event.title,
+              startTime: new Date(event.startTime).toISOString(),
+              endTime: new Date(event.endTime).toISOString(),
+            })),
+          };
+        }
+
+        const event = await calendarQueries.createEvent(userId, {
+          title: input.title,
+          description: input.description,
+          startTime,
+          endTime,
+          taskId: input.taskId,
+        });
+
         return {
-          success: false,
-          error: "Event creation not yet implemented",
+          success: true,
+          data: event,
         };
       } catch (error) {
         console.error("Error creating calendar event:", error);
@@ -167,11 +204,68 @@ export const calendarRouter = {
       }
 
       try {
-        // TODO: Implement calendar event update
-        // This would need to be added to calendarQueries
+        // First check if event exists and belongs to user
+        const existingEvent = await calendarQueries.findById(input.id);
+        if (!existingEvent) {
+          return {
+            success: false,
+            error: "Event not found",
+          };
+        }
+
+        if (existingEvent.userId !== userId) {
+          return {
+            success: false,
+            error: "Not authorized to update this event",
+          };
+        }
+
+        // Prepare update data
+        const updateData: any = {};
+        if (input.title !== undefined) updateData.title = input.title;
+        if (input.description !== undefined) updateData.description = input.description;
+        if (input.startTime !== undefined) updateData.startTime = new Date(input.startTime);
+        if (input.endTime !== undefined) updateData.endTime = new Date(input.endTime);
+
+        // Validate date logic if both times are provided
+        if (updateData.startTime && updateData.endTime) {
+          if (updateData.startTime >= updateData.endTime) {
+            return {
+              success: false,
+              error: "Start time must be before end time",
+            };
+          }
+        }
+
+        // Check for overlapping events (excluding current event)
+        const startTime = updateData.startTime || new Date(existingEvent.startTime);
+        const endTime = updateData.endTime || new Date(existingEvent.endTime);
+        
+        const overlappingEvents = await calendarQueries.findOverlappingEvents(
+          userId,
+          startTime,
+          endTime,
+          input.id
+        );
+
+        if (overlappingEvents.length > 0) {
+          return {
+            success: false,
+            error: "Updated event conflicts with existing calendar events",
+            conflicts: overlappingEvents.map(event => ({
+              id: event.id,
+              title: event.title,
+              startTime: new Date(event.startTime).toISOString(),
+              endTime: new Date(event.endTime).toISOString(),
+            })),
+          };
+        }
+
+        const updatedEvent = await calendarQueries.updateEvent(input.id, updateData);
+
         return {
-          success: false,
-          error: "Event update not yet implemented",
+          success: true,
+          data: updatedEvent,
         };
       } catch (error) {
         console.error("Error updating calendar event:", error);
@@ -198,11 +292,27 @@ export const calendarRouter = {
       }
 
       try {
-        // TODO: Implement calendar event deletion
-        // This would need to be added to calendarQueries
+        // First check if event exists and belongs to user
+        const existingEvent = await calendarQueries.findById(input.id);
+        if (!existingEvent) {
+          return {
+            success: false,
+            error: "Event not found",
+          };
+        }
+
+        if (existingEvent.userId !== userId) {
+          return {
+            success: false,
+            error: "Not authorized to delete this event",
+          };
+        }
+
+        await calendarQueries.deleteEvent(input.id);
+
         return {
-          success: false,
-          error: "Event deletion not yet implemented",
+          success: true,
+          message: "Event deleted successfully",
         };
       } catch (error) {
         console.error("Error deleting calendar event:", error);
@@ -229,11 +339,25 @@ export const calendarRouter = {
       }
 
       try {
-        // TODO: Implement get event by ID
-        // This would need to be added to calendarQueries
+        const event = await calendarQueries.findById(input.id);
+        
+        if (!event) {
+          return {
+            success: false,
+            error: "Event not found",
+          };
+        }
+
+        if (event.userId !== userId) {
+          return {
+            success: false,
+            error: "Not authorized to view this event",
+          };
+        }
+
         return {
-          success: false,
-          error: "Get event by ID not yet implemented",
+          success: true,
+          data: event,
         };
       } catch (error) {
         console.error("Error fetching event by ID:", error);

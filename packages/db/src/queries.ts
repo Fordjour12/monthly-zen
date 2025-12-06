@@ -442,6 +442,171 @@ export const calendarQueries = {
       orderBy: [desc(calendarEvents.startTime)],
     });
   },
+
+  /**
+   * Create a new calendar event
+   */
+  async createEvent(userId: string, event: {
+    title: string;
+    description?: string;
+    startTime: Date;
+    endTime: Date;
+    taskId?: string;
+    externalId?: string;
+  }): Promise<CalendarEvent> {
+    const id = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newEvent = {
+      id,
+      userId,
+      title: event.title,
+      description: event.description || null,
+      startTime: event.startTime.getTime(),
+      endTime: event.endTime.getTime(),
+      taskId: event.taskId || null,
+      externalId: event.externalId || null,
+    };
+
+    const result = await db.insert(calendarEvents).values(newEvent).returning();
+    return result[0]!;
+  },
+
+  /**
+   * Update an existing calendar event
+   */
+  async updateEvent(eventId: string, updates: {
+    title?: string;
+    description?: string;
+    startTime?: Date;
+    endTime?: Date;
+    taskId?: string;
+    externalId?: string;
+  }): Promise<CalendarEvent> {
+    const updateData: any = {};
+    
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.startTime !== undefined) updateData.startTime = updates.startTime.getTime();
+    if (updates.endTime !== undefined) updateData.endTime = updates.endTime.getTime();
+    if (updates.taskId !== undefined) updateData.taskId = updates.taskId;
+    if (updates.externalId !== undefined) updateData.externalId = updates.externalId;
+
+    const result = await db
+      .update(calendarEvents)
+      .set(updateData)
+      .where(eq(calendarEvents.id, eventId))
+      .returning();
+    
+    if (result.length === 0) {
+      throw new Error(`Event with ID ${eventId} not found`);
+    }
+    
+    return result[0]!;
+  },
+
+  /**
+   * Delete a calendar event
+   */
+  async deleteEvent(eventId: string): Promise<void> {
+    const result = await db
+      .delete(calendarEvents)
+      .where(eq(calendarEvents.id, eventId));
+    
+    if (result.changes === 0) {
+      throw new Error(`Event with ID ${eventId} not found`);
+    }
+  },
+
+  /**
+   * Get a single calendar event by ID
+   */
+  async findById(eventId: string): Promise<CalendarEvent | undefined> {
+    return await db.query.calendarEvents.findFirst({
+      where: eq(calendarEvents.id, eventId),
+    });
+  },
+
+  /**
+   * Get events by external ID (for sync with external calendars)
+   */
+  async findByExternalId(userId: string, externalId: string): Promise<CalendarEvent | undefined> {
+    return await db.query.calendarEvents.findFirst({
+      where: and(
+        eq(calendarEvents.userId, userId),
+        eq(calendarEvents.externalId, externalId)
+      ),
+    });
+  },
+
+  /**
+   * Check for overlapping events
+   */
+  async findOverlappingEvents(
+    userId: string,
+    startTime: Date,
+    endTime: Date,
+    excludeEventId?: string
+  ): Promise<CalendarEvent[]> {
+    const conditions = [
+      eq(calendarEvents.userId, userId),
+      // Check for overlaps: event starts before our end time AND event ends after our start time
+      lt(calendarEvents.startTime, endTime),
+      gt(calendarEvents.endTime, startTime)
+    ];
+
+    if (excludeEventId) {
+      conditions.push(sql`${calendarEvents.id} != ${excludeEventId}`);
+    }
+
+    return await db.query.calendarEvents.findMany({
+      where: and(...conditions),
+      orderBy: [calendarEvents.startTime],
+    });
+  },
+
+  /**
+   * Get events count for a user within date range
+   */
+  async getCountByDateRange(
+    userId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.userId, userId),
+          gte(calendarEvents.startTime, startDate),
+          lte(calendarEvents.startTime, endDate)
+        )
+      );
+
+    return result[0]?.count || 0;
+  },
+
+  /**
+   * Update external ID for an event (used for sync)
+   */
+  async updateExternalId(eventId: string, externalId: string): Promise<void> {
+    await db
+      .update(calendarEvents)
+      .set({ externalId })
+      .where(eq(calendarEvents.id, eventId));
+  },
+
+  /**
+   * Get events that need syncing (no external ID)
+   */
+  async getUnsyncedEvents(userId: string): Promise<CalendarEvent[]> {
+    return await db.query.calendarEvents.findMany({
+      where: and(
+        eq(calendarEvents.userId, userId),
+        sql`${calendarEvents.externalId} IS NULL`
+      ),
+      orderBy: [calendarEvents.createdAt],
+    });
+  },
 };
 
 /**
@@ -808,67 +973,98 @@ export const aiQueries = {
     });
   },
 
-  /**
+/**
    * Permanently delete a suggestion
    */
-  async deleteSuggestion(suggestionId: string): Promise<void> {
-    await db.delete(aiSuggestions).where(eq(aiSuggestions.id, suggestionId));
-  },
+   async deleteSuggestion(suggestionId: string): Promise<void> {
+      await db.delete(aiSuggestions).where(eq(aiSuggestions.id, suggestionId));
+   },
 
-  /**
-   * Get suggestion effectiveness metrics
-   */
-  async getSuggestionEffectiveness(userId: string): Promise<{
-    totalApplied: number;
-    totalGenerated: number;
-    applicationRate: number;
-    byType: Record<
-      AISuggestionType,
-      {
-        generated: number;
-        applied: number;
-        rate: number;
-      }
-    >;
-  }> {
-    const allSuggestions = await db.query.aiSuggestions.findMany({
-      where: eq(aiSuggestions.userId, userId),
-    });
+   /**
+    * Update suggestion content
+    */
+   async updateSuggestionContent(suggestionId: string, content: any): Promise<void> {
+      await db
+         .update(aiSuggestions)
+         .set({ content, updatedAt: new Date() })
+         .where(eq(aiSuggestions.id, suggestionId));
+   },
 
-    const totalGenerated = allSuggestions.length;
-    const totalApplied = allSuggestions.filter((s) => s.isApplied).length;
-    const applicationRate =
-      totalGenerated > 0 ? (totalApplied / totalGenerated) * 100 : 0;
+   /**
+    * Add plan version for tracking modifications
+    */
+   async addPlanVersion(planId: string, version: any): Promise<void> {
+      const suggestion = await aiQueries.getSuggestionById(planId);
+      if (!suggestion) return;
 
-    const byType = {
-      plan: { generated: 0, applied: 0, rate: 0 },
-      briefing: { generated: 0, applied: 0, rate: 0 },
-      reschedule: { generated: 0, applied: 0, rate: 0 },
-    } as Record<
-      AISuggestionType,
-      { generated: number; applied: number; rate: number }
-    >;
+      const history = suggestion.applicationHistory || [];
+      history.push({
+         type: "version",
+         timestamp: Date.now(),
+         version,
+      });
 
-    allSuggestions.forEach((suggestion) => {
-      byType[suggestion.type].generated++;
-      if (suggestion.isApplied) {
-        byType[suggestion.type].applied++;
-      }
-    });
+      await db
+         .update(aiSuggestions)
+         .set({ applicationHistory: history, updatedAt: new Date() })
+         .where(eq(aiSuggestions.id, planId));
+   },
 
-    // Calculate rates
-    Object.keys(byType).forEach((type) => {
-      const typeKey = type as AISuggestionType;
-      const generated = byType[typeKey].generated;
-      const applied = byType[typeKey].applied;
-      byType[typeKey].rate = generated > 0 ? (applied / generated) * 100 : 0;
-    });
+   /**
+    * Get suggestion effectiveness metrics
+    */
+   async getSuggestionEffectiveness(userId: string): Promise<{
+      totalApplied: number;
+      totalGenerated: number;
+      applicationRate: number;
+      byType: Record<
+         AISuggestionType,
+         {
+            generated: number;
+            applied: number;
+            rate: number;
+         }
+      >;
+    }> {
+      const allSuggestions = await db.query.aiSuggestions.findMany({
+         where: eq(aiSuggestions.userId, userId),
+      });
 
-    return {
-      totalApplied,
-      totalGenerated,
-      applicationRate,
-      byType,
-    };
+      const totalGenerated = allSuggestions.length;
+      const totalApplied = allSuggestions.filter((s) => s.isApplied).length;
+      const applicationRate =
+         totalGenerated > 0 ? (totalApplied / totalGenerated) * 100 : 0;
+
+      const byType = {
+         plan: { generated: 0, applied: 0, rate: 0 },
+         briefing: { generated: 0, applied: 0, rate: 0 },
+         reschedule: { generated: 0, applied: 0, rate: 0 },
+      } as Record<
+         AISuggestionType,
+         { generated: number; applied: number; rate: number }
+      >;
+
+      allSuggestions.forEach((suggestion) => {
+         byType[suggestion.type].generated++;
+         if (suggestion.isApplied) {
+            byType[suggestion.type].applied++;
+         }
+      });
+
+      // Calculate rates
+      Object.keys(byType).forEach((type) => {
+         const typeKey = type as AISuggestionType;
+         const generated = byType[typeKey].generated;
+         byType[typeKey].rate = generated > 0 ? (byType[typeKey].applied / generated) * 100 : 0;
+      });
+
+      return {
+         totalApplied,
+         totalGenerated,
+         applicationRate,
+         byType,
+      };
+   },
+};
   },
 };
