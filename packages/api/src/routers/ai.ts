@@ -60,50 +60,6 @@ export const AiRouter = {
       }),
 
    /**
-    * Apply a suggestion (mark as applied)
-    */
-   applySuggestion: protectedProcedure
-      .input(
-         z.object({
-            suggestionId: z.string(),
-         })
-      )
-      .handler(async ({ input, context }) => {
-         const userId = context.session?.user?.id;
-         if (!userId) {
-            throw new Error("User not authenticated");
-         }
-
-         try {
-            // First check if the suggestion belongs to the user
-            const suggestion = await aiQueries.getSuggestionById(input.suggestionId);
-            if (!suggestion) {
-               throw new Error("Suggestion not found");
-            }
-            if (suggestion.userId !== userId) {
-               throw new Error("You don't have permission to update this suggestion");
-            }
-
-            // Mark as applied
-            await aiQueries.markAsApplied(input.suggestionId);
-
-            // Get the updated suggestion
-            const updatedSuggestion = await aiQueries.getSuggestionById(input.suggestionId);
-
-            return {
-               success: true,
-               suggestion: updatedSuggestion,
-               message: "Suggestion applied successfully",
-            };
-         } catch (error) {
-            console.error("Apply suggestion error:", error);
-            throw new Error(
-               `Failed to apply suggestion: ${error instanceof Error ? error.message : "Unknown error"}`
-            );
-         }
-      }),
-
-   /**
      * Generate a monthly plan based on user goals
      */
    generatePlan: protectedProcedure
@@ -126,64 +82,6 @@ export const AiRouter = {
             // Generate Plan using AI service with caching and rate limiting
             const PlanResult = await AIService.generatePlan(
                input.userGoals,
-               { userId, model: input.model }
-            );
-
-            if (!PlanResult.success || !PlanResult.data) {
-               throw new Error(PlanResult.error || "Failed to generate Plan");
-            }
-
-            const PlanContent = PlanResult.data;
-
-            // Save suggestion to database
-            const suggestion = await aiQueries.createSuggestion(
-               userId,
-               "plan",
-               PlanContent
-            );
-
-            return {
-               suggestionId: suggestion.id,
-               content: PlanContent,
-               isRecent: false,
-               message: "Monthly Plan generated successfully",
-            };
-         } catch (error) {
-            console.error("Generate Plan error:", error);
-            throw new Error(
-               `Failed to generate Plan: ${error instanceof Error ? error.message : "Unknown error"}`
-            );
-         }
-      }),
-
-   /**
-     * Generate a monthly plan with progress simulation
-     */
-   generatePlanWithProgress: protectedProcedure
-      .input(
-         z.object({
-            userGoals: z.string().min(10, "Please provide more detailed goals"),
-            workHours: z.string().optional(),
-            energyPatterns: z.string().optional(),
-            preferredTimes: z.string().optional(),
-            model: z.string().optional(),
-         })
-      )
-      .handler(async ({ input, context }) => {
-         const userId = context.session?.user?.id;
-         if (!userId) {
-            throw new Error("User not authenticated");
-         }
-
-         try {
-            // Generate Plan with progress simulation
-            const PlanResult = await AIService.generatePlanWithProgress(
-               input.userGoals,
-               (stage: string, message: string) => {
-                  // This would normally be sent via WebSocket or Server-Sent Events
-                  // For now, we'll just log the progress
-                  console.log(`Plan Generation [${stage}]: ${message}`);
-               },
                { userId, model: input.model }
             );
 

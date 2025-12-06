@@ -17,7 +17,7 @@ import { Container } from '@/components/container';
 import { Card, useThemeColor } from 'heroui-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
-import { SuggestionApplyModal } from './suggestion-apply-modal';
+import { SuggestionApplyModal } from '@/components/suggestion/suggestion-apply-modaly-modal';
 
 interface SuggestionItem {
    title: string;
@@ -86,7 +86,7 @@ export default function SuggestionDetailScreen() {
          applyAs: string;
          selectedItems?: any[];
       }) => {
-         return orpc.ai.applySuggestionAsItems.call(data);
+         return orpc.AI.applySuggestionAsItems.call(data);
       },
       onSuccess: (result) => {
          Alert.alert(
@@ -150,14 +150,14 @@ export default function SuggestionDetailScreen() {
    const renderSuggestionContent = () => {
       if (!suggestion?.content) return null;
 
-      const content = typeof suggestion.content === 'string' 
-         ? JSON.parse(suggestion.content) 
+      const content = typeof suggestion.content === 'string'
+         ? JSON.parse(suggestion.content)
          : suggestion.content;
 
       return (
          <Card variant="secondary" className="mb-6 p-4">
             <Card.Title className="mb-4">Suggestion Content</Card.Title>
-            
+
             {content.monthly_summary && (
                <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Monthly Summary</Text>
@@ -196,7 +196,7 @@ export default function SuggestionDetailScreen() {
       return (
          <Card variant="secondary" className="mb-6 p-4">
             <Card.Title className="mb-4">
-               {applyAs === 'task' ? 'Tasks' : applyAs === 'habit' ? 'Habits' : 'Recurring Tasks'} 
+               {applyAs === 'task' ? 'Tasks' : applyAs === 'habit' ? 'Habits' : 'Recurring Tasks'}
                {' '}({filteredItems.length})
             </Card.Title>
 
@@ -306,7 +306,7 @@ export default function SuggestionDetailScreen() {
          if (typeof suggestion?.content === 'object') {
             return suggestion.content;
          }
-         
+
          // If content is a string, try to parse as JSON
          if (typeof suggestion?.content === 'string') {
             // Try to parse as JSON first
@@ -317,7 +317,7 @@ export default function SuggestionDetailScreen() {
                return suggestion.content;
             }
          }
-         
+
          return suggestion?.content;
       } catch (error) {
          console.error('Error parsing suggestion content:', error);
@@ -349,9 +349,9 @@ export default function SuggestionDetailScreen() {
          <View style={styles.contentContainer}>
             <Text style={styles.title}>{suggestion.title}</Text>
             <Text style={styles.description}>{suggestion.description}</Text>
-            
+
             <View style={styles.separator} />
-            
+
             {/* Render content based on type */}
             {typeof parsedContent === 'string' ? (
                <Text style={styles.textContent}>{parsedContent}</Text>

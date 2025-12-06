@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
 import { getOfflineCachedData, prefetchForOffline } from '@/lib/react-query-persister';
 
@@ -77,33 +77,6 @@ export function useSuggestion(suggestionId: string, enabled: boolean = true) {
    };
 }
 
-/**
- * Hook for applying a suggestion
- */
-export function useApplySuggestion() {
-   const queryClient = useQueryClient();
-
-   const applySuggestion = async (suggestionId: string) => {
-      try {
-         const result = await orpc.AI.applySuggestion.call({ suggestionId });
-
-         // Invalidate and refetch suggestions list
-         queryClient.invalidateQueries({ queryKey: ['ai', 'suggestions'] });
-
-         // Update the specific suggestion cache
-         queryClient.setQueryData(['ai', 'suggestion', suggestionId], result.suggestion);
-
-         return result;
-      } catch (error) {
-         console.error('Failed to apply suggestion:', error);
-         throw error;
-      }
-   };
-
-   return {
-      applySuggestion,
-   };
-}
 
 /**
  * Hook for getting plan history

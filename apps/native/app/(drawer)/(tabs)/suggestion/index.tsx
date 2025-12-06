@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Container } from '@/components/container';
 import { Card, useThemeColor } from 'heroui-native';
-import { useSuggestions, useApplySuggestion } from '@/hooks/use-suggestions';
+import { useSuggestions} from '@/hooks/use-suggestions';
 import { useRouter } from 'expo-router';
 
 // Helper function to parse suggestion content like monthly-plan.tsx
@@ -59,7 +59,6 @@ const getPreviewContent = (suggestion: any) => {
 };
 
 export default function Index() {
-   const mutedColor = useThemeColor("muted");
    const foregroundColor = useThemeColor("foreground");
 
    const router = useRouter();
@@ -76,7 +75,6 @@ export default function Index() {
       limit: 50, // Load up to 50 suggestions
    });
 
-   const { applySuggestion } = useApplySuggestion();
 
    const formatDate = (dateString: string) => {
       const date = new Date(dateString);
@@ -231,7 +229,7 @@ export default function Index() {
                               className="flex-1 bg-surface p-2 rounded-lg flex-row justify-center items-center"
                               onPress={async () => {
                                  try {
-                                    await applySuggestion(suggestion.id);
+
                                     refetch(); // Refresh the list
                                  } catch (error) {
                                     console.error('Failed to apply suggestion:', error);
