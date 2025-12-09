@@ -137,6 +137,68 @@ export function useGeneratePlan() {
    });
 }
 
+// Custom hook for regenerating plans with feedback
+export function useRegeneratePlan() {
+   const queryClient = useQueryClient();
+
+   return useMutation({
+      mutationFn: async ({
+         originalPlanId,
+         regenerationReason,
+         onProgress,
+         options,
+      }: {
+         originalPlanId: string;
+         regenerationReason: string;
+         onProgress?: (stage: string, message: string) => void;
+         options?: {
+            model?: string;
+         };
+      }) => {
+         const { model } = options || {};
+
+         // Simulate progress
+         const stages = [
+            { type: 'analyzing', message: 'Analyzing your feedback...', duration: 1500 },
+            { type: 'reviewing', message: 'Reviewing original plan...', duration: 1500 },
+            { type: 'regenerating', message: 'Regenerating improved plan...', duration: 4000 },
+            { type: 'finalizing', message: 'Applying your preferences...', duration: 1500 }
+         ];
+
+         // Execute progress simulation
+         for (const stage of stages) {
+            onProgress?.(stage.type, stage.message);
+            await new Promise(resolve => setTimeout(resolve, stage.duration));
+         }
+
+         try {
+            const result = await orpc.AI.regeneratePlan.call({
+               originalPlanId,
+               regenerationReason,
+               model,
+            });
+
+            // Invalidate related queries
+            queryClient.invalidateQueries({ queryKey: ['ai-suggestions'] });
+
+            return {
+               success: true,
+               data: result.content,
+               planId: result.planId,
+               improvements: result.improvements,
+            };
+         } catch (error) {
+            console.error('❌ Failed to regenerate plan:', error);
+
+            return {
+               success: false,
+               error: error instanceof Error ? error.message : 'Unknown error',
+            };
+         }
+      },
+   });
+}
+
 // Custom hook for user preferences with persistence
 export function useUserPreference<T>(key: string, defaultValue: T) {
    const preferenceKey = `user:${key}`;

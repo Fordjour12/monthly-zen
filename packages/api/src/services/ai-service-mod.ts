@@ -2,6 +2,7 @@ import {executeAIRequest} from "../lib/executeAIRequest"
 import type {  AIResponse, AIServiceConfig } from "../lib/index.d";
 import type {
    PlanSuggestionContent,
+   TaskPriority,
 } from "@my-better-t-app/db";
 
 /**
@@ -103,29 +104,6 @@ export async function regeneratePlan(
          };
       }
 
-      // Get execution insights if available
-      let executionInsights = "";
-      try {
-         const { aiQueries } = await import("@my-better-t-app/db");
-         const suggestion = await aiQueries.getSuggestionById(originalPlanId);
-
-         if (suggestion && suggestion.applicationHistory) {
-            const history = suggestion.applicationHistory as any[];
-            if (history.length > 0) {
-               const latestExecution = history[history.length - 1];
-               executionInsights = `
-**Previous Execution Insights:**
-- Completion Rate: ${latestExecution.completionRate || 'N/A'}%
-- Common Issues: ${latestExecution.issues?.join(', ') || 'None identified'}
-- User Feedback: ${latestExecution.userFeedback || 'No specific feedback'}
-- Time Management: ${latestExecution.timeManagement || 'Not analyzed'}
-`;
-            }
-         }
-      } catch (error) {
-         console.warn('Could not fetch execution insights:', error);
-      }
-
       const currentDate = new Date().toISOString().split('T')[0];
       const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -136,8 +114,6 @@ ${JSON.stringify(originalPlan, null, 2)}
 
 **User Regeneration Reason:**
 ${regenerationReason}
-
-${executionInsights}
 
 **Context:**
 - Current month: ${currentMonth}
@@ -185,7 +161,7 @@ ${executionInsights}
 
       const response = await executeAIRequest<any, PlanSuggestionContent>({
          type: "plan",
-         input: { originalPlan, regenerationReason, executionInsights },
+         input: { originalPlan, regenerationReason  },
          prompt,
          systemPrompt,
          config,
@@ -223,4 +199,160 @@ ${executionInsights}
    }
 }
 
-//
+/**
+ * Modify existing plan based on specific user feedback and adjustments
+ */
+export async function modifyPlan(
+   planId: string,
+   modifications: {
+      userFeedback?: string;
+      completedTasks?: string[];
+      newGoals?: string[];
+      timeConstraints?: string;
+      priorityAdjustments?: Array<{ taskTitle: string, newPriority: TaskPriority }>;
+      weeklyAdjustments?: Array<{ week: number, adjustments: string[] }>;
+   },
+   config?: AIServiceConfig
+): Promise<AIResponse<PlanSuggestionContent>> {
+   try {
+      // Fetch existing plan
+      const existingPlan = await fetchPlanData(planId);
+      if (!existingPlan) {
+         return {
+            success: false,
+            error: "Plan not found",
+         };
+      }
+
+      // Get execution data if available
+      let executionContext = "";
+      if (modifications.completedTasks && modifications.completedTasks.length > 0) {
+         executionContext = `
+**Completed Tasks:**
+${modifications.completedTasks.map(task => `- ${task}`).join('\n')}
+
+**Progress Analysis:**
+- Completed ${modifications.completedTasks.length} tasks
+- This represents ${modifications.completedTasks.length > 0 ? 'good progress' : 'limited progress'} toward goals
+`;
+      }
+
+      const currentDate = new Date().toISOString().split('T')[0];
+      const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      // Build modification context
+      const modificationContext = [];
+      if (modifications.userFeedback) {
+         modificationContext.push(`**User Feedback:** ${modifications.userFeedback}`);
+      }
+      if (modifications.newGoals && modifications.newGoals.length > 0) {
+         modificationContext.push(`**New Goals to Add:** ${modifications.newGoals.join(', ')}`);
+      }
+      if (modifications.timeConstraints) {
+         modificationContext.push(`**Time Constraints:** ${modifications.timeConstraints}`);
+      }
+      if (modifications.priorityAdjustments && modifications.priorityAdjustments.length > 0) {
+         modificationContext.push(`**Priority Adjustments:** ${modifications.priorityAdjustments.map(adj => `- ${adj.taskTitle}: ${adj.newPriority}`).join('\n')}`);
+      }
+      if (modifications.weeklyAdjustments && modifications.weeklyAdjustments.length > 0) {
+         modificationContext.push(`**Weekly Adjustments:** ${modifications.weeklyAdjustments.map(adj => `- Week ${adj.week}: ${adj.adjustments.join(', ')}`).join('\n')}`);
+      }
+
+      const prompt = `You are an intelligent monthly planning assistant specializing in plan modification and refinement. Your task is to modify an existing plan based on specific user feedback and adjustments while maintaining overall coherence and structure.
+
+**Existing Plan:**
+${JSON.stringify(existingPlan, null, 2)}
+
+**Modification Requests:**
+${modificationContext.join('\n')}
+
+**Execution Context:**
+${executionContext}
+
+**Context:**
+- Current month: ${currentMonth}
+- Current date: ${currentDate}
+- User's preferences: Standard work hours, balanced energy patterns, flexible scheduling
+
+**Modification Guidelines:**
+1. Apply all requested modifications precisely
+2. Maintain plan structure and consistency across weeks
+3. Adjust related tasks when priorities change
+4. Rebalance workload when new goals are added
+5. Respect time constraints and adjust timelines accordingly
+6. Ensure all weekly themes align with overall monthly goals
+7. Keep task descriptions specific and actionable
+
+**Output Format (JSON):**
+{
+  "monthly_summary": "Updated overview reflecting all modifications",
+  "weekly_breakdown": [
+    {
+      "week": 1,
+      "focus": "Updated weekly theme",
+      "goals": ["Modified weekly goal 1", "Modified weekly goal 2"],
+      "daily_tasks": {
+        "Monday": ["Adjusted task 1", "Adjusted task 2"],
+        "Tuesday": ["Adjusted task 1", "Adjusted task 2"]
+      }
+    }
+  ],
+  "modifications_applied": [
+    "Specific modification 1 that was applied",
+    "Specific modification 2 that was applied"
+  ],
+  "impact_analysis": {
+    "workload_change": "increased/decreased/maintained",
+    "timeline_impact": "extended/shortened/maintained",
+    "priority_rebalancing": "description of priority changes"
+  },
+  "potential_conflicts": ["Any new conflicts from modifications"],
+  "success_metrics": ["Refined success metrics"]
+}
+
+**Key Modification Rules:**
+- When priorities change: Adjust task order and weekly emphasis
+- When new goals are added: Integrate them without overloading weeks
+- When time constraints are specified: Adjust task duration and frequency
+- When user feedback is provided: Address specific concerns directly
+- Maintain realistic daily task limits (3-4 major tasks per day)`;
+
+      const systemPrompt = "You are an expert planning assistant specializing in precise plan modifications. Apply all requested changes accurately while maintaining plan coherence, realistic workloads, and achievable timelines. Focus on implementing user feedback exactly as requested.";
+
+      const response = await executeAIRequest<any, PlanSuggestionContent>({
+         type: "plan",
+         input: { existingPlan, modifications, executionContext },
+         prompt,
+         systemPrompt,
+         config,
+      });
+
+      // If modification is successful, update the original suggestion
+      if (response.success && config?.userId) {
+         try {
+            const { aiQueries } = await import("@my-better-t-app/db");
+
+            // Update the original suggestion with new content
+            await aiQueries.updateSuggestionContent(planId, response.data!);
+
+            // Add to application history
+            await aiQueries.addToApplicationHistory(planId, {
+               type: "modification",
+               timestamp: Date.now(),
+               modifications,
+               modifiedContent: response.data,
+            });
+         } catch (error) {
+            console.warn('Could not save modified plan:', error);
+         }
+      }
+
+      return response;
+   } catch (error) {
+      console.error('Error in modifyPlan:', error);
+      return {
+         success: false,
+         error: error instanceof Error ? error.message : "Unknown error during plan modification",
+      };
+   }
+}

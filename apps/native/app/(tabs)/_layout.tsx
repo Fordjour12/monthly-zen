@@ -28,7 +28,7 @@ export default function TabLayout() {
             },
             tabBarActiveTintColor: themeOrange,
             tabBarInactiveTintColor: themeColorForeground,
-            tabBarActiveBackgroundColor:themeOrangeLighter ,
+            tabBarActiveBackgroundColor: themeOrangeLighter,
             tabBarInactiveBackgroundColor: themeColorBackground,
          }}
       >
@@ -74,21 +74,7 @@ export default function TabLayout() {
                ),
             }}
          />
-         <Tabs.Screen
-            name="habits"
-            options={{
-               title: "Habits",
-               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-                  <HugeiconsIcon
-                     icon={CompassIcon}
-                     size={size}
-                     color={color}
-                     strokeWidth={1.5}
-                  />
 
-               ),
-            }}
-         />
          <Tabs.Screen
             name="plan"
             options={{
