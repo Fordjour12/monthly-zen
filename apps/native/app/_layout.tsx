@@ -16,17 +16,15 @@ export const unstable_settings = {
 
 function StackLayout() {
    return (
-      <Stack screenOptions={{}}>
-         <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
          <Stack.Screen
             name="modal"
             options={{ title: "Modal", presentation: "modal" }}
          />
          <Stack.Screen
-            name="suggestion/[id]"
-            options={{ title: "Suggestion", presentation: "modal" }}
-         />
-
+            name="index"
+            />
       </Stack>
    );
 }

@@ -2,7 +2,6 @@ import { protectedProcedure, publicProcedure } from "../index";
 import type { RouterClient } from "@orpc/server";
 import { z } from "zod";
 import {
-   generatePlan,
    regeneratePlan,
    modifyPlan,
    populateCalendar,
@@ -15,6 +14,7 @@ import {
    generateWeeklySummary,
    classifySuggestionItems,
 } from "../services/ai-service";
+import { generatePlan} from "../services/ai-service-mod"
 import { aiQueries, taskQueries, habitQueries } from "@my-better-t-app/db/queries";
 import type { PlanSuggestionContent } from "@my-better-t-app/db";
 
@@ -28,6 +28,59 @@ export const AiRouter = {
          user: context.session?.user,
       };
    }),
+
+      /**
+        * Generate a monthly plan based on user goals
+        */
+      generatePlan: protectedProcedure
+         .input(
+            z.object({
+               userGoals: z.string().min(10, "Please provide more detailed goals"),
+               model: z.string().optional(),
+            })
+         )
+         .handler(async ({ input, context }) => {
+            const userId = context.session?.user?.id;
+            if (!userId) {
+               throw new Error("User not authenticated");
+            }
+
+            try {
+               // Generate Plan using AI service
+               const PlanResult = await generatePlan(
+                  input.userGoals,
+                  { userId, model: input.model }
+               );
+
+               if (!PlanResult.success || !PlanResult.data) {
+                  throw new Error(PlanResult.error || "Failed to generate Plan");
+               }
+
+               const PlanContent = PlanResult.data;
+               console.log("PlanContent", PlanContent);
+
+               // Save suggestion to database
+               const suggestion = await aiQueries.createSuggestion(
+                  userId,
+                  "plan",
+                  PlanContent
+               );
+
+               return {
+                  suggestionId: suggestion.id,
+                  content: PlanContent,
+                  isRecent: false,
+                  message: "Monthly Plan generated successfully",
+               };
+            } catch (error) {
+               console.error("Generate Plan error:", error);
+               throw new Error(
+                  `Failed to generate Plan: ${error instanceof Error ? error.message : "Unknown error"}`
+               );
+            }
+         }),
+
+
 
    /**
         * Get all AI suggestions for the current user
@@ -72,56 +125,6 @@ export const AiRouter = {
          }
       }),
 
-   /**
-     * Generate a monthly plan based on user goals
-     */
-   generatePlan: protectedProcedure
-      .input(
-         z.object({
-            userGoals: z.string().min(10, "Please provide more detailed goals"),
-            model: z.string().optional(),
-         })
-      )
-      .handler(async ({ input, context }) => {
-         const userId = context.session?.user?.id;
-         if (!userId) {
-            throw new Error("User not authenticated");
-         }
-
-         try {
-            // Generate Plan using AI service
-            const PlanResult = await generatePlan(
-               input.userGoals,
-               { userId, model: input.model }
-            );
-
-            if (!PlanResult.success || !PlanResult.data) {
-               throw new Error(PlanResult.error || "Failed to generate Plan");
-            }
-
-            const PlanContent = PlanResult.data;
-            console.log("PlanContent", PlanContent);
-
-            // Save suggestion to database
-            const suggestion = await aiQueries.createSuggestion(
-               userId,
-               "plan",
-               PlanContent
-            );
-
-            return {
-               suggestionId: suggestion.id,
-               content: PlanContent,
-               isRecent: false,
-               message: "Monthly Plan generated successfully",
-            };
-         } catch (error) {
-            console.error("Generate Plan error:", error);
-            throw new Error(
-               `Failed to generate Plan: ${error instanceof Error ? error.message : "Unknown error"}`
-            );
-         }
-      }),
 
    /**
      * Convert plan to tasks
@@ -446,7 +449,7 @@ export const AiRouter = {
       .input(
          z.object({
             suggestionId: z.string(),
-            applyAs: z.enum(["task", "habit", "recurring-task"]),
+            applyAs: z.enum(["task", "habit", "recurring-task", "auto"]),
             selectedItems: z.array(z.object({
                title: z.string(),
                description: z.string().optional(),
@@ -495,14 +498,17 @@ export const AiRouter = {
                   { userId }
                );
 
+               console.log("Classification Result:", classificationResult);
+
                if (!classificationResult.success || !classificationResult.data) {
                   throw new Error("Failed to classify suggestion items");
                }
 
-               // Filter by applyAs type
-               itemsToApply = classificationResult.data.classifications
-                  .filter((item: any) => item.type === input.applyAs)
-                  .map((item: any) => ({
+               // Filter by applyAs type, or include all if "auto"
+               if (input.applyAs === "auto") {
+                  // Auto mode: include all classified items with their types
+                  itemsToApply = classificationResult.data.classifications.map((item: any) => ({
+                     type: item.type, // Preserve the AI-classified type
                      title: item.title,
                      description: item.reasoning,
                      priority: item.suggested_priority,
@@ -518,15 +524,39 @@ export const AiRouter = {
                         triggerActivity: item.habit_potential.trigger_activity
                      } : undefined,
                   }));
+               } else {
+                  // Specific type mode: filter by requested type
+                  itemsToApply = classificationResult.data.classifications
+                     .filter((item: any) => item.type === input.applyAs)
+                     .map((item: any) => ({
+                        type: item.type,
+                        title: item.title,
+                        description: item.reasoning,
+                        priority: item.suggested_priority,
+                        dueDate: item.due_date,
+                        frequency: item.suggested_frequency,
+                        recurrenceRule: item.recurrence_rule,
+                        habitPotential: item.habit_potential ? {
+                           isHabit: item.habit_potential.is_habit,
+                           frequency: item.habit_potential.frequency,
+                           targetValue: item.habit_potential.target_value,
+                           streakSuggestion: item.habit_potential.streak_suggestion,
+                           bestTime: item.habit_potential.best_time,
+                           triggerActivity: item.habit_potential.trigger_activity
+                        } : undefined,
+                     }));
+               }
             }
 
             const createdItems: any[] = [];
             const appliedItems: any[] = [];
 
-            // Apply items based on type
+            // Apply items based on their type (auto mode uses item.type, specific mode uses input.applyAs)
             for (const item of itemsToApply) {
                try {
-                  if (input.applyAs === "task") {
+                  const itemType = input.applyAs === "auto" ? item.type : input.applyAs;
+
+                  if (itemType === "task") {
                      const task = await taskQueries.createTask(userId, {
                         title: item.title,
                         description: item.description,
@@ -536,7 +566,7 @@ export const AiRouter = {
                      });
                      createdItems.push({ type: "task", ...task });
                      appliedItems.push({ itemId: task.id, itemType: "task", originalTitle: item.title });
-                  } else if (input.applyAs === "recurring-task") {
+                  } else if (itemType === "recurring-task") {
                      const task = await taskQueries.createRecurringTask(userId, {
                         title: item.title,
                         description: item.description,
@@ -546,7 +576,7 @@ export const AiRouter = {
                      });
                      createdItems.push({ type: "recurring-task", ...task });
                      appliedItems.push({ itemId: task.id, itemType: "recurring-task", originalTitle: item.title });
-                  } else if (input.applyAs === "habit") {
+                  } else if (itemType === "habit") {
                      const habit = await habitQueries.createHabit(userId, {
                         title: item.title,
                         description: item.description,
@@ -560,7 +590,7 @@ export const AiRouter = {
                      appliedItems.push({ itemId: habit.id, itemType: "habit", originalTitle: item.title });
                   }
                } catch (itemError) {
-                  console.error(`Failed to create ${input.applyAs} "${item.title}":`, itemError);
+                  console.error(`Failed to create ${item.type || input.applyAs} "${item.title}":`, itemError);
                   // Continue with other items
                }
             }

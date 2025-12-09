@@ -1,28 +1,24 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { Container } from '@/components/container';
 import { Card, useThemeColor } from 'heroui-native';
-import { useSuggestions} from '@/hooks/use-suggestions';
+import { useSuggestions } from '@/hooks/use-suggestions';
 import { useRouter } from 'expo-router';
+import { orpc } from '@/utils/orpc';
 
-// Helper function to parse suggestion content like monthly-plan.tsx
+// Helper function to parse suggestion content
 const parseSuggestionContent = (content: any) => {
    try {
-      // If content is already an object, return as is
       if (typeof content === 'object') {
          return content;
       }
-
-      // If content is a string, try to parse as JSON
       if (typeof content === 'string') {
-         // Try to parse as JSON first
          try {
             return JSON.parse(content);
          } catch {
-            // If JSON parsing fails, return as plain text
             return content;
          }
       }
-
       return content;
    } catch (error) {
       console.error('Error parsing suggestion content:', error);
@@ -34,25 +30,18 @@ const parseSuggestionContent = (content: any) => {
 const getPreviewContent = (suggestion: any) => {
    const parsedContent = parseSuggestionContent(suggestion.content);
 
-   // For plan type suggestions, extract monthly summary
    if (suggestion.type === 'plan') {
-      // If it's a plain text string, use it directly
       if (typeof parsedContent === 'string') {
          return parsedContent;
       }
-
-      // If it's an object with monthly_summary, use that
       if (parsedContent && typeof parsedContent === 'object' && parsedContent.monthly_summary) {
          return parsedContent.monthly_summary;
       }
-
-      // Fallback to stringified content
       return typeof parsedContent === 'object'
          ? `${JSON.stringify(parsedContent).substring(0, 200)} ...`
          : String(parsedContent);
    }
 
-   // For other types, use existing logic
    return typeof parsedContent === 'string'
       ? parsedContent
       : `${JSON.stringify(parsedContent).substring(0, 200)}  ...`
@@ -60,10 +49,9 @@ const getPreviewContent = (suggestion: any) => {
 
 export default function Index() {
    const foregroundColor = useThemeColor("foreground");
-
    const router = useRouter();
+   const [applyingId, setApplyingId] = useState<string | null>(null);
 
-   // Use custom hook for suggestions with persistence
    const {
       suggestions,
       count,
@@ -72,9 +60,64 @@ export default function Index() {
       refetch,
       isFetching
    } = useSuggestions({
-      limit: 50, // Load up to 50 suggestions
+      limit: 50,
    });
 
+   const handleApplySuggestion = async (suggestionId: string) => {
+      setApplyingId(suggestionId);
+
+      try {
+         // Step 1: AI Classifies Items
+         console.log('🤖 Step 1: AI Classifying items...');
+
+         // Step 2: Apply suggestion (creates Tasks/Habits/Recurring Tasks)
+         console.log('📝 Step 2: Creating tasks, habits, and recurring tasks...');
+
+         const result = await orpc.AI.applySuggestionAsItems.call({
+            suggestionId,
+            applyAs: "task", // Auto-classify and apply
+         });
+
+         // Step 3: Calendar Population happens automatically in the backend
+         console.log('📅 Step 3: Populating calendar...');
+
+         Alert.alert(
+            'Success! 🎉',
+            `Plan applied successfully!\n\n✓ Created ${result.createdCount} items\n✓ Tasks, habits, and recurring tasks added\n✓ Calendar populated`,
+            [
+               {
+                  text: 'View Details',
+                  onPress: () => router.push(`/suggestion/${suggestionId}`),
+               },
+               {
+                  text: 'OK',
+                  style: 'default',
+               },
+            ]
+         );
+
+         // Refresh the list to show updated status
+         refetch();
+      } catch (error) {
+         console.error('Failed to apply suggestion:', error);
+         Alert.alert(
+            'Error',
+            `Failed to apply plan: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or view details for more options.`,
+            [
+               {
+                  text: 'View Details',
+                  onPress: () => router.push(`/suggestion/${suggestionId}`),
+               },
+               {
+                  text: 'OK',
+                  style: 'cancel',
+               },
+            ]
+         );
+      } finally {
+         setApplyingId(null);
+      }
+   };
 
    const formatDate = (dateString: string) => {
       const date = new Date(dateString);
@@ -142,27 +185,27 @@ export default function Index() {
 
    return (
       <Container className="p-2">
-        <Card  className="mb-6 p-2">
-                       <Card.Title className="mb-4 pb-3 text-2xl">AI Suggestions</Card.Title>
-                       <Text className="text-foreground mb-4">
-                          Your personalized AI suggestions and plans
-                       </Text>
+         <Card className="mb-6 p-2">
+            <Card.Title className="mb-4 pb-3 text-2xl">AI Suggestions</Card.Title>
+            <Text className="text-foreground mb-4">
+               Your personalized AI suggestions and plans
+            </Text>
 
-                       <View className="flex-row justify-between items-center">
-                          <Text className="text-sm text-foreground">
-                             {count} suggestion{count !== 1 ? 's' : ''}
-                          </Text>
-                          <Pressable
-                             onPress={() => refetch()}
-                             disabled={isFetching}
-                             className="bg-orange-500 px-3 py-1 rounded-lg disabled:opacity-50"
-                          >
-                             <Text className="text-xs text-foreground">
-                                {isFetching ? 'Refreshing...' : 'Refresh'}
-                             </Text>
-                          </Pressable>
-                       </View>
-                    </Card>
+            <View className="flex-row justify-between items-center">
+               <Text className="text-sm text-foreground">
+                  {count} suggestion{count !== 1 ? 's' : ''}
+               </Text>
+               <Pressable
+                  onPress={() => refetch()}
+                  disabled={isFetching}
+                  className="bg-orange-500 px-3 py-1 rounded-lg disabled:opacity-50"
+               >
+                  <Text className="text-xs text-foreground">
+                     {isFetching ? 'Refreshing...' : 'Refresh'}
+                  </Text>
+               </Pressable>
+            </View>
+         </Card>
          <ScrollView showsVerticalScrollIndicator={false}>
             {suggestions.length === 0 ? (
                <Card variant="secondary" className="p-6">
@@ -204,20 +247,18 @@ export default function Index() {
                         </View>
                      </View>
 
-                      {/* Preview of content */}
-                      <View className="bg-surface/50 rounded-lg p-3 mb-3">
-                         <Text className="text-foreground text-sm leading-relaxed" numberOfLines={3}>
-                            {getPreviewContent(suggestion)}
-                         </Text>
-                      </View>
+                     {/* Preview of content */}
+                     <View className="bg-surface/50 rounded-lg p-3 mb-3">
+                        <Text className="text-foreground text-sm leading-relaxed" numberOfLines={3}>
+                           {getPreviewContent(suggestion)}
+                        </Text>
+                     </View>
 
                      {/* Action buttons */}
                      <View className="flex-row space-x-2">
                         <Pressable
                            className="flex-1 bg-orange-500  p-2 rounded-lg flex-row justify-center items-center"
                            onPress={() => {
-                              // Navigate to suggestion detail or open modal
-                              console.log('View suggestion:', suggestion.id);
                               router.push(`/suggestion/${suggestion.id}`);
                            }}
                         >
@@ -226,17 +267,15 @@ export default function Index() {
 
                         {!suggestion.isApplied && (
                            <Pressable
-                              className="flex-1 bg-surface p-2 rounded-lg flex-row justify-center items-center"
-                              onPress={async () => {
-                                 try {
-
-                                    refetch(); // Refresh the list
-                                 } catch (error) {
-                                    console.error('Failed to apply suggestion:', error);
-                                 }
-                              }}
+                              className="flex-1 bg-background p-2 rounded-lg flex-row justify-center items-center disabled:opacity-50"
+                              onPress={() => handleApplySuggestion(suggestion.id)}
+                              disabled={applyingId === suggestion.id}
                            >
-                              <Text className="text-foreground font-medium text-sm">Apply</Text>
+                              {applyingId === suggestion.id ? (
+                                 <ActivityIndicator size="small" color="#fff" />
+                              ) : (
+                                 <Text className="text-foreground font-medium text-sm">✓ Apply</Text>
+                              )}
                            </Pressable>
                         )}
                      </View>

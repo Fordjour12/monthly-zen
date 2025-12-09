@@ -47,29 +47,6 @@ export function useAISuggestions(options: {
    });
 }
 
-// Custom hook for applying suggestions
-export function useApplySuggestion() {
-   const queryClient = useQueryClient();
-
-   return useMutation({
-      mutationFn: async ({ suggestionId }: { suggestionId: string }) => {
-         const result = await orpc.AI.applySuggestion.call({ suggestionId });
-
-         if (result.success) {
-            // Invalidate suggestions cache
-            queryClient.invalidateQueries({ queryKey: ['ai-suggestions'] });
-
-            // Clear specific local cache entries
-            const keys = localKV.getKeys(StorageCategory.CACHE);
-            const suggestionKeys = keys.filter(key => key.startsWith('ai-suggestions:'));
-            suggestionKeys.forEach(key => localKV.delete(key, StorageCategory.CACHE));
-         }
-
-         return result;
-      },
-   });
-}
-
 // Custom hook for task categorization with local caching
 export function useCategorizeTask() {
    return useMutation({

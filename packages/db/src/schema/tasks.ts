@@ -18,6 +18,20 @@ export const tasks = sqliteTable(
     title: text("title").notNull(),
     description: text("description"),
     dueDate: integer("due_date", { mode: "timestamp_ms" }),
+
+    // Scheduling information from AI-generated plans
+    startTime: integer("start_time", { mode: "timestamp_ms" }), // Specific start time for the task
+    endTime: integer("end_time", { mode: "timestamp_ms" }), // Specific end time for the task
+    estimatedDuration: integer("estimated_duration"), // Duration in minutes
+    dayOfWeek: text("day_of_week", {
+      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    }), // Day of week from plan
+    weekNumber: integer("week_number"), // Week number in the plan (1-4 typically)
+    timeBlock: text("time_block", {
+      enum: ["morning", "afternoon", "evening", "night"],
+    }), // General time of day
+    planContext: text("plan_context"), // JSON string with additional context (focus area, week focus, etc.)
+
     status: text("status", {
       enum: ["pending", "completed", "skipped"],
     })
@@ -49,6 +63,9 @@ export const tasks = sqliteTable(
     index("tasks_priority_idx").on(table.priority),
     index("tasks_dueDate_idx").on(table.dueDate),
     index("tasks_isRecurring_idx").on(table.isRecurring),
+    index("tasks_startTime_idx").on(table.startTime),
+    index("tasks_weekNumber_idx").on(table.weekNumber),
+    index("tasks_dayOfWeek_idx").on(table.dayOfWeek),
   ]
 );
 

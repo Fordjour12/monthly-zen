@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -43,11 +43,11 @@ export default function TasksScreen() {
   const [selectedTaskForSuggestions, setSelectedTaskForSuggestions] = useState<Task | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<any>(null);
   const [isAnalyzingTask, setIsAnalyzingTask] = useState(false);
-  
+
   const queryClient = useQueryClient();
   const foregroundColor = useThemeColor("foreground");
 
-// Real API call to get tasks
+  // Real API call to get tasks
   const {
     data: rawTasks = [],
     isLoading,
@@ -111,7 +111,7 @@ export default function TasksScreen() {
   // Apply filters to the tasks data
   const tasks = useMemo(() => {
     let filteredTasks = rawTasks;
-    
+
     if (searchQuery) {
       filteredTasks = filteredTasks.filter((task: Task) =>
         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,12 +128,12 @@ export default function TasksScreen() {
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      filteredTasks = filteredTasks.filter((task: Task) => 
+      filteredTasks = filteredTasks.filter((task: Task) =>
         task.dueDate && task.dueDate >= today && task.dueDate < tomorrow
       );
     } else if (filter === "overdue") {
       const now = new Date();
-      filteredTasks = filteredTasks.filter((task: Task) => 
+      filteredTasks = filteredTasks.filter((task: Task) =>
         task.dueDate && task.dueDate < now && task.status === "pending"
       );
     } else if (filter === "completed") {
@@ -252,7 +252,7 @@ export default function TasksScreen() {
   const handleTaskTitleChange = (text: string) => {
     setNewTaskTitle(text);
     setAiSuggestions(null); // Clear previous suggestions
-    
+
     // Trigger AI analysis after user stops typing (debounced)
     if (text.trim().length > 5) {
       const timeoutId = setTimeout(() => {
@@ -292,7 +292,7 @@ export default function TasksScreen() {
           }
         });
       }, 1000);
-      
+
       // Clear previous timeout
       return () => clearTimeout(timeoutId);
     }
@@ -315,7 +315,7 @@ export default function TasksScreen() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const taskDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
+
     if (taskDate.getTime() === today.getTime()) {
       return "Today";
     } else if (taskDate.getTime() === today.getTime() + 86400000) {
@@ -332,7 +332,7 @@ export default function TasksScreen() {
     const completed = tasks.filter((t: Task) => t.status === "completed").length;
     const pending = tasks.filter((t: Task) => t.status === "pending").length;
     const skipped = tasks.filter((t: Task) => t.status === "skipped").length;
-    
+
     return { total, completed, pending, skipped };
   };
 
@@ -397,17 +397,15 @@ export default function TasksScreen() {
                 {["all", "today", "overdue", "completed"].map((status) => (
                   <Pressable
                     key={status}
-                    className={`px-3 py-2 rounded-lg border ${
-                      filter === status
+                    className={`px-3 py-2 rounded-lg border ${filter === status
                         ? "bg-secondary border-secondary"
                         : "bg-surface border-surface"
-                    }`}
+                      }`}
                     onPress={() => setFilter(status as "all" | "today" | "overdue" | "completed")}
                   >
                     <Text
-                      className={`text-sm capitalize ${
-                        filter === status ? "text-foreground" : "text-secondary"
-                      }`}
+                      className={`text-sm capitalize ${filter === status ? "text-foreground" : "text-secondary"
+                        }`}
                     >
                       {status}
                     </Text>
@@ -425,17 +423,15 @@ export default function TasksScreen() {
                 {["all", "high", "medium", "low"].map((priority) => (
                   <Pressable
                     key={priority}
-                    className={`px-3 py-2 rounded-lg border ${
-                      priorityFilter === priority
+                    className={`px-3 py-2 rounded-lg border ${priorityFilter === priority
                         ? "bg-secondary border-secondary"
                         : "bg-surface border-surface"
-                    }`}
+                      }`}
                     onPress={() => setPriorityFilter(priority as "all" | "low" | "medium" | "high")}
                   >
                     <Text
-                      className={`text-sm capitalize ${
-                        priorityFilter === priority ? "text-foreground" : "text-secondary"
-                      }`}
+                      className={`text-sm capitalize ${priorityFilter === priority ? "text-foreground" : "text-secondary"
+                        }`}
                     >
                       {priority}
                     </Text>
@@ -502,7 +498,7 @@ export default function TasksScreen() {
             <Ionicons name="time" size={48} color={foregroundColor} />
             <Text className="text-foreground mt-4">Loading tasks...</Text>
           </View>
-         ) : tasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <Card variant="secondary" className="p-6">
             <View className="items-center py-8">
               <Ionicons name="checkbox-outline" size={48} color={foregroundColor} />
@@ -521,7 +517,7 @@ export default function TasksScreen() {
             {tasks.map((task) => (
               <Card key={task.id} variant="secondary" className="p-4">
                 <View className="flex-row items-start justify-between mb-3">
-                  <Pressable 
+                  <Pressable
                     className="flex-1 mr-3"
                     onPress={() => handleTaskDetails(task)}
                   >
