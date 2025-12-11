@@ -39,6 +39,11 @@ export default function Plan() {
    const [energyPatterns, setEnergyPatterns] = useState("High energy in morning (9-12), moderate after lunch (2-4), low energy in evening");
    const [preferredTimes, setPreferredTimes] = useState("Deep work in morning, exercise at 6 PM, reading before bed");
 
+   // Additional preferences for better personalization
+   const [taskComplexity, setTaskComplexity] = useState<"simple" | "balanced" | "ambitious">("balanced");
+   const [priorityFocus, setPriorityFocus] = useState<string[]>(["health", "career", "learning"]);
+   const [weekendPreference, setWeekendPreference] = useState<"work" | "rest" | "mixed">("mixed");
+
    // Plan state
    const [finalPlan, setFinalPlan] = useState<PlanData | null>(null);
    const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
@@ -109,12 +114,18 @@ export default function Plan() {
       setIsGenerating(true);
       setPlanApplied(false);
 
-      // Build context
-      const fullContext = `${userGoals.trim()}\n\nWork Hours: ${workHours.trim() || "Not specified"}\nEnergy Patterns: ${energyPatterns.trim() || "Not specified"}\nPreferred Times: ${preferredTimes.trim() || "Not specified"}`;
+      // Build structured preferences according to backend schema
+      const preferences = {
+         workHours: workHours.trim() ? parseWorkHours(workHours) : undefined,
+         energyPatterns: energyPatterns.trim() ? parseEnergyPatterns(energyPatterns) : undefined,
+         taskComplexity,
+         priorityFocus,
+      };
 
       generatePlanMutation.mutate(
          {
-            userGoals: fullContext,
+            userGoals: userGoals.trim(),
+            preferences,
             onProgress: (stage: string, message: string) => {
                Animated.timing(fadeAnim, {
                   toValue: 0,
@@ -132,27 +143,37 @@ export default function Plan() {
          },
          {
             onSuccess: (result: any) => {
-               if (result.success && result.data) {
+               setIsGenerating(false);
+
+               if (result && result.suggestionId && result.content) {
                   try {
-                     const parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+                     // Backend returns structured response with content field
+                     const parsedData = typeof result.content === 'string' ? JSON.parse(result.content) : result.content;
                      setFinalPlan(parsedData);
-                     setCurrentPlanId(result.suggestionId || null);
+                     setCurrentPlanId(result.suggestionId);
                      setCurrentStage({ stage: "complete", message: "Plan generated successfully!" });
+
+                     // Log insights for debugging
+                     if (result.insights) {
+                        console.log("Plan generation insights:", result.insights);
+                     }
                   } catch (error) {
-                     setFinalPlan({ monthly_summary: result.data });
-                     setCurrentPlanId(result.suggestionId || null);
+                     // Fallback if content is not JSON
+                     setFinalPlan({
+                        monthly_summary: typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
+                     });
+                     setCurrentPlanId(result.suggestionId);
                      setCurrentStage({ stage: "complete", message: "Plan generated successfully!" });
                   }
                } else {
-                  setError(result.error || "Failed to generate plan");
+                  setError(result?.error || "Failed to generate plan");
                   setCurrentStage({ stage: "error", message: "Failed to generate plan" });
-                  setIsGenerating(false);
                }
             },
             onError: (error: any) => {
+               setIsGenerating(false);
                setError(error.message || "Failed to generate plan");
                setCurrentStage({ stage: "error", message: "Failed to generate plan" });
-               setIsGenerating(false);
             }
          }
       );
@@ -216,22 +237,32 @@ export default function Plan() {
          },
          {
             onSuccess: (result: any) => {
-               if (result.success && result.data) {
+               setIsRegenerating(false);
+
+               if (result && result.planId && result.content) {
                   try {
-                     const parsedData = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+                     const parsedData = typeof result.content === 'string' ? JSON.parse(result.content) : result.content;
                      setFinalPlan(parsedData);
-                     setCurrentPlanId(result.planId || currentPlanId);
+                     setCurrentPlanId(result.planId);
                      setCurrentStage({ stage: "complete", message: "Plan regenerated with your feedback!" });
                      setPlanApplied(false);
+
+                     // Log improvements if available
+                     if (result.improvements) {
+                        console.log("Plan regeneration improvements:", result.improvements);
+                     }
                   } catch (error) {
-                     setFinalPlan({ monthly_summary: result.data });
+                     setFinalPlan({
+                        monthly_summary: typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
+                     });
+                     setCurrentPlanId(result.planId);
                      setCurrentStage({ stage: "complete", message: "Plan regenerated!" });
+                     setPlanApplied(false);
                   }
                } else {
-                  Alert.alert("Error", result.error || "Failed to regenerate plan");
+                  Alert.alert("Error", result?.error || "Failed to regenerate plan");
                   setCurrentStage({ stage: "error", message: "Regeneration failed" });
                }
-               setIsRegenerating(false);
             },
             onError: (error: any) => {
                Alert.alert("Error", error.message || "Failed to regenerate plan");
@@ -279,6 +310,59 @@ export default function Plan() {
    const formatDateRange = () => {
       const today = new Date();
       return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+   };
+
+   // Helper function to parse work hours string into structured format
+   const parseWorkHours = (workHoursStr: string) => {
+      // Default values
+      const workHours = {
+         start: "09:00",
+         end: "17:00",
+         workdays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      };
+
+      // Try to parse "9 AM - 5 PM, Monday to Friday" format
+      const timeMatch = workHoursStr.match(/(\d+)\s*(AM|PM)\s*-\s*(\d+)\s*(AM|PM)/i);
+      if (timeMatch) {
+         const [, startHour, startPeriod, endHour, endPeriod] = timeMatch;
+         workHours.start = `${startHour.padStart(2, '0')}:00`;
+         workHours.end = `${endHour.padStart(2, '0')}:00`;
+      }
+
+      // Check for weekend mentions
+      if (workHoursStr.toLowerCase().includes('saturday') || workHoursStr.toLowerCase().includes('weekend')) {
+         workHours.workdays.push("Saturday");
+      }
+      if (workHoursStr.toLowerCase().includes('sunday')) {
+         workHours.workdays.push("Sunday");
+      }
+
+      return workHours;
+   };
+
+   // Helper function to parse energy patterns
+   const parseEnergyPatterns = (energyStr: string) => {
+      const patterns = {
+         highEnergyTimes: [] as string[],
+         lowEnergyTimes: [] as string[],
+         weekendPreference: weekendPreference
+      };
+
+      const lowerEnergy = energyStr.toLowerCase();
+      if (lowerEnergy.includes('morning')) {
+         patterns.highEnergyTimes.push("morning");
+      }
+      if (lowerEnergy.includes('afternoon')) {
+         patterns.highEnergyTimes.push("afternoon");
+      }
+      if (lowerEnergy.includes('evening')) {
+         patterns.lowEnergyTimes.push("evening");
+      }
+      if (lowerEnergy.includes('night')) {
+         patterns.lowEnergyTimes.push("night");
+      }
+
+      return patterns;
    };
 
    return (
@@ -357,12 +441,84 @@ export default function Plan() {
                   {/* Preferred Times Input */}
                   <Text className="text-foreground font-medium mb-2">Preferred Times (optional)</Text>
                   <TextInput
-                     className="mb-6 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
+                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
                      placeholder="e.g., Deep work in morning, exercise in evening"
                      value={preferredTimes}
                      onChangeText={setPreferredTimes}
                      placeholderTextColor={mutedColor}
                   />
+
+                  {/* Task Complexity */}
+                  <Text className="text-foreground font-medium mb-2">Task Complexity</Text>
+                  <View className="mb-4 flex-row gap-2">
+                     {(['simple', 'balanced', 'ambitious'] as const).map((complexity) => (
+                        <Pressable
+                           key={complexity}
+                           onPress={() => setTaskComplexity(complexity)}
+                           className={`flex-1 py-2 px-3 rounded-lg border ${
+                              taskComplexity === complexity
+                                 ? 'bg-orange-500 border-orange-500'
+                                 : 'bg-surface border-divider'
+                           }`}
+                        >
+                           <Text className={`text-center capitalize ${
+                              taskComplexity === complexity ? 'text-white' : 'text-foreground'
+                           }`}>
+                              {complexity}
+                           </Text>
+                        </Pressable>
+                     ))}
+                  </View>
+
+                  {/* Priority Focus */}
+                  <Text className="text-foreground font-medium mb-2">Priority Focus Areas</Text>
+                  <View className="mb-4 flex-row flex-wrap gap-2">
+                     {(['health', 'career', 'learning', 'relationships', 'finance', 'personal']).map((focus) => (
+                        <Pressable
+                           key={focus}
+                           onPress={() => {
+                              if (priorityFocus.includes(focus)) {
+                                 setPriorityFocus(priorityFocus.filter(f => f !== focus));
+                              } else {
+                                 setPriorityFocus([...priorityFocus, focus]);
+                              }
+                           }}
+                           className={`px-3 py-1 rounded-full border ${
+                              priorityFocus.includes(focus)
+                                 ? 'bg-orange-500 border-orange-500'
+                                 : 'bg-surface border-divider'
+                           }`}
+                        >
+                           <Text className={`text-sm capitalize ${
+                              priorityFocus.includes(focus) ? 'text-white' : 'text-foreground'
+                           }`}>
+                              {focus}
+                           </Text>
+                        </Pressable>
+                     ))}
+                  </View>
+
+                  {/* Weekend Preference */}
+                  <Text className="text-foreground font-medium mb-2">Weekend Preference</Text>
+                  <View className="mb-6 flex-row gap-2">
+                     {(['work', 'rest', 'mixed'] as const).map((preference) => (
+                        <Pressable
+                           key={preference}
+                           onPress={() => setWeekendPreference(preference)}
+                           className={`flex-1 py-2 px-3 rounded-lg border ${
+                              weekendPreference === preference
+                                 ? 'bg-orange-500 border-orange-500'
+                                 : 'bg-surface border-divider'
+                           }`}
+                        >
+                           <Text className={`text-center capitalize ${
+                              weekendPreference === preference ? 'text-white' : 'text-foreground'
+                           }`}>
+                              {preference}
+                           </Text>
+                        </Pressable>
+                     ))}
+                  </View>
 
                   {/* Generate Button */}
                   <Pressable

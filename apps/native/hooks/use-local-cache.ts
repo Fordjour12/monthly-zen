@@ -83,10 +83,25 @@ export function useGeneratePlan() {
    return useMutation({
       mutationFn: async ({
          userGoals,
+         preferences,
          onProgress,
          options,
       }: {
          userGoals: string;
+         preferences?: {
+            workHours?: {
+               start?: string;
+               end?: string;
+               workdays?: string[];
+            };
+            energyPatterns?: {
+               highEnergyTimes?: string[];
+               lowEnergyTimes?: string[];
+               weekendPreference?: "work" | "rest" | "mixed";
+            };
+            taskComplexity?: "simple" | "balanced" | "ambitious";
+            priorityFocus?: string[];
+         };
          onProgress?: (stage: string, message: string) => void;
          options?: {
             userId?: string;
@@ -113,6 +128,7 @@ export function useGeneratePlan() {
             // Always call server API - NO CACHING
             const result = await orpc.AI.generatePlan.call({
                userGoals,
+               preferences,
                model,
             });
 
@@ -121,9 +137,11 @@ export function useGeneratePlan() {
 
             return {
                success: true,
-               data: result.content,
-               cached: false,
                suggestionId: result.suggestionId,
+               content: result.content,
+               insights: result.insights,
+               message: result.message,
+               cached: false,
             };
          } catch (error) {
             console.error('❌ Failed to generate plan:', error);

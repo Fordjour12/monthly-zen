@@ -46,51 +46,7 @@ export default function TabLayout() {
                ),
             }}
          />
-         <Tabs.Screen
-            name="calendar"
-            options={{
-               title: "Calendar",
-               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-                  <HugeiconsIcon
-                     icon={Calendar01Icon}
-                     size={size}
-                     color={color}
-                     strokeWidth={1.5} />
-
-               ),
-            }}
-         />
-         <Tabs.Screen
-            name="tasks"
-            options={{
-               title: "Tasks",
-               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-                  <HugeiconsIcon
-                     icon={TaskEdit01Icon}
-                     size={size}
-                     color={color}
-                     strokeWidth={1.5}
-                  />
-               ),
-            }}
-         />
-
-         <Tabs.Screen
-            name="plan"
-            options={{
-               title: "Plan",
-               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-
-                  <HugeiconsIcon
-                     icon={PenTool01Icon}
-                     size={size}
-                     color={color}
-                     strokeWidth={1.5}
-                  />
-               ),
-            }}
-         />
-         <Tabs.Screen
+           <Tabs.Screen
             name="suggestion"
             options={{
                title: "Suggestion",

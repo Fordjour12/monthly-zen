@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Alert, Pressable, } from 'react-native';
 import { useThemeColor, Card } from 'heroui-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -13,7 +13,6 @@ export default function DashboardScreen() {
    const themeColorBackground = useThemeColor('background');
    const themeColorForeground = useThemeColor('foreground');
 
-   const queryClient = useQueryClient();
    const [refreshing, setRefreshing] = useState(false);
 
 
