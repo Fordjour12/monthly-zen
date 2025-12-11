@@ -260,7 +260,7 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       },
 
       // Validate preference values
-      validatePreference: (key, value) => {
+      validatePreference: (key: keyof UserPreferences, value: any) => {
         switch (key) {
           case 'theme':
             return ['light', 'dark', 'system'].includes(value as string);

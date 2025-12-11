@@ -26,7 +26,7 @@ function LandingScreen() {
       <Container className="p-6">
          <View className="py-8 mb-8">
             <Text className="text-5xl font-bold text-foreground mb-4 text-center">
-               BETTER T STACK
+               MONTHLY ZEN PLANNER
             </Text>
             <Text className="text-xl text-muted text-center">
                Your AI-powered productivity companion
@@ -43,6 +43,12 @@ function LandingScreen() {
             <Link href="/(auth)/sign-up" asChild>
                <Button variant="primary" size="lg" className="w-full mt-4">
                   Create Account
+               </Button>
+            </Link>
+
+<Link href="/(auth)/onboarding" asChild>
+               <Button size="lg" className="w-full mt-4">
+                  Onboarding
                </Button>
             </Link>
          </View>
@@ -98,6 +104,11 @@ function LandingScreen() {
               Better T Stack • Plan smarter, achieve more
             </Text>
          </View>
+
+
+         <Pressable >
+            <Text>Onboarding</Text>
+         </Pressable>
 
       </Container>
    );
