@@ -1,54 +1,51 @@
 import { Text, View, Pressable } from "react-native";
 import { Container } from "@/components/container";
-import { authClient } from "@/lib/auth-client";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, Chip, useThemeColor } from "heroui-native";
-import { SignIn } from "@/components/sign-in";
-import { SignUp } from "@/components/sign-up";
+import { Card, Chip, useThemeColor, Button } from "heroui-native";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient, orpc } from "@/utils/orpc";
 import { useRouter } from "expo-router";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { AuthGuard } from "@/components/auth-guard";
+import { Link } from "expo-router";
 
-export default function Home() {
+function LandingScreen() {
    const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-   const privateData = useQuery(orpc.privateData.queryOptions());
-
    const router = useRouter();
 
    const isConnected = healthCheck?.data === "OK";
    const isLoading = healthCheck?.isLoading;
-   const { data: session } = authClient.useSession();
 
-   const mutedColor = useThemeColor("muted");
-   const successColor = useThemeColor("success");
-   const dangerColor = useThemeColor("danger");
-
+   const themeColorBackground = useThemeColor("background");
+   const themeColorForeground = useThemeColor("foreground");
+   const themeColorMuted = useThemeColor("muted");
+   const themeColorSuccess = useThemeColor("success");
+   const themeColorDanger = useThemeColor("danger");
 
    return (
       <Container className="p-6">
-         <View className="py-4 mb-6">
-            <Text className="text-4xl font-bold text-foreground mb-2">
+         <View className="py-8 mb-8">
+            <Text className="text-5xl font-bold text-foreground mb-4 text-center">
                BETTER T STACK
+            </Text>
+            <Text className="text-xl text-muted text-center">
+               Your AI-powered productivity companion
             </Text>
          </View>
 
-         {session?.user ? (
-            <Card variant="secondary" className="mb-6 p-4">
-               <Text className="text-foreground text-base mb-2">
-                  Welcome, <Text className="font-medium">{session.user.name}</Text>
-               </Text>
-               <Text className="text-muted text-sm mb-4">{session.user.email}</Text>
-               <Pressable
-                  className="bg-danger py-3 px-4 rounded-lg self-start active:opacity-70"
-                  onPress={() => {
-                     authClient.signOut();
-                     queryClient.invalidateQueries();
-                  }}
-               >
-                  <Text className="text-foreground font-medium">Sign Out</Text>
-               </Pressable>
-            </Card>
-         ) : null}
+         <View className="space-y-4 mb-8">
+            <Link href="/(auth)/sign-in" asChild>
+               <Button size="lg" className="w-full">
+                  Sign In
+               </Button>
+            </Link>
+
+            <Link href="/(auth)/sign-up" asChild>
+               <Button variant="primary" size="lg" className="w-full mt-4">
+                  Create Account
+               </Button>
+            </Link>
+         </View>
 
          <Card variant="secondary" className="p-6">
             <View className="flex-row items-center justify-between mb-4">
@@ -69,7 +66,7 @@ export default function Home() {
                   />
                   <View className="flex-1">
                      <Text className="text-foreground font-medium mb-1">
-                        ORPC Backend
+                        Backend Connection
                      </Text>
                      <Card.Description>
                         {isLoading
@@ -80,43 +77,35 @@ export default function Home() {
                      </Card.Description>
                   </View>
                   {isLoading && (
-                     <Ionicons name="hourglass-outline" size={20} color={mutedColor} />
+                     <Ionicons name="hourglass-outline" size={20} color={themeColorMuted} />
                   )}
                   {!isLoading && isConnected && (
                      <Ionicons
                         name="checkmark-circle"
                         size={20}
-                        color={successColor}
+                        color={themeColorSuccess}
                      />
                   )}
                   {!isLoading && !isConnected && (
-                     <Ionicons name="close-circle" size={20} color={dangerColor} />
+                     <Ionicons name="close-circle" size={20} color={themeColorDanger} />
                   )}
                </View>
             </Card>
          </Card>
 
-          <Card variant="secondary" className="mt-6 p-4">
-             <Card.Title className="mb-3">Private Data</Card.Title>
-             {privateData && (
-                <Card.Description>{privateData.data?.message}</Card.Description>
-             )}
-          </Card>
-
-         {!session?.user && (
-            <>
-               <SignIn />
-               <SignUp />
-            </>
-         )}
-         <View className="items-center mt-6 ">
-         <Pressable onPress={() =>{
-
-           router.push('/(tabs)');
-         }} className="bg-accent-foreground py-4 px-3 rounded-full">
-           <Text className="text-muted-foreground">Tabs </Text>
-         </Pressable>
-                 </View>
+         <View className="mt-8">
+            <Text className="text-muted text-center text-sm">
+              Better T Stack • Plan smarter, achieve more
+            </Text>
+         </View>
       </Container>
    );
+}
+
+export default function Home() {
+  return (
+    <AuthGuard requireAuth={false} redirectTo="/(tabs)">
+      <LandingScreen />
+    </AuthGuard>
+  );
 }

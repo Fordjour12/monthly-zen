@@ -9,22 +9,33 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 
 import { queryClient } from "@/utils/orpc";
+import { LoadingScreen } from "@/components/loading-screen";
+import { AuthGuard } from "@/components/auth-guard";
 
 export const unstable_settings = {
-   initialRouteName: "(drawer)",
+   initialRouteName: "(tabs)",
 };
 
 function StackLayout() {
    return (
       <Stack screenOptions={{ headerShown: false }}>
-         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+         {/* Landing page */}
+         <Stack.Screen name="index" options={{ headerShown: false }} />
+
+         {/* Auth routes - accessible without authentication */}
+         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+
+         {/* Protected routes - require authentication */}
+         <Stack.Screen
+            name="(tabs)"
+            options={{ headerShown: false }}
+         />
+
+         {/* Modal routes */}
          <Stack.Screen
             name="modal"
             options={{ title: "Modal", presentation: "modal" }}
          />
-         <Stack.Screen
-            name="index"
-            />
       </Stack>
    );
 }

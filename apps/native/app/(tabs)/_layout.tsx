@@ -1,37 +1,38 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useThemeColor } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { Home12Icon, TsunamiIcon, PenTool01Icon, CompassIcon, Calendar01Icon, TaskEdit01Icon } from "@hugeicons/core-free-icons";
+import { Home12Icon, TsunamiIcon } from "@hugeicons/core-free-icons";
+import { AuthGuard } from "@/components/auth-guard";
 
 
 export default function TabLayout() {
    const themeColorForeground = useThemeColor("foreground");
    const themeColorBackground = useThemeColor("background");
-   const themeOrange = useThemeColor("orange-500");
+   const themeOrange = useThemeColor("accent");
    const themeOrangeLighter = useThemeColor("background-quaternary")
 
    return (
-      <Tabs
-         screenOptions={{
-            headerShown: false,
-            headerStyle: {
-               backgroundColor: themeColorBackground,
-            },
-            headerTintColor: themeColorForeground,
-            headerTitleStyle: {
-               color: themeColorForeground,
-               fontWeight: "600",
-            },
-            tabBarStyle: {
-               backgroundColor: themeColorBackground,
-            },
-            tabBarActiveTintColor: themeOrange,
-            tabBarInactiveTintColor: themeColorForeground,
-            tabBarActiveBackgroundColor: themeOrangeLighter,
-            tabBarInactiveBackgroundColor: themeColorBackground,
-         }}
-      >
+      <AuthGuard requireAuth={true}>
+         <Tabs
+            screenOptions={{
+               headerShown: false,
+               headerStyle: {
+                  backgroundColor: themeColorBackground,
+               },
+               headerTintColor: themeColorForeground,
+               headerTitleStyle: {
+                  color: themeColorForeground,
+                  fontWeight: "600",
+               },
+               tabBarStyle: {
+                  backgroundColor: themeColorBackground,
+               },
+               tabBarActiveTintColor: themeOrange,
+               tabBarInactiveTintColor: themeColorForeground,
+               tabBarActiveBackgroundColor: themeOrangeLighter,
+               tabBarInactiveBackgroundColor: themeColorBackground,
+            }}
+         >
          <Tabs.Screen
             name="index"
             options={{
@@ -61,6 +62,7 @@ export default function TabLayout() {
                ),
             }}
          />
-      </Tabs>
+         </Tabs>
+      </AuthGuard>
    );
 }
