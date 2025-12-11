@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, Alert, TextInput, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Link } from 'expo-router';
@@ -9,7 +9,6 @@ export default function SignUpScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { signUp, error, clearError } = useAuthStore();
@@ -28,14 +27,11 @@ export default function SignUpScreen() {
       Alert.alert('Error', 'Please enter a password');
       return false;
     }
-    if (password.length < 6) {
+    if (password.length < 8) {
       Alert.alert('Error', 'Password must be at least 6 characters');
       return false;
     }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return false;
-    }
+
     return true;
   };
 
@@ -64,45 +60,45 @@ export default function SignUpScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-black">
       {/* Dark Background */}
-      <View style={styles.background} />
+      <View className="absolute inset-0 bg-black" />
 
       {/* Curved Card Container */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerClassName="flex-grow justify-center py-10"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.cardContainer}>
-          <View style={styles.card}>
+        <View className="items-center px-5">
+          <View className="bg-gray-50 rounded-3xl p-8 w-full max-w-md shadow-lg shadow-black/20">
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.welcomeText}>Create Account</Text>
-              <Text style={styles.subtitleText}>• Join us to track your expenses</Text>
+            <View className="mb-6">
+              <Text className="text-3xl font-bold text-black mb-1">Create Account</Text>
+              <Text className="text-sm text-gray-500 font-normal">• Join us to track your expenses</Text>
             </View>
 
             {/* Google Sign Up Button */}
             <Pressable
-              style={styles.googleButton}
+              className="bg-black rounded-2xl py-3.5 px-5 flex-row items-center justify-center mb-5"
               onPress={handleGoogleSignUp}
               android_ripple={{ color: '#f0f0f0' }}
             >
-              <View style={styles.googleIconContainer}>
+              <View className="bg-white rounded-xl w-6 h-6 items-center justify-center mr-3">
                 <Ionicons name="logo-google" size={20} color="#000" />
               </View>
-              <Text style={styles.googleButtonText}>Sign up with Google</Text>
+              <Text className="text-white text-base font-semibold">Sign up with Google</Text>
             </Pressable>
 
             {/* Divider */}
-            <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with email</Text>
-              <View style={styles.dividerLine} />
+            <View className="flex-row items-center my-5">
+              <View className="flex-1 h-px bg-gray-300" />
+              <Text className="text-gray-400 text-xs px-3 font-normal">or continue with email</Text>
+              <View className="flex-1 h-px bg-gray-300" />
             </View>
 
             {/* Name Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Full Name</Text>
+            <View className="mb-4">
+              <Text className="text-sm font-semibold text-black mb-2">Full Name</Text>
               <TextInput
                 placeholder="Enter your name"
                 placeholderTextColor="#999"
@@ -111,13 +107,13 @@ export default function SignUpScreen() {
                 autoCapitalize="words"
                 autoCorrect={false}
                 editable={!isLoading}
-                style={styles.input}
+                className="bg-gray-100 rounded-xl py-3.5 px-4 text-base text-black border-0"
               />
             </View>
 
             {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email</Text>
+            <View className="mb-4">
+              <Text className="text-sm font-semibold text-black mb-2">Email</Text>
               <TextInput
                 placeholder="your@email.com"
                 placeholderTextColor="#999"
@@ -127,13 +123,13 @@ export default function SignUpScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isLoading}
-                style={styles.input}
+                className="bg-gray-100 rounded-xl py-3.5 px-4 text-base text-black border-0"
               />
             </View>
 
             {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Password</Text>
+            <View className="mb-4">
+              <Text className="text-sm font-semibold text-black mb-2">Password</Text>
               <TextInput
                 placeholder="Create a password"
                 placeholderTextColor="#999"
@@ -141,62 +137,45 @@ export default function SignUpScreen() {
                 onChangeText={setPassword}
                 secureTextEntry
                 editable={!isLoading}
-                style={styles.input}
-              />
-            </View>
-
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirm Password</Text>
-              <TextInput
-                placeholder="Confirm your password"
-                placeholderTextColor="#999"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                editable={!isLoading}
-                style={styles.input}
+                className="bg-gray-100 rounded-xl py-3.5 px-4 text-base text-black border-0"
               />
             </View>
 
             {/* Error Message */}
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View className="bg-red-50 rounded-lg p-3 mb-4">
+                <Text className="text-red-600 text-sm text-center">{error}</Text>
               </View>
             )}
 
             {/* Sign Up Button */}
             <Pressable
-              style={[
-                styles.signUpButton,
-                (isLoading || !name || !email || !password || !confirmPassword) && styles.signUpButtonDisabled
-              ]}
+              className={`bg-black rounded-2xl py-4 items-center mt-2 mb-5 ${(isLoading || !name || !email || !password ) ? 'bg-gray-500 opacity-50' : ''}`}
               onPress={handleSignUp}
-              disabled={isLoading || !name || !email || !password || !confirmPassword}
+              disabled={isLoading || !name || !email || !password }
               android_ripple={{ color: '#333' }}
             >
-              <Text style={styles.signUpButtonText}>
+              <Text className="text-white text-base font-bold">
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Text>
             </Pressable>
 
             {/* Sign In Link */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+            <View className="flex-row justify-center items-center mb-4">
+              <Text className="text-sm text-gray-500">Already have an account? </Text>
               <Link href="/(auth)/sign-in" asChild>
                 <Pressable>
-                  <Text style={styles.signInLink}>Sign in</Text>
+                  <Text className="text-sm text-black font-bold underline">Sign in</Text>
                 </Pressable>
               </Link>
             </View>
 
             {/* Terms */}
-            <View style={styles.termsContainer}>
-              <Text style={styles.termsText}>
+            <View className="px-2">
+              <Text className="text-xs text-gray-400 text-center leading-relaxed">
                 By creating an account, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms</Text> and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
+                <Text className="text-black font-semibold">Terms</Text> and{' '}
+                <Text className="text-black font-semibold">Privacy Policy</Text>
               </Text>
             </View>
           </View>
@@ -205,164 +184,3 @@ export default function SignUpScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  background: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  cardContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  card: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 32,
-    padding: 32,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  welcomeText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 4,
-  },
-  subtitleText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '400',
-  },
-  googleButton: {
-    backgroundColor: '#000',
-    borderRadius: 24,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  googleIconContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  googleButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  dividerText: {
-    color: '#999',
-    fontSize: 12,
-    paddingHorizontal: 12,
-    fontWeight: '400',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#000',
-    borderWidth: 0,
-  },
-  errorContainer: {
-    backgroundColor: '#FFE5E5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#D32F2F',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  signUpButton: {
-    backgroundColor: '#000',
-    borderRadius: 24,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  signUpButtonDisabled: {
-    backgroundColor: '#666',
-    opacity: 0.5,
-  },
-  signUpButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  signInLink: {
-    fontSize: 14,
-    color: '#000',
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
-  termsContainer: {
-    paddingHorizontal: 8,
-  },
-  termsText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  termsLink: {
-    color: '#000',
-    fontWeight: '600',
-  },
-});

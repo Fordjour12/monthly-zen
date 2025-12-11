@@ -98,6 +98,7 @@ function LandingScreen() {
               Better T Stack • Plan smarter, achieve more
             </Text>
          </View>
+
       </Container>
    );
 }
