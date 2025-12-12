@@ -10,7 +10,25 @@
     "slug": "my-better-t-app",
     "icon": "./assets/images/icon.png",
     "plugins": [
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/merriweather-sans/MerriweatherSans-Light.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-LightItalic.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-Regular.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-Italic.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-Medium.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-MediumItalic.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-SemiBold.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-SemiBoldItalic.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-Bold.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-BoldItalic.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-ExtraBold.ttf",
+            "./assets/fonts/merriweather-sans/MerriweatherSans-ExtraBoldItalic.ttf"
+          ]
+        }
+      ],
       "expo-router",
       [
         "expo-calendar",

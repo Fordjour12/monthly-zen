@@ -1,123 +1,135 @@
-import { Text, View, Pressable } from "react-native";
-import { Container } from "@/components/container";
-import { Ionicons } from "@expo/vector-icons";
-import { Card, Chip, useThemeColor, Button } from "heroui-native";
-import { useQuery } from "@tanstack/react-query";
-import { queryClient, orpc } from "@/utils/orpc";
-import { useRouter } from "expo-router";
-import { useAuthStore } from "@/stores/useAuthStore";
-import { AuthGuard } from "@/components/auth-guard";
+import React from "react";
+import { View, Text, Pressable } from "react-native";
 import { Link } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSemanticColors } from "@/utils/theme-utils";
+import { AuthGuard } from "@/components/auth-guard";
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import { Calendar01Icon, WindSurfIcon } from "@hugeicons/core-free-icons";
+
+
 
 function LandingScreen() {
-   const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-   const router = useRouter();
-
-   const isConnected = healthCheck?.data === "OK";
-   const isLoading = healthCheck?.isLoading;
-
-   const themeColorBackground = useThemeColor("background");
-   const themeColorForeground = useThemeColor("foreground");
-   const themeColorMuted = useThemeColor("muted");
-   const themeColorSuccess = useThemeColor("success");
-   const themeColorDanger = useThemeColor("danger");
+   const colors = useSemanticColors();
 
    return (
-      <Container className="p-6">
-         <View className="py-8 mb-8">
-            <Text className="text-5xl font-bold text-foreground mb-4 text-center">
-               MONTHLY ZEN PLANNER
-            </Text>
-            <Text className="text-xl text-muted text-center">
-               Your AI-powered productivity companion
-            </Text>
-         </View>
-
-         <View className="space-y-4 mb-8">
-            <Link href="/(auth)/sign-in" asChild>
-               <Button size="lg" className="w-full">
-                  Sign In
-               </Button>
-            </Link>
-
-            <Link href="/(auth)/sign-up" asChild>
-               <Button variant="primary" size="lg" className="w-full mt-4">
-                  Create Account
-               </Button>
-            </Link>
-
-<Link href="/(auth)/onboarding" asChild>
-               <Button size="lg" className="w-full mt-4">
-                  Onboarding
-               </Button>
-            </Link>
-         </View>
-
-         <Card variant="secondary" className="p-6">
-            <View className="flex-row items-center justify-between mb-4">
-               <Card.Title>System Status</Card.Title>
-               <Chip
-                  variant="secondary"
-                  color={isConnected ? "success" : "danger"}
-                  size="sm"
-               >
-                  <Chip.Label>{isConnected ? "LIVE" : "OFFLINE"}</Chip.Label>
-               </Chip>
+      <View className="flex-1" style={{ backgroundColor: colors.background }}>
+         <View className="flex-1 px-4 pt-4 pb-8 justify-between">
+            {/* Header */}
+            <View className="pt-6">
+               <Text className="text-2xl font-bold tracking-tight" style={{ color: colors.foreground }}>
+                  Monthly Zen
+               </Text>
             </View>
 
-            <Card className="p-4">
-               <View className="flex-row items-center">
-                  <View
-                     className={`w-3 h-3 rounded-full mr-3 ${isConnected ? "bg-success" : "bg-muted"}`}
-                  />
-                  <View className="flex-1">
-                     <Text className="text-foreground font-medium mb-1">
-                        Backend Connection
+
+            <View className="justify-center space-y-4">
+
+               <View className="space-y-2">
+                  <View className="flex-row items-center">
+                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.accent }}>
+                        Plan
                      </Text>
-                     <Card.Description>
-                        {isLoading
-                           ? "Checking connection..."
-                           : isConnected
-                              ? "Connected to API"
-                              : "API Disconnected"}
-                     </Card.Description>
+                     <View
+                        className="w-12 h-12 rounded-lg items-center justify-center mx-3"
+                        style={{ backgroundColor: colors.accent + '20' }}
+                     >
+                        <HugeiconsIcon
+                           icon={Calendar01Icon}
+                           size={24}
+                           color={colors.accent}
+                           strokeWidth={1.5}
+                        />
+                     </View>
+                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.foreground }}>
+                        Months
+                     </Text>
                   </View>
-                  {isLoading && (
-                     <Ionicons name="hourglass-outline" size={20} color={themeColorMuted} />
-                  )}
-                  {!isLoading && isConnected && (
-                     <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color={themeColorSuccess}
-                     />
-                  )}
-                  {!isLoading && !isConnected && (
-                     <Ionicons name="close-circle" size={20} color={themeColorDanger} />
-                  )}
+
+                  {/* Line 2: with the most Valuable [Icon] */}
+                  <View className="flex-row items-center flex-wrap">
+                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.muted }}>
+                        with the most
+                     </Text>
+                     <Text className="text-5xl font-medium tracking-tight ml-2" style={{ color: colors.success }}>
+                        Valuable
+                     </Text>
+                     <View
+                        className="w-12 h-12 rounded-lg items-center justify-center ml-3"
+                        style={{ backgroundColor: colors.success + '20' }}
+                     >
+                        <HugeiconsIcon
+                           icon={WindSurfIcon}
+                           size={24}
+                           color={colors.success}
+                           strokeWidth={1.5}
+                        />
+                     </View>
+                  </View>
                </View>
-            </Card>
-         </Card>
 
-         <View className="mt-8">
-            <Text className="text-muted text-center text-sm">
-              Better T Stack • Plan smarter, achieve more
-            </Text>
+               {/* THE PITCH/TAGLINE */}
+               {/* Added slight padding at the top for visual spacing */}
+               <View className="pt-3">
+                  <Text className="text-lg" style={{ color: colors.muted }}>
+                     **Stop organizing, start optimizing.** Use every month to its fullest potential.
+                  </Text>
+               </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View className="w-full space-y-4">
+               <Link href="/(auth)/sign-up" asChild>
+                  <Pressable
+                     className="w-full py-4 rounded-2xl flex-row items-center justify-center mb-4"
+                     style={{ backgroundColor: colors.foreground }}
+                     android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
+                  >
+                     <Text className="text-lg font-semibold" style={{ color: colors.background }}>
+                        Create an account
+                     </Text>
+                  </Pressable>
+               </Link>
+
+               <Link href="/(auth)/sign-in" asChild>
+                  <Pressable
+                     className="w-full py-4 rounded-2xl items-center justify-center"
+                     style={{ backgroundColor: colors.muted + '15' }}
+                     android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+                  >
+                     <Text className="text-lg font-semibold" style={{ color: colors.accent }}>
+                        I have an account
+                     </Text>
+                  </Pressable>
+               </Link>
+
+               <Link href="/font-test" asChild>
+                  <Pressable
+                     className="w-full py-4 rounded-2xl items-center justify-center mt-3"
+                     style={{ backgroundColor: colors.muted + '15' }}
+                     android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+                  >
+                     <Text className="text-lg font-semibold" style={{ color: colors.accent }}>
+                        Test Fonts
+                     </Text>
+                  </Pressable>
+               </Link>
+
+               <Text className="text-xs text-center mt-6 leading-5 px-4" style={{ color: colors.muted }}>
+                  By continuing you confirm that you agree to our{' '}
+                  <Text style={{ textDecorationLine: 'underline', color: colors.foreground }}>Terms of Service</Text>,{' '}
+                  <Text style={{ textDecorationLine: 'underline', color: colors.foreground }}>Privacy Policy</Text> and good behavior in chat with users (write to your loved ones more often ♥)
+               </Text>
+            </View>
          </View>
-
-
-         <Pressable >
-            <Text>Onboarding</Text>
-         </Pressable>
-
-      </Container>
+      </View>
    );
 }
 
 export default function Home() {
-  return (
-    <AuthGuard requireAuth={false} redirectTo="/(tabs)">
-      <LandingScreen />
-    </AuthGuard>
-  );
+   return (
+      <AuthGuard requireAuth={false} redirectTo="/(tabs)">
+         <LandingScreen />
+      </AuthGuard>
+   );
 }

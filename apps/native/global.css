@@ -4,6 +4,23 @@
 
 @source './node_modules/heroui-native/lib';
 
+@theme {
+  /* Merriweather Sans font families */
+  --font-sans: 'MerriweatherSans-Regular';
+  --font-sans-light: 'MerriweatherSans-Light';
+  --font-sans-light-italic: 'MerriweatherSans-LightItalic';
+  --font-sans-regular: 'MerriweatherSans-Regular';
+  --font-sans-regular-italic: 'MerriweatherSans-Italic';
+  --font-sans-medium: 'MerriweatherSans-Medium';
+  --font-sans-medium-italic: 'MerriweatherSans-MediumItalic';
+  --font-sans-semibold: 'MerriweatherSans-SemiBold';
+  --font-sans-semibold-italic: 'MerriweatherSans-SemiBoldItalic';
+  --font-sans-bold: 'MerriweatherSans-Bold';
+  --font-sans-bold-italic: 'MerriweatherSans-BoldItalic';
+  --font-sans-extrabold: 'MerriweatherSans-ExtraBold';
+  --font-sans-extrabold-italic: 'MerriweatherSans-ExtraBoldItalic';
+}
+
 @layer theme {
   :root {
     @variant light {
