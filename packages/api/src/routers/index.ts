@@ -2,6 +2,7 @@ import { protectedProcedure, publicProcedure } from "../index";
 import type { RouterClient } from "@orpc/server";
 import { AiRouter } from "./ai";
 import { calendarRouter } from "./calendar";
+import { userPreferencesRouter } from "./user-preferences";
 
 export const appRouter = {
    healthCheck: publicProcedure.handler(() => {
@@ -14,7 +15,8 @@ export const appRouter = {
       };
    }),
    AI: AiRouter,
-   calendar: calendarRouter
+   calendar: calendarRouter,
+   userPreferences: userPreferencesRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

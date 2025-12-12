@@ -7,3 +7,5 @@ export * from "./calendar";
 export * from "./goals";
 export * from "./habits";
 export * from "./tasks";
+// User preferences
+export * from "./user-preferences";

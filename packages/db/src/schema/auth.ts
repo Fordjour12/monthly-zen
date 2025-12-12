@@ -90,6 +90,7 @@ export const verification = sqliteTable(
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
+  preferences: many(userPreferences),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({

@@ -25,11 +25,6 @@ export const semanticColors = {
   danger: 'danger',
   error: 'danger',
 
-  // Form field colors
-  fieldBackground: 'field-background',
-  fieldForeground: 'field-foreground',
-  fieldBorder: 'field-border',
-
   // Utility colors
   border: 'border',
   divider: 'divider',
@@ -52,9 +47,6 @@ export function useSemanticColors() {
   const success = useThemeColor('success');
   const warning = useThemeColor('warning');
   const danger = useThemeColor('danger');
-  const fieldBackground = useThemeColor('field-background');
-  const fieldForeground = useThemeColor('field-foreground');
-  const fieldBorder = useThemeColor('field-border');
   const border = useThemeColor('border');
   const divider = useThemeColor('divider');
   const link = useThemeColor('link');
@@ -72,9 +64,10 @@ export function useSemanticColors() {
     warning,
     danger,
     error: danger,
-    fieldBackground,
-    fieldForeground,
-    fieldBorder,
+    // Form field colors - use surface colors as fallback
+    fieldBackground: surface,
+    fieldForeground: foreground,
+    fieldBorder: border,
     border,
     divider,
     link,
@@ -122,9 +115,9 @@ export const themePatterns = {
 
   // Input patterns
   input: {
-    backgroundColor: 'field-background',
-    borderColor: 'field-border',
-    color: 'field-foreground',
+    backgroundColor: 'surface',
+    borderColor: 'border',
+    color: 'foreground',
     placeholderColor: 'muted',
   },
 

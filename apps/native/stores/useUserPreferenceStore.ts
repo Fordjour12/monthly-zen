@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { createMMKV } from 'react-native-mmkv';
+import UserPreferencesService, { UserPreferences } from '@/lib/user-preferences-service';
 
 // Create MMKV instance for user preferences (fast access)
 const preferencesStorage = createMMKV({
@@ -21,10 +22,9 @@ const zustandMMKVStorage = {
   },
 };
 
-// User preferences interface
-interface UserPreferences {
+// Local UserPreferences interface (extends the service interface)
+interface LocalUserPreferences extends UserPreferences {
   // Theme preferences
-  theme: 'zen' | 'zen-light' | 'system';
   accentColor: string;
 
   // Language and region
@@ -77,7 +77,7 @@ interface UserPreferences {
 }
 
 // Default preferences
-const defaultPreferences: UserPreferences = {
+const defaultPreferences: LocalUserPreferences = {
   theme: 'zen',
   accentColor: '#F44A22',
   language: 'en',
@@ -113,14 +113,14 @@ const defaultPreferences: UserPreferences = {
 };
 
 // User preference store interface
-interface UserPreferenceStore extends UserPreferences {
+interface UserPreferenceStore extends LocalUserPreferences {
   // Actions
-  setPreference: <K extends keyof UserPreferences>(
+  setPreference: <K extends keyof LocalUserPreferences>(
     key: K,
-    value: UserPreferences[K]
+    value: LocalUserPreferences[K]
   ) => void;
-  setMultiplePreferences: (preferences: Partial<UserPreferences>) => void;
-  resetPreference: <K extends keyof UserPreferences>(key: K) => void;
+  setMultiplePreferences: (preferences: Partial<LocalUserPreferences>) => void;
+  resetPreference: <K extends keyof LocalUserPreferences>(key: K) => void;
   resetAllPreferences: () => void;
 
   // Server sync
@@ -129,13 +129,13 @@ interface UserPreferenceStore extends UserPreferences {
   syncPreferencesWithServer: () => Promise<void>;
 
   // Utility methods
-  getPreference: <K extends keyof UserPreferences>(
+  getPreference: <K extends keyof LocalUserPreferences>(
     key: K
-  ) => UserPreferences[K];
-  getAllPreferences: () => UserPreferences;
+  ) => LocalUserPreferences[K];
+  getAllPreferences: () => LocalUserPreferences;
 
   // Validation
-  validatePreference: <K extends keyof UserPreferences>(
+  validatePreference: <K extends keyof LocalUserPreferences>(
     key: K,
     value: any
   ) => boolean;
@@ -163,12 +163,12 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
 
       // Set multiple preferences at once
       setMultiplePreferences: (preferences) => {
-        const validPreferences: Partial<UserPreferences> = {};
+        const validPreferences: Partial<LocalUserPreferences> = {};
 
         // Validate all preferences
         Object.entries(preferences).forEach(([key, value]) => {
-          if (get().validatePreference(key as keyof UserPreferences, value)) {
-            validPreferences[key as keyof UserPreferences] = value;
+          if (get().validatePreference(key as keyof LocalUserPreferences, value)) {
+            validPreferences[key as keyof LocalUserPreferences] = value;
           }
         });
 
@@ -204,12 +204,17 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       // Load preferences from server (only when needed)
       loadPreferencesFromServer: async () => {
         try {
-          // This would need to be implemented in your API
-          // Example implementation:
-          // const serverPrefs = await orpc.user.getPreferences();
-          // if (serverPrefs) {
-          //   set(serverPrefs);
-          // }
+          const response = await UserPreferencesService.getPreferences();
+          if (response.success && response.data) {
+            // Merge server preferences with local state (preserve accentColor)
+            const serverPrefs = response.data;
+            const currentState = get();
+            const mergedPrefs = {
+              ...serverPrefs,
+              accentColor: currentState.accentColor, // Keep local accentColor
+            };
+            set(mergedPrefs as Partial<UserPreferenceStore>);
+          }
         } catch (error) {
           console.error('Failed to load preferences from server:', error);
         }
@@ -218,11 +223,8 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       // Sync preferences with server in background (don't block UI)
       syncPreferencesWithServer: async () => {
         try {
-          // This would need to be implemented in your API
-          // Get current preferences and sync to server
-          // Example implementation:
-          // const currentPrefs = get();
-          // await orpc.user.syncPreferences(currentPrefs);
+          const currentPrefs = get();
+          await UserPreferencesService.syncWithLocal(currentPrefs);
         } catch (error) {
           // Silently fail - don't block the app for server sync issues
           console.debug('Background sync failed:', error);
@@ -233,10 +235,9 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       savePreferencesToServer: async () => {
         try {
           const currentPrefs = get();
-
-          // This would need to be implemented in your API
-          // Example implementation:
-          // await orpc.user.updatePreferences(currentPrefs);
+          // Exclude accentColor from server sync as it's local-only
+          const { accentColor, ...serverPrefs } = currentPrefs;
+          await UserPreferencesService.updatePreferences(serverPrefs);
         } catch (error) {
           console.error('Failed to save preferences to server:', error);
         }
@@ -250,17 +251,17 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       // Get all preferences
       getAllPreferences: () => {
         const state = get();
-        const prefs: UserPreferences = {} as UserPreferences;
+        const prefs: LocalUserPreferences = {} as LocalUserPreferences;
 
         Object.keys(defaultPreferences).forEach(key => {
-          prefs[key as keyof UserPreferences] = state[key as keyof UserPreferenceStore];
+          prefs[key as keyof LocalUserPreferences] = state[key as keyof UserPreferenceStore];
         });
 
         return prefs;
       },
 
       // Validate preference values
-      validatePreference: (key: keyof UserPreferences, value: any) => {
+      validatePreference: (key: keyof LocalUserPreferences, value: any) => {
         switch (key) {
           case 'theme':
             return ['zen', 'zen-light', 'system'].includes(value as string);
@@ -327,7 +328,7 @@ export const useThemePreferences = () => {
   return {
     theme,
     accentColor,
-    setTheme: (theme: UserPreferences['theme']) => setPreference('theme', theme),
+    setTheme: (theme: LocalUserPreferences['theme']) => setPreference('theme', theme),
     setAccentColor: (color: string) => setPreference('accentColor', color),
   };
 };
@@ -368,10 +369,35 @@ export const useUIPreferences = () => {
     defaultView,
     compactMode,
     showCompletedTasks,
-    setDefaultView: (view: UserPreferences['defaultView']) => setPreference('defaultView', view),
+    setDefaultView: (view: LocalUserPreferences['defaultView']) => setPreference('defaultView', view),
     setCompactMode: (enabled: boolean) => setPreference('compactMode', enabled),
     setShowCompletedTasks: (show: boolean) => setPreference('showCompletedTasks', show),
   };
+};
+
+// Complete onboarding with server sync
+export const completeOnboarding = async (preferences: Partial<LocalUserPreferences>) => {
+  const fullPreferences: LocalUserPreferences = {
+    ...defaultPreferences,
+    ...preferences,
+    onboardingCompleted: true,
+  };
+
+  try {
+    // Save to server first
+    await UserPreferencesService.completeOnboarding(fullPreferences);
+
+    // Then update local store
+    useUserPreferenceStore.getState().setMultiplePreferences(fullPreferences);
+
+    return true;
+  } catch (error) {
+    console.error('Failed to complete onboarding:', error);
+
+    // Still save locally if server fails
+    useUserPreferenceStore.getState().setMultiplePreferences(fullPreferences);
+    return false;
+  }
 };
 
 // Initialize preferences on app start (load from MMKV first, then sync with server)

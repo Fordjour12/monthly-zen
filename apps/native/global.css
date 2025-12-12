@@ -6,30 +6,202 @@
 
 @layer theme {
   :root {
+    @variant light {
+      /* Default light theme variables */
+      --background: #FFFFFF;
+      --foreground: #000000;
+      --surface: #F8FAFC;
+      --surface-foreground: #000000;
+      --overlay: #FFFFFF;
+      --overlay-foreground: #000000;
+      --muted: #6B7280;
+      --accent: #3B82F6;
+      --accent-foreground: #FFFFFF;
+      --default: #FFFFFF;
+      --default-foreground: #000000;
+
+      /* Status colors */
+      --success: #10B981;
+      --success-foreground: #FFFFFF;
+      --warning: #F59E0B;
+      --warning-foreground: #FFFFFF;
+      --danger: #EF4444;
+      --danger-foreground: #FFFFFF;
+
+      /* Additional semantic colors */
+      --segment: #E5E7EB;
+      --segment-foreground: #000000;
+
+      /* Form field colors */
+      --field-background: #FFFFFF;
+      --field-foreground: #000000;
+      --field-border: #E5E7EB;
+      --field-placeholder: #9CA3AF;
+
+      /* Utility colors */
+      --border: #E5E7EB;
+      --divider: #E5E7EB;
+      --link: #3B82F6;
+
+      /* Uniwind --color- prefixed variables for className utilities */
+      --color-background: #FFFFFF;
+      --color-foreground: #000000;
+      --color-surface: #F8FAFC;
+      --color-surface-foreground: #000000;
+      --color-overlay: #FFFFFF;
+      --color-overlay-foreground: #000000;
+      --color-muted: #6B7280;
+      --color-accent: #3B82F6;
+      --color-accent-foreground: #FFFFFF;
+      --color-default: #FFFFFF;
+      --color-default-foreground: #000000;
+      --color-success: #10B981;
+      --color-success-foreground: #FFFFFF;
+      --color-warning: #F59E0B;
+      --color-warning-foreground: #FFFFFF;
+      --color-danger: #EF4444;
+      --color-danger-foreground: #FFFFFF;
+      --color-segment: #E5E7EB;
+      --color-segment-foreground: #000000;
+      --color-field-background: #FFFFFF;
+      --color-field-foreground: #000000;
+      --color-field-border: #E5E7EB;
+      --color-field-placeholder: #9CA3AF;
+      --color-border: #E5E7EB;
+      --color-divider: #E5E7EB;
+      --color-link: #3B82F6;
+    }
+
+    @variant dark {
+      /* Default dark theme variables */
+      --background: #000000;
+      --foreground: #FFFFFF;
+      --surface: #1F2937;
+      --surface-foreground: #FFFFFF;
+      --overlay: #111827;
+      --overlay-foreground: #FFFFFF;
+      --muted: #9CA3AF;
+      --accent: #3B82F6;
+      --accent-foreground: #FFFFFF;
+      --default: #1F2937;
+      --default-foreground: #FFFFFF;
+
+      /* Status colors */
+      --success: #10B981;
+      --success-foreground: #FFFFFF;
+      --warning: #F59E0B;
+      --warning-foreground: #FFFFFF;
+      --danger: #EF4444;
+      --danger-foreground: #FFFFFF;
+
+      /* Additional semantic colors */
+      --segment: #374151;
+      --segment-foreground: #FFFFFF;
+
+      /* Form field colors */
+      --field-background: #1F2937;
+      --field-foreground: #FFFFFF;
+      --field-border: #374151;
+      --field-placeholder: #6B7280;
+
+      /* Utility colors */
+      --border: #374151;
+      --divider: #374151;
+      --link: #60A5FA;
+
+      /* Uniwind --color- prefixed variables for className utilities */
+      --color-background: #000000;
+      --color-foreground: #FFFFFF;
+      --color-surface: #1F2937;
+      --color-surface-foreground: #FFFFFF;
+      --color-overlay: #111827;
+      --color-overlay-foreground: #FFFFFF;
+      --color-muted: #9CA3AF;
+      --color-accent: #3B82F6;
+      --color-accent-foreground: #FFFFFF;
+      --color-default: #1F2937;
+      --color-default-foreground: #FFFFFF;
+      --color-success: #10B981;
+      --color-success-foreground: #FFFFFF;
+      --color-warning: #F59E0B;
+      --color-warning-foreground: #FFFFFF;
+      --color-danger: #EF4444;
+      --color-danger-foreground: #FFFFFF;
+      --color-segment: #374151;
+      --color-segment-foreground: #FFFFFF;
+      --color-field-background: #1F2937;
+      --color-field-foreground: #FFFFFF;
+      --color-field-border: #374151;
+      --color-field-placeholder: #6B7280;
+      --color-border: #374151;
+      --color-divider: #374151;
+      --color-link: #60A5FA;
+    }
+
     @variant zen {
       /* Base theme variables required by HeroUI Native */
       --background: #161616;
       --foreground: #FEF8E8;
       --surface: #1E1E1E;
+      --surface-foreground: #FEF8E8;
       --overlay: #2A2A2A;
+      --overlay-foreground: #FEF8E8;
       --muted: #A8AAAC;
       --accent: #F44A22;
+      --accent-foreground: #FEF8E8;
       --default: #1E1E1E;
+      --default-foreground: #FEF8E8;
 
       /* Status colors */
       --success: #22B4C4;
+      --success-foreground: #FEF8E8;
       --warning: #F44A22;
+      --warning-foreground: #FEF8E8;
       --danger: #EF4444;
+      --danger-foreground: #FEF8E8;
+
+      /* Additional semantic colors */
+      --segment: #2A2A2A;
+      --segment-foreground: #FEF8E8;
 
       /* Form field colors */
       --field-background: #1E1E1E;
       --field-foreground: #FEF8E8;
       --field-border: transparent;
+      --field-placeholder: #A8AAAC;
 
       /* Utility colors */
       --border: #2A2A2A;
       --divider: #2A2A2A;
       --link: #22B4C4;
+
+      /* Uniwind --color- prefixed variables for className utilities */
+      --color-background: #161616;
+      --color-foreground: #FEF8E8;
+      --color-surface: #1E1E1E;
+      --color-surface-foreground: #FEF8E8;
+      --color-overlay: #2A2A2A;
+      --color-overlay-foreground: #FEF8E8;
+      --color-muted: #A8AAAC;
+      --color-accent: #F44A22;
+      --color-accent-foreground: #FEF8E8;
+      --color-default: #1E1E1E;
+      --color-default-foreground: #FEF8E8;
+      --color-success: #22B4C4;
+      --color-success-foreground: #FEF8E8;
+      --color-warning: #F44A22;
+      --color-warning-foreground: #FEF8E8;
+      --color-danger: #EF4444;
+      --color-danger-foreground: #FEF8E8;
+      --color-segment: #2A2A2A;
+      --color-segment-foreground: #FEF8E8;
+      --color-field-background: #1E1E1E;
+      --color-field-foreground: #FEF8E8;
+      --color-field-border: transparent;
+      --color-field-placeholder: #A8AAAC;
+      --color-border: #2A2A2A;
+      --color-divider: #2A2A2A;
+      --color-link: #22B4C4;
     }
 
     @variant zen-light {
@@ -37,25 +209,65 @@
       --background: #FEF8E8;
       --foreground: #161616;
       --surface: #FFFFFF;
+      --surface-foreground: #161616;
       --overlay: #FFFFFF;
+      --overlay-foreground: #161616;
       --muted: #A8AAAC;
       --accent: #F44A22;
+      --accent-foreground: #FEF8E8;
       --default: #FFFFFF;
+      --default-foreground: #161616;
 
       /* Status colors (same across themes) */
       --success: #22B4C4;
+      --success-foreground: #FEF8E8;
       --warning: #F44A22;
+      --warning-foreground: #FEF8E8;
       --danger: #EF4444;
+      --danger-foreground: #FEF8E8;
+
+      /* Additional semantic colors */
+      --segment: #E4E2E3;
+      --segment-foreground: #161616;
 
       /* Form field colors */
       --field-background: #FFFFFF;
       --field-foreground: #161616;
       --field-border: transparent;
+      --field-placeholder: #A8AAAC;
 
       /* Utility colors */
       --border: #E4E2E3;
       --divider: #E4E2E3;
       --link: #22B4C4;
+
+      /* Uniwind --color- prefixed variables for className utilities */
+      --color-background: #FEF8E8;
+      --color-foreground: #161616;
+      --color-surface: #FFFFFF;
+      --color-surface-foreground: #161616;
+      --color-overlay: #FFFFFF;
+      --color-overlay-foreground: #161616;
+      --color-muted: #A8AAAC;
+      --color-accent: #F44A22;
+      --color-accent-foreground: #FEF8E8;
+      --color-default: #FFFFFF;
+      --color-default-foreground: #161616;
+      --color-success: #22B4C4;
+      --color-success-foreground: #FEF8E8;
+      --color-warning: #F44A22;
+      --color-warning-foreground: #FEF8E8;
+      --color-danger: #EF4444;
+      --color-danger-foreground: #FEF8E8;
+      --color-segment: #E4E2E3;
+      --color-segment-foreground: #161616;
+      --color-field-background: #FFFFFF;
+      --color-field-foreground: #161616;
+      --color-field-border: transparent;
+      --color-field-placeholder: #A8AAAC;
+      --color-border: #E4E2E3;
+      --color-divider: #E4E2E3;
+      --color-link: #22B4C4;
     }
   }
 }
