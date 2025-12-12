@@ -7,6 +7,7 @@ import type {
   habits,
   tasks,
   user,
+  userPreferences,
 } from "./schema";
 
 // Select types (for reading from database)
@@ -17,6 +18,7 @@ export type Habit = InferSelectModel<typeof habits>;
 export type HabitLog = InferSelectModel<typeof habitLogs>;
 export type CalendarEvent = InferSelectModel<typeof calendarEvents>;
 export type AISuggestion = InferSelectModel<typeof aiSuggestions>;
+export type UserPreferences = InferSelectModel<typeof userPreferences>;
 
 // Insert types (for writing to database)
 export type NewUser = InferInsertModel<typeof user>;
@@ -26,15 +28,23 @@ export type NewHabit = InferInsertModel<typeof habits>;
 export type NewHabitLog = InferInsertModel<typeof habitLogs>;
 export type NewCalendarEvent = InferInsertModel<typeof calendarEvents>;
 export type NewAISuggestion = InferInsertModel<typeof aiSuggestions>;
+export type NewUserPreferences = InferInsertModel<typeof userPreferences>;
 
 // Enum types
 export type GoalStatus = "active" | "completed" | "archived";
 export type TaskStatus = "pending" | "completed" | "skipped";
-export type TaskPriority = "low" | "medium" | "high";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type HabitFrequency = "daily" | "weekly" | "monthly";
 export type HabitLogStatus = "completed" | "partial" | "skipped";
 export type AISuggestionType = "plan" | "briefing" | "reschedule";
 export type AISuggestionStatus = "draft" | "active" | "archived" | "applied";
+
+// User Preferences enum types
+export type Theme = "zen" | "zen-light" | "system";
+export type DefaultView = "dashboard" | "calendar" | "tasks" | "plan";
+export type AIResponseStyle = "professional" | "casual" | "friendly";
+export type DefaultTaskPriority = "low" | "medium" | "high" | "urgent";
+export type DateFormat = "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy-MM-dd";
 
 // Extended types with relations
 export type GoalWithTasks = Goal & {

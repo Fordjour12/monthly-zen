@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { userPreferences } from "./user-preferences";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),

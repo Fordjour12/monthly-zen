@@ -7,6 +7,7 @@ import {
   habitLogs,
   habits,
   tasks,
+  userPreferences,
 } from "./schema";
 import type {
   AISuggestion,
@@ -16,7 +17,9 @@ import type {
   Habit,
   HabitLog,
   NewAISuggestion,
+  NewUserPreferences,
   Task,
+  UserPreferences,
 } from "./types";
 
 /**
@@ -1064,6 +1067,296 @@ export const aiQueries = {
       totalGenerated,
       applicationRate,
       byType,
+    };
+  },
+};
+
+/**
+ * User Preferences queries
+ */
+export const userPreferencesQueries = {
+  /**
+   * Get user preferences by user ID
+   */
+  async findByUserId(userId: string): Promise<UserPreferences | undefined> {
+    return await db.query.userPreferences.findFirst({
+      where: eq(userPreferences.userId, userId),
+    });
+  },
+
+  /**
+   * Create or update user preferences
+   */
+  async upsert(preferences: NewUserPreferences): Promise<UserPreferences> {
+    // Check if preferences already exist
+    const existing = await userPreferencesQueries.findByUserId(preferences.userId);
+
+    if (existing) {
+      // Update existing preferences
+      const [updated] = await db
+        .update(userPreferences)
+        .set({ ...preferences, updatedAt: new Date() })
+        .where(eq(userPreferences.userId, preferences.userId))
+        .returning();
+      return updated!;
+    } else {
+      // Create new preferences
+      const [created] = await db
+        .insert(userPreferences)
+        .values(preferences)
+        .returning();
+      return created!;
+    }
+  },
+
+  /**
+   * Update user preferences
+   */
+  async update(
+    userId: string,
+    updates: Partial<Omit<UserPreferences, 'id' | 'userId' | 'createdAt'>>
+  ): Promise<UserPreferences> {
+    const [updated] = await db
+      .update(userPreferences)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userPreferences.userId, userId))
+      .returning();
+
+    if (!updated) {
+      throw new Error(`User preferences not found for user: ${userId}`);
+    }
+
+    return updated;
+  },
+
+  /**
+   * Update specific preference fields
+   */
+  async updateField(
+    userId: string,
+    field: keyof Omit<UserPreferences, 'id' | 'userId' | 'createdAt'>,
+    value: any
+  ): Promise<UserPreferences> {
+    return await userPreferencesQueries.update(userId, { [field]: value });
+  },
+
+  /**
+   * Complete onboarding for a user
+   */
+  async completeOnboarding(
+    userId: string,
+    preferences: Partial<UserPreferences>
+  ): Promise<UserPreferences> {
+    const onboardingData = {
+      onboardingCompleted: true,
+      onboardingCompletedAt: new Date(),
+      ...preferences,
+    };
+
+    return await userPreferencesQueries.upsert({
+      id: `prefs_${userId}_${Date.now()}`,
+      userId,
+      ...onboardingData,
+      // Set defaults for required fields if not provided
+      theme: 'zen' as const,
+      notificationsEnabled: true,
+      dailyBriefingEnabled: true,
+      taskRemindersEnabled: true,
+      calendarRemindersEnabled: true,
+      reminderTime: '09:00',
+      defaultView: 'dashboard' as const,
+      aiSuggestionsEnabled: true,
+      aiAssistantName: 'Beerus',
+      aiResponseStyle: 'professional' as const,
+      focusModeEnabled: false,
+      pomodoroDuration: 25,
+      dailyGoalMinutes: 480,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      compactMode: false,
+      showCompletedTasks: true,
+      language: 'en',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      dateFormat: 'MM/dd/yyyy' as const,
+      autoSyncCalendar: true,
+      defaultEventDuration: 60,
+      defaultTaskPriority: 'medium' as const,
+      taskAutoArchive: true,
+      taskAutoArchiveDays: 30,
+      primaryCalendarId: null,
+      syncCalendars: [],
+      dataCollectionEnabled: false,
+      analyticsEnabled: true,
+      crashReportingEnabled: true,
+      customPreferences: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  },
+
+  /**
+   * Reset user preferences to defaults
+   */
+  async resetToDefaults(userId: string): Promise<UserPreferences> {
+    const defaultPreferences: NewUserPreferences = {
+      id: `prefs_${userId}_${Date.now()}`,
+      userId,
+      theme: 'zen',
+      notificationsEnabled: true,
+      dailyBriefingEnabled: true,
+      taskRemindersEnabled: true,
+      calendarRemindersEnabled: true,
+      reminderTime: '09:00',
+      defaultView: 'dashboard',
+      aiSuggestionsEnabled: true,
+      aiAssistantName: 'Beerus',
+      aiResponseStyle: 'professional',
+      focusModeEnabled: false,
+      pomodoroDuration: 25,
+      dailyGoalMinutes: 480,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      compactMode: false,
+      showCompletedTasks: true,
+      language: 'en',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      dateFormat: 'MM/dd/yyyy',
+      autoSyncCalendar: true,
+      defaultEventDuration: 60,
+      defaultTaskPriority: 'medium',
+      taskAutoArchive: true,
+      taskAutoArchiveDays: 30,
+      primaryCalendarId: null,
+      syncCalendars: [],
+      dataCollectionEnabled: false,
+      analyticsEnabled: true,
+      crashReportingEnabled: true,
+      customPreferences: {},
+      onboardingCompleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return await userPreferencesQueries.upsert(defaultPreferences);
+  },
+
+  /**
+   * Delete user preferences
+   */
+  async delete(userId: string): Promise<void> {
+    await db
+      .delete(userPreferences)
+      .where(eq(userPreferences.userId, userId));
+  },
+
+  /**
+   * Get user preferences with default fallback
+   */
+  async getWithDefaults(userId: string): Promise<UserPreferences> {
+    const preferences = await userPreferencesQueries.findByUserId(userId);
+
+    if (preferences) {
+      return preferences;
+    }
+
+    // Return default preferences if none exist
+    const defaultPrefs: UserPreferences = {
+      id: `prefs_${userId}_${Date.now()}`,
+      userId,
+      theme: 'zen',
+      notificationsEnabled: true,
+      dailyBriefingEnabled: true,
+      taskRemindersEnabled: true,
+      calendarRemindersEnabled: true,
+      reminderTime: '09:00',
+      defaultView: 'dashboard',
+      aiSuggestionsEnabled: true,
+      aiAssistantName: 'Beerus',
+      aiResponseStyle: 'professional',
+      focusModeEnabled: false,
+      pomodoroDuration: 25,
+      dailyGoalMinutes: 480,
+      shortBreakDuration: 5,
+      longBreakDuration: 15,
+      compactMode: false,
+      showCompletedTasks: true,
+      language: 'en',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      dateFormat: 'MM/dd/yyyy',
+      autoSyncCalendar: true,
+      defaultEventDuration: 60,
+      defaultTaskPriority: 'medium',
+      taskAutoArchive: true,
+      taskAutoArchiveDays: 30,
+      primaryCalendarId: null,
+      syncCalendars: [],
+      dataCollectionEnabled: false,
+      analyticsEnabled: true,
+      crashReportingEnabled: true,
+      customPreferences: {},
+      onboardingCompleted: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return defaultPrefs;
+  },
+
+  /**
+   * Get multiple preferences by user IDs
+   */
+  async findByUserIds(userIds: string[]): Promise<UserPreferences[]> {
+    return await db.query.userPreferences.findMany({
+      where: sql`${userPreferences.userId} IN ${userIds}`,
+    });
+  },
+
+  /**
+   * Get users with onboarding completed
+   */
+  async findUsersWithOnboardingCompleted(): Promise<UserPreferences[]> {
+    return await db.query.userPreferences.findMany({
+      where: eq(userPreferences.onboardingCompleted, true),
+      orderBy: [desc(userPreferences.onboardingCompletedAt)],
+    });
+  },
+
+  /**
+   * Get preference statistics
+   */
+  async getStats(): Promise<{
+    totalUsers: number;
+    onboardingCompleted: number;
+    themeDistribution: Record<string, number>;
+    defaultViewDistribution: Record<string, number>;
+    mostUsedLanguage: string;
+  }> {
+    const allPrefs = await db.query.userPreferences.findMany();
+
+    const themeDistribution: Record<string, number> = {};
+    const defaultViewDistribution: Record<string, number> = {};
+    const languageDistribution: Record<string, number> = {};
+
+    allPrefs.forEach(pref => {
+      // Count themes
+      themeDistribution[pref.theme] = (themeDistribution[pref.theme] || 0) + 1;
+
+      // Count default views
+      defaultViewDistribution[pref.defaultView] = (defaultViewDistribution[pref.defaultView] || 0) + 1;
+
+      // Count languages
+      languageDistribution[pref.language] = (languageDistribution[pref.language] || 0) + 1;
+    });
+
+    const mostUsedLanguage = Object.entries(languageDistribution)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'en';
+
+    return {
+      totalUsers: allPrefs.length,
+      onboardingCompleted: allPrefs.filter(p => p.onboardingCompleted).length,
+      themeDistribution,
+      defaultViewDistribution,
+      mostUsedLanguage,
     };
   },
 };
