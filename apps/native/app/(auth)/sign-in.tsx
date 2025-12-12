@@ -61,8 +61,8 @@ export default function SignInScreen() {
             >
                {/* Header */}
                <View className="mb-6">
-                  <Text className="text-3xl font-bold mb-1" style={{ color: colors.foreground }}>Welcome</Text>
-                  <Text className="text-sm font-normal" style={{ color: colors.muted }}>• Sign in to track your plans</Text>
+                  <Text className="text-3xl font-sans-bold mb-1" style={{ color: colors.foreground }}>Welcome</Text>
+                  <Text className="text-sm font-sans" style={{ color: colors.muted }}>• Sign in to track your plans</Text>
                </View>
 
                {/* Google Sign In Button */}
@@ -78,7 +78,7 @@ export default function SignInScreen() {
                   >
                      <Ionicons name="logo-google" size={20} color={colors.accent} />
                   </View>
-                  <Text className="text-base font-semibold" style={{ color: colors.background }}>
+                  <Text className="text-base font-sans-semibold" style={{ color: colors.background }}>
                      Sign in with Google
                   </Text>
                </Pressable>
@@ -86,7 +86,7 @@ export default function SignInScreen() {
                {/* Divider */}
                <View className="flex-row items-center my-5">
                   <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-                  <Text className="text-xs px-3 font-normal" style={{ color: colors.muted }}>
+                  <Text className="text-xs px-3 font-sans" style={{ color: colors.muted }}>
                      or continue with email
                   </Text>
                   <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
@@ -94,7 +94,7 @@ export default function SignInScreen() {
 
                {/* Email Input */}
                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.foreground }}>Email</Text>
+                  <Text className="text-sm font-sans-semibold mb-2" style={{ color: colors.foreground }}>Email</Text>
                   <TextInput
                      placeholder="your@email.com"
                      placeholderTextColor={colors.muted}
@@ -118,7 +118,7 @@ export default function SignInScreen() {
 
                {/* Password Input */}
                <View className="mb-4">
-                  <Text className="text-sm font-semibold mb-2" style={{ color: colors.foreground }}>Password</Text>
+                  <Text className="text-sm font-sans-semibold mb-2" style={{ color: colors.foreground }}>Password</Text>
                   <TextInput
                      placeholder="Enter your password"
                      placeholderTextColor={colors.muted}
@@ -159,17 +159,17 @@ export default function SignInScreen() {
                   disabled={isLoading || !email || !password}
                   android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
                >
-                  <Text className="text-base font-bold" style={{ color: colors.background }}>
+                  <Text className="text-base font-sans-bold" style={{ color: colors.background }}>
                      {isLoading ? 'Signing in...' : 'Sign in'}
                   </Text>
                </Pressable>
 
                {/* Sign Up Link */}
                <View className="flex-row justify-center items-center">
-                  <Text className="text-sm" style={{ color: colors.muted }}>Don't have an account? </Text>
+                  <Text className="text-sm font-sans" style={{ color: colors.muted }}>Don't have an account? </Text>
                   <Link href="/(auth)/sign-up" asChild>
                      <Pressable>
-                        <Text className="text-sm font-bold underline" style={{ color: colors.accent }}>Sign up</Text>
+                        <Text className="text-sm font-sans-bold underline" style={{ color: colors.accent }}>Sign up</Text>
                      </Pressable>
                   </Link>
                </View>

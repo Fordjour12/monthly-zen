@@ -17,7 +17,7 @@ function LandingScreen() {
          <View className="flex-1 px-4 pt-4 pb-8 justify-between">
             {/* Header */}
             <View className="pt-6">
-               <Text className="text-2xl font-bold tracking-tight" style={{ color: colors.foreground }}>
+               <Text className="text-2xl font-sans-bold tracking-tight" style={{ color: colors.foreground }}>
                   Monthly Zen
                </Text>
             </View>
@@ -27,7 +27,7 @@ function LandingScreen() {
 
                <View className="space-y-2">
                   <View className="flex-row items-center">
-                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.accent }}>
+                     <Text className="text-5xl font-sans-medium tracking-tight" style={{ color: colors.accent }}>
                         Plan
                      </Text>
                      <View
@@ -41,17 +41,17 @@ function LandingScreen() {
                            strokeWidth={1.5}
                         />
                      </View>
-                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.foreground }}>
+                     <Text className="text-5xl font-sans-medium tracking-tight" style={{ color: colors.foreground }}>
                         Months
                      </Text>
                   </View>
 
                   {/* Line 2: with the most Valuable [Icon] */}
                   <View className="flex-row items-center flex-wrap">
-                     <Text className="text-5xl font-medium tracking-tight" style={{ color: colors.muted }}>
+                     <Text className="text-5xl font-sans-medium tracking-tight" style={{ color: colors.muted }}>
                         with the most
                      </Text>
-                     <Text className="text-5xl font-medium tracking-tight ml-2" style={{ color: colors.success }}>
+                     <Text className="text-5xl font-sans-semibold tracking-tight ml-2" style={{ color: colors.success }}>
                         Valuable
                      </Text>
                      <View
@@ -68,10 +68,8 @@ function LandingScreen() {
                   </View>
                </View>
 
-               {/* THE PITCH/TAGLINE */}
-               {/* Added slight padding at the top for visual spacing */}
                <View className="pt-3">
-                  <Text className="text-lg" style={{ color: colors.muted }}>
+                  <Text className="text-lg font-sans" style={{ color: colors.muted }}>
                      **Stop organizing, start optimizing.** Use every month to its fullest potential.
                   </Text>
                </View>
@@ -85,7 +83,7 @@ function LandingScreen() {
                      style={{ backgroundColor: colors.foreground }}
                      android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
                   >
-                     <Text className="text-lg font-semibold" style={{ color: colors.background }}>
+                     <Text className="text-lg font-sans-semibold" style={{ color: colors.background }}>
                         Create an account
                      </Text>
                   </Pressable>
@@ -97,28 +95,29 @@ function LandingScreen() {
                      style={{ backgroundColor: colors.muted + '15' }}
                      android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
                   >
-                     <Text className="text-lg font-semibold" style={{ color: colors.accent }}>
+                     <Text className="text-lg font-sans-semibold" style={{ color: colors.accent }}>
                         I have an account
                      </Text>
                   </Pressable>
                </Link>
 
-               <Link href="/font-test" asChild>
+               <Link href="/(auth)/onboarding" asChild>
                   <Pressable
-                     className="w-full py-4 rounded-2xl items-center justify-center mt-3"
+                     className="w-full py-4 rounded-2xl items-center justify-center"
                      style={{ backgroundColor: colors.muted + '15' }}
                      android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
                   >
-                     <Text className="text-lg font-semibold" style={{ color: colors.accent }}>
-                        Test Fonts
+                     <Text className="text-lg font-sans-semibold" style={{ color: colors.accent }}>
+                        Onboarding
                      </Text>
                   </Pressable>
                </Link>
 
-               <Text className="text-xs text-center mt-6 leading-5 px-4" style={{ color: colors.muted }}>
+
+               <Text className="text-xs text-center mt-6 leading-5 px-4 font-sans" style={{ color: colors.muted }}>
                   By continuing you confirm that you agree to our{' '}
-                  <Text style={{ textDecorationLine: 'underline', color: colors.foreground }}>Terms of Service</Text>,{' '}
-                  <Text style={{ textDecorationLine: 'underline', color: colors.foreground }}>Privacy Policy</Text> and good behavior in chat with users (write to your loved ones more often ♥)
+                  <Text className="font-sans" style={{ textDecorationLine: 'underline', color: colors.foreground }}>Terms of Service</Text>,{' '}
+                  <Text className="font-sans" style={{ textDecorationLine: 'underline', color: colors.foreground }}>Privacy Policy</Text> and good behavior in chat with users (write to your loved ones more often ♥)
                </Text>
             </View>
          </View>

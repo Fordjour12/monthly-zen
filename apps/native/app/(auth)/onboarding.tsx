@@ -103,10 +103,10 @@ export default function OnboardingScreen() {
             showsVerticalScrollIndicator={false}
          >
             <View className="px-6 pt-8 pb-6">
-               <Text className="text-3xl font-bold mb-2" style={{ color: colors.foreground }}>
-                  Welcome to Zen Calendar!
+               <Text className="text-3xl font-sans-bold mb-2" style={{ color: colors.foreground }}>
+                  Welcome to Monthly Zen!
                </Text>
-               <Text className="text-base" style={{ color: colors.muted }}>
+               <Text className="text-base font-sans" style={{ color: colors.muted }}>
                   Let's personalize your experience
                </Text>
             </View>
@@ -114,7 +114,7 @@ export default function OnboardingScreen() {
             <View className="px-6 pb-6">
                {/* Theme Selection */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Choose Your Theme
                   </Text>
                   <View className="space-y-3 mb-4">
@@ -137,7 +137,7 @@ export default function OnboardingScreen() {
                               size={20}
                               color={theme === key ? colors.accent : colors.muted}
                            />
-                           <Text className={`ml-3 font-medium flex-1`} style={{
+                           <Text className={`ml-3 font-sans-medium flex-1`} style={{
                               color: theme === key ? colors.accent : colors.foreground
                            }}>{label}</Text>
                            {theme === key && (
@@ -151,7 +151,7 @@ export default function OnboardingScreen() {
 
                {/* Notifications */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Notifications
                   </Text>
                   <View className="space-y-3">
@@ -161,7 +161,7 @@ export default function OnboardingScreen() {
                      }}>
                         <View className="flex-row items-center justify-between">
                            <View>
-                              <Text className="font-medium" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                  Push Notifications
                               </Text>
                               <Text className="text-sm" style={{ color: colors.muted }}>
@@ -189,7 +189,7 @@ export default function OnboardingScreen() {
                            }}>
                               <View className="flex-row items-center justify-between">
                                  <View>
-                                    <Text className="font-medium" style={{ color: colors.foreground }}>
+                                    <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                        Daily Briefing
                                     </Text>
                                     <Text className="text-sm" style={{ color: colors.muted }}>
@@ -215,7 +215,7 @@ export default function OnboardingScreen() {
                            }}>
                               <View className="flex-row items-center justify-between">
                                  <View>
-                                    <Text className="font-medium" style={{ color: colors.foreground }}>
+                                    <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                        Task Reminders
                                     </Text>
                                     <Text className="text-sm" style={{ color: colors.muted }}>
@@ -241,7 +241,7 @@ export default function OnboardingScreen() {
                            }}>
                               <View className="flex-row items-center justify-between">
                                  <View>
-                                    <Text className="font-medium" style={{ color: colors.foreground }}>
+                                    <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                        Calendar Events
                                     </Text>
                                     <Text className="text-sm" style={{ color: colors.muted }}>
@@ -265,7 +265,7 @@ export default function OnboardingScreen() {
                               backgroundColor: colors.surface,
                               borderColor: colors.border
                            }}>
-                              <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                                  Default Reminder Time
                               </Text>
                               <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -282,7 +282,7 @@ export default function OnboardingScreen() {
                                        }}
                                        onPress={() => setReminderTime(time)}
                                     >
-                                       <Text className={`text-sm font-medium`} style={{
+                                       <Text className={`text-sm font-sans-medium`} style={{
                                           color: reminderTime === time ? colors.accent : colors.foreground
                                        }}>{time}</Text>
                                     </Pressable>
@@ -296,7 +296,7 @@ export default function OnboardingScreen() {
 
                {/* Default View */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Default Screen
                   </Text>
                   <View className="space-y-2">
@@ -320,7 +320,7 @@ export default function OnboardingScreen() {
                               size={18}
                               color={defaultView === key ? colors.accent : colors.muted}
                            />
-                           <Text className={`ml-3 font-medium flex-1`} style={{
+                           <Text className={`ml-3 font-sans-medium flex-1`} style={{
                               color: defaultView === key ? colors.accent : colors.foreground
                            }}>{label}</Text>
                            {defaultView === key && (
@@ -333,7 +333,7 @@ export default function OnboardingScreen() {
 
                {/* Language & Region */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Language & Region
                   </Text>
                   <View className="space-y-3">
@@ -341,7 +341,7 @@ export default function OnboardingScreen() {
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
-                        <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                        <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                            Language
                         </Text>
                         <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -363,7 +363,7 @@ export default function OnboardingScreen() {
                                  }}
                                  onPress={() => setLanguage(lang.code)}
                               >
-                                 <Text className={`text-sm font-medium`} style={{
+                                 <Text className={`text-sm font-sans-medium`} style={{
                                     color: language === lang.code ? colors.accent : colors.foreground
                                  }}>{lang.name}</Text>
                               </Pressable>
@@ -375,7 +375,7 @@ export default function OnboardingScreen() {
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
-                        <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                        <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                            Date Format
                         </Text>
                         <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -396,7 +396,7 @@ export default function OnboardingScreen() {
                                  }}
                                  onPress={() => setDateFormat(date.format)}
                               >
-                                 <Text className={`text-sm font-medium`} style={{
+                                 <Text className={`text-sm font-sans-medium`} style={{
                                     color: dateFormat === date.format ? colors.accent : colors.foreground
                                  }}>{date.example}</Text>
                               </Pressable>
@@ -408,7 +408,7 @@ export default function OnboardingScreen() {
 
                {/* Calendar & Task Management */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Calendar & Tasks
                   </Text>
                   <View className="space-y-3">
@@ -418,7 +418,7 @@ export default function OnboardingScreen() {
                      }}>
                         <View className="flex-row items-center justify-between">
                            <View>
-                              <Text className="font-medium" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                  Auto-sync Calendars
                               </Text>
                               <Text className="text-sm" style={{ color: colors.muted }}>
@@ -442,7 +442,7 @@ export default function OnboardingScreen() {
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
-                        <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                        <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                            Default Event Duration
                         </Text>
                         <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -459,7 +459,7 @@ export default function OnboardingScreen() {
                                  }}
                                  onPress={() => setDefaultEventDuration(duration)}
                               >
-                                 <Text className={`text-sm font-medium`} style={{
+                                 <Text className={`text-sm font-sans-medium`} style={{
                                     color: defaultEventDuration === duration ? colors.accent : colors.foreground
                                  }}>{duration}m</Text>
                               </Pressable>
@@ -471,7 +471,7 @@ export default function OnboardingScreen() {
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
-                        <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                        <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                            Default Task Priority
                         </Text>
                         <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -494,7 +494,7 @@ export default function OnboardingScreen() {
                                  onPress={() => setDefaultTaskPriority(priority.key as any)}
                               >
                                  <View className={`w-3 h-3 rounded-full mr-3`} style={{ backgroundColor: priority.color }} />
-                                 <Text className={`font-medium flex-1`} style={{
+                                 <Text className={`font-sans-medium flex-1`} style={{
                                     color: defaultTaskPriority === priority.key ? colors.accent : colors.foreground
                                  }}>{priority.label}</Text>
                                  {defaultTaskPriority === priority.key && (
@@ -509,7 +509,7 @@ export default function OnboardingScreen() {
 
                {/* UI Preferences */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      UI Preferences
                   </Text>
                   <View className="space-y-3">
@@ -519,7 +519,7 @@ export default function OnboardingScreen() {
                      }}>
                         <View className="flex-row items-center justify-between">
                            <View>
-                              <Text className="font-medium" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                  Compact Mode
                               </Text>
                               <Text className="text-sm" style={{ color: colors.muted }}>
@@ -545,7 +545,7 @@ export default function OnboardingScreen() {
                      }}>
                         <View className="flex-row items-center justify-between">
                            <View>
-                              <Text className="font-medium" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                  Show Completed Tasks
                               </Text>
                               <Text className="text-sm" style={{ color: colors.muted }}>
@@ -569,7 +569,7 @@ export default function OnboardingScreen() {
 
                {/* Productivity */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      Productivity
                   </Text>
                   <View className="space-y-3">
@@ -579,7 +579,7 @@ export default function OnboardingScreen() {
                      }}>
                         <View className="flex-row items-center justify-between">
                            <View>
-                              <Text className="font-medium" style={{ color: colors.foreground }}>
+                              <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                                  Focus Mode
                               </Text>
                               <Text className="text-sm" style={{ color: colors.muted }}>
@@ -603,7 +603,7 @@ export default function OnboardingScreen() {
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
-                        <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                        <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                            Daily Goal
                         </Text>
                         <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -620,7 +620,7 @@ export default function OnboardingScreen() {
                                  }}
                                  onPress={() => setDailyGoalMinutes(minutes)}
                               >
-                                 <Text className={`text-sm font-medium`} style={{
+                                 <Text className={`text-sm font-sans-medium`} style={{
                                     color: dailyGoalMinutes === minutes ? colors.accent : colors.foreground
                                  }}>{Math.floor(minutes / 60)}h{minutes % 60 > 0 ? ` ${minutes % 60}m` : ''}</Text>
                               </Pressable>
@@ -633,7 +633,7 @@ export default function OnboardingScreen() {
                            backgroundColor: colors.surface,
                            borderColor: colors.border
                         }}>
-                           <Text className="font-medium mb-2" style={{ color: colors.foreground }}>
+                           <Text className="font-sans-medium mb-2" style={{ color: colors.foreground }}>
                               Pomodoro Duration
                            </Text>
                            <Text className="text-sm mb-3" style={{ color: colors.muted }}>
@@ -650,7 +650,7 @@ export default function OnboardingScreen() {
                                     }}
                                     onPress={() => setPomodoroDuration(duration)}
                                  >
-                                    <Text className={`text-sm font-medium`} style={{
+                                    <Text className={`text-sm font-sans-medium`} style={{
                                        color: pomodoroDuration === duration ? colors.accent : colors.foreground
                                     }}>{duration}m</Text>
                                  </Pressable>
@@ -663,7 +663,7 @@ export default function OnboardingScreen() {
 
                {/* AI Assistant */}
                <View className="mb-8">
-                  <Text className="text-lg font-semibold mb-4" style={{ color: colors.foreground }}>
+                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
                      AI Assistant
                   </Text>
                   <View className="p-4 rounded-xl border" style={{
@@ -672,7 +672,7 @@ export default function OnboardingScreen() {
                   }}>
                      <View className="flex-row items-center justify-between">
                         <View>
-                           <Text className="font-medium" style={{ color: colors.foreground }}>
+                           <Text className="font-sans-medium" style={{ color: colors.foreground }}>
                               AI Suggestions
                            </Text>
                            <Text className="text-sm" style={{ color: colors.muted }}>
@@ -700,7 +700,7 @@ export default function OnboardingScreen() {
                   onPress={handleCompleteOnboarding}
                   disabled={isLoading}
                >
-                  <Text className="text-center font-semibold text-base" style={{ color: colors.background }}>
+                  <Text className="text-center font-sans-semibold text-base" style={{ color: colors.background }}>
                      {isLoading ? 'Setting up...' : 'Get Started'}
                   </Text>
                </Pressable>

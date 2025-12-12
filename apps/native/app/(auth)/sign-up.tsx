@@ -86,8 +86,8 @@ export default function SignUpScreen() {
           >
             {/* Header */}
             <View className="mb-6">
-              <Text className="text-3xl font-bold mb-1" style={{ color: colors.foreground }}>Create Account</Text>
-              <Text className="text-sm font-normal" style={{ color: colors.muted }}>• Join us to track your expenses</Text>
+              <Text className="text-3xl font-sans-bold mb-1" style={{ color: colors.foreground }}>Create Account</Text>
+              <Text className="text-sm font-sans" style={{ color: colors.muted }}>• Join us to track your expenses</Text>
             </View>
 
             {/* Google Sign Up Button */}
@@ -103,7 +103,7 @@ export default function SignUpScreen() {
               >
                 <Ionicons name="logo-google" size={20} color={colors.accent} />
               </View>
-              <Text className="text-base font-semibold" style={{ color: colors.background }}>
+              <Text className="text-base font-sans-semibold" style={{ color: colors.background }}>
                 Sign up with Google
               </Text>
             </Pressable>
@@ -111,7 +111,7 @@ export default function SignUpScreen() {
             {/* Divider */}
             <View className="flex-row items-center my-5">
               <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
-              <Text className="text-xs px-3 font-normal" style={{ color: colors.muted }}>
+              <Text className="text-xs px-3 font-sans" style={{ color: colors.muted }}>
                 or continue with email
               </Text>
               <View className="flex-1 h-px" style={{ backgroundColor: colors.border }} />
@@ -119,7 +119,7 @@ export default function SignUpScreen() {
 
             {/* Name Input */}
             <View className="mb-4">
-              <Text className="text-sm font-semibold mb-2" style={{ color: colors.foreground }}>Full Name</Text>
+              <Text className="text-sm font-sans-semibold mb-2" style={{ color: colors.foreground }}>Full Name</Text>
               <TextInput
                 placeholder="Enter your name"
                 placeholderTextColor={colors.muted}
@@ -142,7 +142,7 @@ export default function SignUpScreen() {
 
             {/* Email Input */}
             <View className="mb-4">
-              <Text className="text-sm font-semibold mb-2" style={{ color: colors.foreground }}>Email</Text>
+              <Text className="text-sm font-sans-semibold mb-2" style={{ color: colors.foreground }}>Email</Text>
               <TextInput
                 placeholder="your@email.com"
                 placeholderTextColor={colors.muted}
@@ -166,7 +166,7 @@ export default function SignUpScreen() {
 
             {/* Password Input */}
             <View className="mb-4">
-              <Text className="text-sm font-semibold mb-2" style={{ color: colors.foreground }}>Password</Text>
+              <Text className="text-sm font-sans-semibold mb-2" style={{ color: colors.foreground }}>Password</Text>
               <TextInput
                 placeholder="Create a password"
                 placeholderTextColor={colors.muted}
@@ -207,27 +207,27 @@ export default function SignUpScreen() {
               disabled={isLoading || !name || !email || !password }
               android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
             >
-              <Text className="text-base font-bold" style={{ color: colors.background }}>
+              <Text className="text-base font-sans-bold" style={{ color: colors.background }}>
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Text>
             </Pressable>
 
             {/* Sign In Link */}
             <View className="flex-row justify-center items-center mb-4">
-              <Text className="text-sm" style={{ color: colors.muted }}>Already have an account? </Text>
+              <Text className="text-sm font-sans" style={{ color: colors.muted }}>Already have an account? </Text>
               <Link href="/(auth)/sign-in" asChild>
                 <Pressable>
-                  <Text className="text-sm font-bold underline" style={{ color: colors.accent }}>Sign in</Text>
+                  <Text className="text-sm font-sans-bold underline" style={{ color: colors.accent }}>Sign in</Text>
                 </Pressable>
               </Link>
             </View>
 
             {/* Terms */}
             <View className="px-2">
-              <Text className="text-xs text-center leading-relaxed" style={{ color: colors.muted }}>
+              <Text className="text-xs text-center leading-relaxed font-sans" style={{ color: colors.muted }}>
                 By creating an account, you agree to our{' '}
-                <Text className="font-semibold" style={{ color: colors.foreground }}>Terms</Text> and{' '}
-                <Text className="font-semibold" style={{ color: colors.foreground }}>Privacy Policy</Text>
+                <Text className="font-sans-semibold" style={{ color: colors.foreground }}>Terms</Text> and{' '}
+                <Text className="font-sans-semibold" style={{ color: colors.foreground }}>Privacy Policy</Text>
               </Text>
             </View>
           </View>
