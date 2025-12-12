@@ -3,3 +3,59 @@
 @import 'heroui-native/styles';
 
 @source './node_modules/heroui-native/lib';
+
+@layer theme {
+  :root {
+    @variant zen {
+      /* Base theme variables required by HeroUI Native */
+      --background: #161616;
+      --foreground: #FEF8E8;
+      --surface: #1E1E1E;
+      --overlay: #2A2A2A;
+      --muted: #A8AAAC;
+      --accent: #F44A22;
+      --default: #1E1E1E;
+
+      /* Status colors */
+      --success: #22B4C4;
+      --warning: #F44A22;
+      --danger: #EF4444;
+
+      /* Form field colors */
+      --field-background: #1E1E1E;
+      --field-foreground: #FEF8E8;
+      --field-border: transparent;
+
+      /* Utility colors */
+      --border: #2A2A2A;
+      --divider: #2A2A2A;
+      --link: #22B4C4;
+    }
+
+    @variant zen-light {
+      /* Complementary light theme variables */
+      --background: #FEF8E8;
+      --foreground: #161616;
+      --surface: #FFFFFF;
+      --overlay: #FFFFFF;
+      --muted: #A8AAAC;
+      --accent: #F44A22;
+      --default: #FFFFFF;
+
+      /* Status colors (same across themes) */
+      --success: #22B4C4;
+      --warning: #F44A22;
+      --danger: #EF4444;
+
+      /* Form field colors */
+      --field-background: #FFFFFF;
+      --field-foreground: #161616;
+      --field-border: transparent;
+
+      /* Utility colors */
+      --border: #E4E2E3;
+      --divider: #E4E2E3;
+      --link: #22B4C4;
+    }
+  }
+}

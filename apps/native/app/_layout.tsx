@@ -9,8 +9,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
 
 import { queryClient } from "@/utils/orpc";
-import { LoadingScreen } from "@/components/loading-screen";
-import { AuthGuard } from "@/components/auth-guard";
 
 export const unstable_settings = {
    initialRouteName: "(tabs)",

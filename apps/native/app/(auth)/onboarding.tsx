@@ -5,17 +5,17 @@ import { useUserPreferenceStore } from '@/stores/useUserPreferenceStore';
 import { Ionicons } from '@expo/vector-icons';
 
 const accentColors = [
-  { name: 'Blue', value: '#3B82F6' },
+  { name: 'Orange', value: '#F44A22' }, // Zen orange
+  { name: 'Cyan', value: '#22B4C4' },  // Zen cyan
   { name: 'Purple', value: '#8B5CF6' },
   { name: 'Green', value: '#10B981' },
-  { name: 'Orange', value: '#F97316' },
   { name: 'Pink', value: '#EC4899' },
   { name: 'Red', value: '#EF4444' },
 ];
 
 export default function OnboardingScreen() {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [accentColor, setAccentColor] = useState('#3B82F6');
+  const [theme, setTheme] = useState<'zen' | 'zen-light' | 'system'>('zen');
+  const [accentColor, setAccentColor] = useState('#F44A22');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [dailyBriefingEnabled, setDailyBriefingEnabled] = useState(true);
   const [taskRemindersEnabled, setTaskRemindersEnabled] = useState(true);
@@ -107,27 +107,27 @@ export default function OnboardingScreen() {
             <Text className="text-lg font-semibold text-black mb-4">Choose Your Theme</Text>
             <View className="space-y-3 mb-4">
               {[
-                { key: 'light', label: 'Light', icon: 'sunny' },
-                { key: 'dark', label: 'Dark', icon: 'moon' },
+                { key: 'zen', label: 'Zen Dark', icon: 'moon' },
+                { key: 'zen-light', label: 'Zen Light', icon: 'sunny' },
                 { key: 'system', label: 'System', icon: 'settings' },
               ].map(({ key, label, icon }) => (
                 <Pressable
                   key={key}
                   className={`flex-row items-center p-4 rounded-xl border-2 ${
-                    theme === key ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
+                    theme === key ? 'border-orange-500 bg-orange-50' : 'border-gray-200 bg-white'
                   }`}
                   onPress={() => setTheme(key as any)}
                 >
                   <Ionicons
                     name={icon as any}
                     size={20}
-                    color={theme === key ? '#3B82F6' : '#6B7280'}
+                    color={theme === key ? '#F44A22' : '#6B7280'}
                   />
                   <Text className={`ml-3 font-medium flex-1 ${
-                    theme === key ? 'text-blue-600' : 'text-gray-700'
+                    theme === key ? 'text-orange-600' : 'text-gray-700'
                   }`}>{label}</Text>
                   {theme === key && (
-                    <Ionicons name="checkmark-circle" size={20} color="#3B82F6" />
+                    <Ionicons name="checkmark-circle" size={20} color="#F44A22" />
                   )}
                 </Pressable>
               ))}

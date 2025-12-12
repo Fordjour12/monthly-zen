@@ -1,12 +1,14 @@
 import React, { createContext, useCallback, useContext, useMemo } from "react";
 import { Uniwind, useUniwind } from "uniwind";
 
-type ThemeName = "light" | "dark";
+type ThemeName = "zen" | "zen-light" | "system";
 
 type AppThemeContextType = {
 	currentTheme: string;
 	isLight: boolean;
 	isDark: boolean;
+	isZen: boolean;
+	isZenLight: boolean;
 	setTheme: (theme: ThemeName) => void;
 	toggleTheme: () => void;
 };
@@ -23,11 +25,19 @@ export const AppThemeProvider = ({
 	const { theme } = useUniwind();
 
 	const isLight = useMemo(() => {
-		return theme === "light";
+		return theme === "light" || theme === "zen-light";
 	}, [theme]);
 
 	const isDark = useMemo(() => {
-		return theme === "dark";
+		return theme === "dark" || theme === "zen";
+	}, [theme]);
+
+	const isZen = useMemo(() => {
+		return theme === "zen";
+	}, [theme]);
+
+	const isZenLight = useMemo(() => {
+		return theme === "zen-light";
 	}, [theme]);
 
 	const setTheme = useCallback((newTheme: ThemeName) => {
@@ -35,7 +45,13 @@ export const AppThemeProvider = ({
 	}, []);
 
 	const toggleTheme = useCallback(() => {
-		Uniwind.setTheme(theme === "light" ? "dark" : "light");
+		if (theme === "zen") {
+			Uniwind.setTheme("zen-light");
+		} else if (theme === "zen-light") {
+			Uniwind.setTheme("system");
+		} else {
+			Uniwind.setTheme("zen");
+		}
 	}, [theme]);
 
 	const value = useMemo(
@@ -43,10 +59,12 @@ export const AppThemeProvider = ({
 			currentTheme: theme,
 			isLight,
 			isDark,
+			isZen,
+			isZenLight,
 			setTheme,
 			toggleTheme,
 		}),
-		[theme, isLight, isDark, setTheme, toggleTheme],
+		[theme, isLight, isDark, isZen, isZenLight, setTheme, toggleTheme],
 	);
 
 	return (

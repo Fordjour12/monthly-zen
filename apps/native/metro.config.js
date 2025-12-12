@@ -7,6 +7,7 @@ const config = getDefaultConfig(__dirname);
 const uniwindConfig = withUniwindConfig(config, {
 	cssEntryFile: "./global.css",
 	dtsFile: "./uniwind-types.d.ts",
+	extraThemes: ['zen', 'zen-light'],
 });
 
 module.exports = uniwindConfig;

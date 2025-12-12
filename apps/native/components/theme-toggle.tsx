@@ -8,7 +8,19 @@ import { useAppTheme } from "@/contexts/app-theme-context";
 const StyledIonicons = withUniwind(Ionicons);
 
 export function ThemeToggle() {
-	const { toggleTheme, isLight } = useAppTheme();
+	const { toggleTheme, isZen, isZenLight, currentTheme } = useAppTheme();
+
+	const getIconAndName = () => {
+		if (isZen) {
+			return { icon: "moon", name: "Zen Dark" };
+		} else if (isZenLight) {
+			return { icon: "sunny", name: "Zen Light" };
+		} else {
+			return { icon: "settings", name: "System" };
+		}
+	};
+
+	const { icon, name } = getIconAndName();
 
 	return (
 		<Pressable
@@ -19,16 +31,15 @@ export function ThemeToggle() {
 				toggleTheme();
 			}}
 			className="px-2.5"
+			accessibilityLabel={`Current theme: ${name}. Tap to switch theme.`}
 		>
-			{isLight ? (
-				<Animated.View key="moon" entering={ZoomIn} exiting={FadeOut}>
-					<StyledIonicons name="moon" size={20} className="text-foreground" />
-				</Animated.View>
-			) : (
-				<Animated.View key="sun" entering={ZoomIn} exiting={FadeOut}>
-					<StyledIonicons name="sunny" size={20} className="text-foreground" />
-				</Animated.View>
-			)}
+			<Animated.View key={icon} entering={ZoomIn} exiting={FadeOut}>
+				<StyledIonicons
+					name={icon as any}
+					size={20}
+					className="text-foreground"
+				/>
+			</Animated.View>
 		</Pressable>
 	);
 }

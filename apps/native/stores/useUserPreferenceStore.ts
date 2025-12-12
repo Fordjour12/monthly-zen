@@ -24,7 +24,7 @@ const zustandMMKVStorage = {
 // User preferences interface
 interface UserPreferences {
   // Theme preferences
-  theme: 'light' | 'dark' | 'system';
+  theme: 'zen' | 'zen-light' | 'system';
   accentColor: string;
 
   // Language and region
@@ -78,8 +78,8 @@ interface UserPreferences {
 
 // Default preferences
 const defaultPreferences: UserPreferences = {
-  theme: 'system',
-  accentColor: '#3B82F6',
+  theme: 'zen',
+  accentColor: '#F44A22',
   language: 'en',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   dateFormat: 'MM/dd/yyyy',
@@ -263,7 +263,7 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       validatePreference: (key: keyof UserPreferences, value: any) => {
         switch (key) {
           case 'theme':
-            return ['light', 'dark', 'system'].includes(value as string);
+            return ['zen', 'zen-light', 'system'].includes(value as string);
           case 'language':
             return typeof value === 'string' && value.length === 2;
           case 'timezone':
