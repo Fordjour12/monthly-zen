@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { useThemeColor } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { Home12Icon, TsunamiIcon } from "@hugeicons/core-free-icons";
+import { Home12Icon, TsunamiIcon, PenTool01Icon } from "@hugeicons/core-free-icons";
 
 
 export default function TabLayout() {
@@ -31,35 +31,50 @@ export default function TabLayout() {
             tabBarInactiveBackgroundColor: themeColorBackground,
          }}
       >
-      <Tabs.Screen
-         name="index"
-         options={{
-            title: "Home",
-            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-               <HugeiconsIcon
-                  icon={Home12Icon}
-                  size={size}
-                  color={color}
-                  strokeWidth={1.5}
-               />
-            ),
-         }}
-      />
-        <Tabs.Screen
-         name="suggestion"
-         options={{
-            title: "Suggestion",
-            tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+         <Tabs.Screen
+            name="index"
+            options={{
+               title: "Home",
+               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+                  <HugeiconsIcon
+                     icon={Home12Icon}
+                     size={size}
+                     color={color}
+                     strokeWidth={1.5}
+                  />
+               ),
+            }}
+         />
+         <Tabs.Screen
+            name="suggestion"
+            options={{
+               title: "Suggestion",
+               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
 
-               <HugeiconsIcon
-                  icon={TsunamiIcon}
-                  size={size}
-                  color={color}
-                  strokeWidth={1.5}
-               />
-            ),
-         }}
-      />
+                  <HugeiconsIcon
+                     icon={TsunamiIcon}
+                     size={size}
+                     color={color}
+                     strokeWidth={1.5}
+                  />
+               ),
+            }}
+         />
+         <Tabs.Screen
+            name="plan"
+            options={{
+               title: "Plan",
+               tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+
+                  <HugeiconsIcon
+                     icon={PenTool01Icon}
+                     size={size}
+                     color={color}
+                     strokeWidth={1.5}
+                  />
+               ),
+            }}
+         />
       </Tabs>
    );
 }
