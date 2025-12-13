@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Platform } from 'react-native';
+import { createMMKV } from 'react-native-mmkv';
 import { authClient } from '@/lib/auth-client';
 import { queryClient } from '@/utils/orpc';
 
@@ -149,21 +150,37 @@ export const useAuthStore = create<AuthStore>()(
                }
 
                if (data?.user) {
-                  console.log('🔐 Sign Up - User created successfully');
+                  console.log('🔐 Sign Up - User created and session established by better-auth');
 
-                  // Set onboarding as incomplete for new users
-                  set({ hasCompletedOnboarding: false });
+                  // Create user object from sign-up response
+                  const user: User = {
+                     id: data.user.id,
+                     email: data.user.email,
+                     name: data.user.name || name,
+                     image: data.user.image,
+                     emailVerified: data.user.emailVerified,
+                  };
 
-                  // Auto sign in after successful sign up
-                  const signInSuccess = await get().signIn(email, password);
-                  if (signInSuccess) {
-                     console.log('🔐 Sign Up - Auto sign-in successful');
-                     return true;
-                  } else {
-                     console.log('🔐 Sign Up - Auto sign-in failed, but user created');
-                     set({ error: 'Account created but sign in failed. Please try signing in manually.', isLoading: false });
-                     return false;
-                  }
+                  // Set authenticated state directly - better-auth already created the session
+                  // New users should go through onboarding
+                  set({
+                     isAuthenticated: true,
+                     user,
+                     isLoading: false,
+                     hasCompletedOnboarding: false, // New users need onboarding
+                     authLoaded: true,
+                  });
+
+                  console.log('🔐 Sign Up - Successfully authenticated:', user.email);
+                  console.log('🔐 Sign Up - Final state:', {
+                     isAuthenticated: true,
+                     hasCompletedOnboarding: false
+                  });
+
+                  // Invalidate queries to refresh data
+                  queryClient.invalidateQueries();
+
+                  return true;
                }
 
                console.log('🔐 Sign Up - Invalid response structure');
@@ -294,21 +311,22 @@ export const useAuthStore = create<AuthStore>()(
       }),
       {
          name: 'auth-store',
-         storage: createJSONStorage(() => ({
-            getItem: (name: string) => {
-               return isWeb ? localStorage.getItem(name) : null;
-            },
-            setItem: (name: string, value: string) => {
-               if (isWeb) {
-                  localStorage.setItem(name, value);
-               }
-            },
-            removeItem: (name: string) => {
-               if (isWeb) {
-                  localStorage.removeItem(name);
-               }
-            },
-         })),
+         storage: createJSONStorage(() => {
+            if (isWeb) {
+               return {
+                  getItem: (name) => localStorage.getItem(name),
+                  setItem: (name, value) => localStorage.setItem(name, value),
+                  removeItem: (name) => localStorage.removeItem(name),
+               };
+            }
+
+            const storage = createMMKV({ id: 'auth-storage' });
+            return {
+               getItem: (name) => storage.getString(name) || null,
+               setItem: (name, value) => storage.set(name, value),
+               removeItem: (name) => storage.remove(name),
+            };
+         }),
          partialize: (state: AuthStore) => ({
             isAuthenticated: state.isAuthenticated,
             user: state.user,

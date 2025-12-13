@@ -1,31 +1,15 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, Pressable } from "react-native";
-import { Link, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
 import { useSemanticColors } from "@/utils/theme-utils";
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Calendar01Icon, WindSurfIcon } from "@hugeicons/core-free-icons";
-import { useAuthStore } from "@/stores/useAuthStore";
 
 
 
 export default function LandingScreen() {
    const colors = useSemanticColors();
-   const { isAuthenticated, hasCompletedOnboarding, _hasHydrated } = useAuthStore();
 
-   const router = useRouter();
-
-   useEffect(() => {
-      if (_hasHydrated) {
-         if (isAuthenticated && hasCompletedOnboarding) {
-            console.log('🏠 Landing - Redirecting authenticated user to main app');
-            router.replace('/(tabs)');
-         } else if (isAuthenticated && !hasCompletedOnboarding) {
-            console.log('🏠 Landing - Redirecting to onboarding');
-            router.replace('/onboarding');
-         }
-      }
-   }, [_hasHydrated, isAuthenticated, hasCompletedOnboarding]);
 
    return (
       <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -112,19 +96,6 @@ export default function LandingScreen() {
                   >
                      <Text className="text-lg font-sans-semibold" style={{ color: colors.accent }}>
                         I have an account
-                     </Text>
-                  </Pressable>
-               </Link>
-
-               <Link href="/onboarding" asChild>
-                  <Pressable
-                     className="w-full py-4 rounded-2xl flex-row items-center justify-center mb-4"
-                     style={{ backgroundColor: colors.foreground }}
-                     android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
-                  >
-                     <Text className="text-lg font-sans-semibold" style={{ color: colors.background }}>
-                        Onboarding
-
                      </Text>
                   </Pressable>
                </Link>

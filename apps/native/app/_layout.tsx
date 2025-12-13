@@ -1,7 +1,7 @@
 import "@/global.css";
 import React, { useEffect } from 'react';
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from 'expo-status-bar';
 import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -26,6 +26,8 @@ function StackLayout() {
       hasCompletedOnboarding,
       _hasHydrated,
    } = useAuthStore();
+   const router = useRouter();
+   const segments = useSegments();
 
    useEffect(() => {
       console.log('🔄 Layout - Auth state changed:', {
@@ -34,6 +36,35 @@ function StackLayout() {
          _hasHydrated
       });
    }, [isAuthenticated, hasCompletedOnboarding, _hasHydrated]);
+
+   // Handle navigation based on auth state
+   useEffect(() => {
+      if (!_hasHydrated) return;
+
+      const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'modal';
+      const inOnboarding = segments[0] === 'onboarding';
+      const inAuthScreens = segments[0] === 'sign-in' || segments[0] === 'sign-up';
+
+      if (isAuthenticated && hasCompletedOnboarding) {
+         // User is fully authenticated and onboarded - go to main app
+         if (!inAuthGroup) {
+            console.log('🔄 Layout - Redirecting to main app');
+            router.replace('/(tabs)');
+         }
+      } else if (isAuthenticated && !hasCompletedOnboarding) {
+         // User is authenticated but needs onboarding
+         if (!inOnboarding) {
+            console.log('🔄 Layout - Redirecting to onboarding');
+            router.replace('/onboarding');
+         }
+      } else if (!isAuthenticated) {
+         // User is not authenticated - stay on landing or auth screens
+         if (inAuthGroup || inOnboarding) {
+            console.log('🔄 Layout - Redirecting to landing page');
+            router.replace('/');
+         }
+      }
+   }, [_hasHydrated, isAuthenticated, hasCompletedOnboarding, segments]);
 
    useEffect(() => {
       if (_hasHydrated) {
