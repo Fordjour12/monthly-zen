@@ -1,15 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, Pressable } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSemanticColors } from "@/utils/theme-utils";
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Calendar01Icon, WindSurfIcon } from "@hugeicons/core-free-icons";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 
 
-function LandingScreen() {
+export default function LandingScreen() {
    const colors = useSemanticColors();
+   const { isAuthenticated, hasCompletedOnboarding, _hasHydrated } = useAuthStore();
+
+   const router = useRouter();
+
+   useEffect(() => {
+      if (_hasHydrated) {
+         if (isAuthenticated && hasCompletedOnboarding) {
+            console.log('🏠 Landing - Redirecting authenticated user to main app');
+            router.replace('/(tabs)');
+         } else if (isAuthenticated && !hasCompletedOnboarding) {
+            console.log('🏠 Landing - Redirecting to onboarding');
+            router.replace('/onboarding');
+         }
+      }
+   }, [_hasHydrated, isAuthenticated, hasCompletedOnboarding]);
 
    return (
       <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -102,17 +118,16 @@ function LandingScreen() {
 
                <Link href="/onboarding" asChild>
                   <Pressable
-                     className="w-full py-4 rounded-2xl items-center justify-center"
-                     style={{ backgroundColor: colors.muted + '15' }}
-                     android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+                     className="w-full py-4 rounded-2xl flex-row items-center justify-center mb-4"
+                     style={{ backgroundColor: colors.foreground }}
+                     android_ripple={{ color: 'rgba(255,255,255,0.1)' }}
                   >
-                     <Text className="text-lg font-sans-semibold" style={{ color: colors.accent }}>
+                     <Text className="text-lg font-sans-semibold" style={{ color: colors.background }}>
                         Onboarding
+
                      </Text>
                   </Pressable>
                </Link>
-
-
 
 
                <Text className="text-xs text-center mt-6 leading-5 px-4 font-sans" style={{ color: colors.muted }}>
@@ -126,6 +141,4 @@ function LandingScreen() {
    );
 }
 
-export default function Home() {
-   return <LandingScreen />;
-}
+

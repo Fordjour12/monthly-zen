@@ -28,6 +28,14 @@ function StackLayout() {
    } = useAuthStore();
 
    useEffect(() => {
+      console.log('🔄 Layout - Auth state changed:', {
+         isAuthenticated,
+         hasCompletedOnboarding,
+         _hasHydrated
+      });
+   }, [isAuthenticated, hasCompletedOnboarding, _hasHydrated]);
+
+   useEffect(() => {
       if (_hasHydrated) {
          SplashScreen.hideAsync();
       }
@@ -39,19 +47,19 @@ function StackLayout() {
 
    return (
       <React.Fragment>
-         <StatusBar style="auto" />
+         <StatusBar style="dark" />
          <Stack>
-            <Stack.Protected guard={isAuthenticated}>
+            <Stack.Protected guard={isAuthenticated && hasCompletedOnboarding}>
                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             </Stack.Protected>
 
-            <Stack.Protected guard={!isAuthenticated && hasCompletedOnboarding}>
+            <Stack.Protected guard={!isAuthenticated}>
                <Stack.Screen name="sign-in" options={{ headerShown: false }} />
                <Stack.Screen name="sign-up" options={{ headerShown: false }} />
             </Stack.Protected>
 
-            <Stack.Protected guard={!hasCompletedOnboarding}>
+            <Stack.Protected guard={isAuthenticated && !hasCompletedOnboarding}>
                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             </Stack.Protected>
 

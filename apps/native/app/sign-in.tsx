@@ -29,7 +29,16 @@ export default function SignInScreen() {
       try {
          const success = await signIn(email, password);
          if (success) {
-            router.replace('/(tabs)');
+            console.log('📱 Sign-in successful, checking onboarding state');
+            const { hasCompletedOnboarding } = useAuthStore.getState();
+
+            if (!hasCompletedOnboarding) {
+               console.log('📱 User needs onboarding, navigating to onboarding');
+               router.replace('/onboarding');
+            } else {
+               console.log('📱 User completed onboarding, navigating to main app');
+               router.replace('/(tabs)');
+            }
          }
       } catch (err) {
          // Error is handled by the store
@@ -167,7 +176,7 @@ export default function SignInScreen() {
                {/* Sign Up Link */}
                <View className="flex-row justify-center items-center">
                   <Text className="text-sm font-sans" style={{ color: colors.muted }}>Don't have an account? </Text>
-                  <Link href="/(auth)/sign-up" asChild>
+                  <Link href="/sign-up" asChild>
                      <Pressable>
                         <Text className="text-sm font-sans-bold underline" style={{ color: colors.accent }}>Sign up</Text>
                      </Pressable>

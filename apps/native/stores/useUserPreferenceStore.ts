@@ -74,6 +74,9 @@ interface LocalUserPreferences extends UserPreferences {
 
   // Custom preferences
   customPreferences: Record<string, any>;
+
+  // Onboarding state
+  onboardingCompleted: boolean;
 }
 
 // Default preferences
@@ -110,6 +113,7 @@ const defaultPreferences: LocalUserPreferences = {
   taskAutoArchive: true,
   taskAutoArchiveDays: 30,
   customPreferences: {},
+  onboardingCompleted: false,
 };
 
 // User preference store interface
@@ -318,6 +322,18 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       name: 'user-preference-store',
       storage: createJSONStorage(() => zustandMMKVStorage),
       // Store all preferences in MMKV for instant access
+      onRehydrateStorage: () => (state?: any) => {
+        if (state) {
+          console.log('🔄 User Preference Store - Rehydrating with onboarding state:', state.onboardingCompleted);
+          // Make sure onboarding state is properly hydrated
+          if (state.onboardingCompleted === undefined) {
+            console.log('🔄 User Preference Store - Setting default onboarding state to false');
+            state.onboardingCompleted = false;
+          }
+        } else {
+          console.log('🔄 User Preference Store - No state to rehydrate');
+        }
+      },
     }
   )
 );
@@ -390,12 +406,25 @@ export const completeOnboarding = async (preferences: Partial<LocalUserPreferenc
     // Then update local store
     useUserPreferenceStore.getState().setMultiplePreferences(fullPreferences);
 
+    // Sync onboarding state with auth store (dynamic import to avoid circular dependency)
+    const { useAuthStore } = await import('./useAuthStore');
+    useAuthStore.getState().setOnboardingCompleted(true);
+
     return true;
   } catch (error) {
     console.error('Failed to complete onboarding:', error);
 
     // Still save locally if server fails
     useUserPreferenceStore.getState().setMultiplePreferences(fullPreferences);
+
+    // Sync onboarding state with auth store even if server fails
+    try {
+      const { useAuthStore } = await import('./useAuthStore');
+      useAuthStore.getState().setOnboardingCompleted(true);
+    } catch (syncError) {
+      console.error('Failed to sync auth store:', syncError);
+    }
+
     return false;
   }
 };

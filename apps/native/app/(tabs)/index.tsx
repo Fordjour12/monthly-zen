@@ -5,6 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { orpc } from '@/utils/orpc';
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useAuthStore } from "stores/useAuthStore"
 
 // Mock data for now until API endpoints are ready
 
@@ -18,6 +19,8 @@ export default function DashboardScreen() {
 
    const router = useRouter();
 
+   const { user } = useAuthStore();
+
 
 
 
@@ -25,10 +28,10 @@ export default function DashboardScreen() {
       <ScrollView
          style={[styles.container, { backgroundColor: themeColorBackground }]}
          contentContainerStyle={styles.content}
-        >
+      >
          <View style={styles.header}>
             <Text style={[styles.greeting, { color: themeColorForeground }]}>Good Morning,</Text>
-            <Text style={[styles.name, { color: themeColorForeground }]}>Phantom</Text>
+            <Text style={[styles.name, { color: themeColorForeground }]}>{user?.name}</Text>
          </View>
 
          <View style={{ height: 40 }} />
