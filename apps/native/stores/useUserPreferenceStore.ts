@@ -23,60 +23,9 @@ const zustandMMKVStorage = {
 };
 
 // Local UserPreferences interface (extends the service interface)
+// Only adds accentColor which is local-only (not synced to server)
 interface LocalUserPreferences extends UserPreferences {
-  // Theme preferences
   accentColor: string;
-
-  // Language and region
-  language: string;
-  timezone: string;
-  dateFormat: string;
-
-  // Notification preferences
-  notificationsEnabled: boolean;
-  dailyBriefingEnabled: boolean;
-  taskRemindersEnabled: boolean;
-  calendarRemindersEnabled: boolean;
-  reminderTime: string; // HH:mm format
-
-  // UI preferences
-  defaultView: 'dashboard' | 'calendar' | 'tasks' | 'plan';
-  compactMode: boolean;
-  showCompletedTasks: boolean;
-  autoSyncCalendar: boolean;
-
-  // AI and suggestions
-  aiSuggestionsEnabled: boolean;
-  aiAssistantName: string;
-  aiResponseStyle: 'professional' | 'casual' | 'friendly';
-
-  // Privacy and data
-  dataCollectionEnabled: boolean;
-  analyticsEnabled: boolean;
-  crashReportingEnabled: boolean;
-
-  // Productivity
-  focusModeEnabled: boolean;
-  pomodoroDuration: number; // minutes
-  shortBreakDuration: number; // minutes
-  longBreakDuration: number; // minutes
-  dailyGoalMinutes: number;
-
-  // Calendar integration
-  primaryCalendarId: string | null;
-  syncCalendars: string[];
-  defaultEventDuration: number; // minutes
-
-  // Task management
-  defaultTaskPriority: 'low' | 'medium' | 'high' | 'urgent';
-  taskAutoArchive: boolean;
-  taskAutoArchiveDays: number;
-
-  // Custom preferences
-  customPreferences: Record<string, any>;
-
-  // Onboarding state
-  onboardingCompleted: boolean;
 }
 
 // Default preferences
@@ -151,7 +100,7 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       ...defaultPreferences,
 
       // Set a single preference
-      setPreference: (key, value) => {
+      setPreference: <K extends keyof LocalUserPreferences>(key: K, value: LocalUserPreferences[K]) => {
         // Validate the preference
         if (get().validatePreference(key, value)) {
           set({ [key]: value } as Partial<UserPreferenceStore>);
@@ -166,13 +115,14 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       },
 
       // Set multiple preferences at once
-      setMultiplePreferences: (preferences) => {
+      setMultiplePreferences: (preferences: Partial<LocalUserPreferences>) => {
         const validPreferences: Partial<LocalUserPreferences> = {};
 
         // Validate all preferences
         Object.entries(preferences).forEach(([key, value]) => {
-          if (get().validatePreference(key as keyof LocalUserPreferences, value)) {
-            validPreferences[key as keyof LocalUserPreferences] = value;
+          const prefKey = key as keyof LocalUserPreferences;
+          if (get().validatePreference(prefKey, value)) {
+            (validPreferences as unknown as Record<string, unknown>)[key] = value;
           }
         });
 
@@ -185,7 +135,7 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       },
 
       // Reset a single preference to default
-      resetPreference: (key) => {
+      resetPreference: <K extends keyof LocalUserPreferences>(key: K) => {
         const defaultValue = defaultPreferences[key];
         set({ [key]: defaultValue } as Partial<UserPreferenceStore>);
 
@@ -248,17 +198,17 @@ export const useUserPreferenceStore = create<UserPreferenceStore>()(
       },
 
       // Get a specific preference value
-      getPreference: (key) => {
+      getPreference: <K extends keyof LocalUserPreferences>(key: K): LocalUserPreferences[K] => {
         return get()[key];
       },
 
       // Get all preferences
       getAllPreferences: () => {
         const state = get();
-        const prefs: LocalUserPreferences = {} as LocalUserPreferences;
+        const prefs = {} as LocalUserPreferences;
 
-        Object.keys(defaultPreferences).forEach(key => {
-          prefs[key as keyof LocalUserPreferences] = state[key as keyof UserPreferenceStore];
+        (Object.keys(defaultPreferences) as Array<keyof LocalUserPreferences>).forEach(key => {
+          (prefs as unknown as Record<string, unknown>)[key] = state[key];
         });
 
         return prefs;
@@ -400,8 +350,9 @@ export const completeOnboarding = async (preferences: Partial<LocalUserPreferenc
   };
 
   try {
-    // Save to server first
-    await UserPreferencesService.completeOnboarding(fullPreferences);
+    // Save to server first (exclude local-only accentColor)
+    const { accentColor, ...serverPrefs } = fullPreferences;
+    await UserPreferencesService.completeOnboarding(serverPrefs);
 
     // Then update local store
     useUserPreferenceStore.getState().setMultiplePreferences(fullPreferences);
