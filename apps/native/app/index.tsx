@@ -3,7 +3,6 @@ import { View, Text, Pressable } from "react-native";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSemanticColors } from "@/utils/theme-utils";
-import { AuthGuard } from "@/components/auth-guard";
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Calendar01Icon, WindSurfIcon } from "@hugeicons/core-free-icons";
 
@@ -77,7 +76,7 @@ function LandingScreen() {
 
             {/* Action Buttons */}
             <View className="w-full space-y-4">
-               <Link href="/(auth)/sign-up" asChild>
+               <Link href="/sign-up" asChild>
                   <Pressable
                      className="w-full py-4 rounded-2xl flex-row items-center justify-center mb-4"
                      style={{ backgroundColor: colors.foreground }}
@@ -89,7 +88,7 @@ function LandingScreen() {
                   </Pressable>
                </Link>
 
-               <Link href="/(auth)/sign-in" asChild>
+               <Link href="/sign-in" asChild>
                   <Pressable
                      className="w-full py-4 rounded-2xl items-center justify-center"
                      style={{ backgroundColor: colors.muted + '15' }}
@@ -101,7 +100,7 @@ function LandingScreen() {
                   </Pressable>
                </Link>
 
-               <Link href="/(auth)/onboarding" asChild>
+               <Link href="/onboarding" asChild>
                   <Pressable
                      className="w-full py-4 rounded-2xl items-center justify-center"
                      style={{ backgroundColor: colors.muted + '15' }}
@@ -112,6 +111,8 @@ function LandingScreen() {
                      </Text>
                   </Pressable>
                </Link>
+
+
 
 
                <Text className="text-xs text-center mt-6 leading-5 px-4 font-sans" style={{ color: colors.muted }}>
@@ -126,9 +127,5 @@ function LandingScreen() {
 }
 
 export default function Home() {
-   return (
-      <AuthGuard requireAuth={false} redirectTo="/(tabs)">
-         <LandingScreen />
-      </AuthGuard>
-   );
+   return <LandingScreen />;
 }
