@@ -45,25 +45,32 @@ function StackLayout() {
       const inOnboarding = segments[0] === 'onboarding';
       const inAuthScreens = segments[0] === 'sign-in' || segments[0] === 'sign-up';
 
-      if (isAuthenticated && hasCompletedOnboarding) {
-         // User is fully authenticated and onboarded - go to main app
-         if (!inAuthGroup) {
-            console.log('🔄 Layout - Redirecting to main app');
-            router.replace('/(tabs)');
+      // Use setTimeout to ensure Stack is mounted before navigation
+      const navigate = () => {
+         if (isAuthenticated && hasCompletedOnboarding) {
+            // User is fully authenticated and onboarded - go to main app
+            if (!inAuthGroup) {
+               console.log('🔄 Layout - Redirecting to main app');
+               router.replace('/(tabs)');
+            }
+         } else if (isAuthenticated && !hasCompletedOnboarding) {
+            // User is authenticated but needs onboarding
+            if (!inOnboarding) {
+               console.log('🔄 Layout - Redirecting to onboarding');
+               router.replace('/onboarding');
+            }
+         } else if (!isAuthenticated) {
+            // User is not authenticated - stay on landing or auth screens
+            if (inAuthGroup || inOnboarding) {
+               console.log('🔄 Layout - Redirecting to landing page');
+               router.replace('/');
+            }
          }
-      } else if (isAuthenticated && !hasCompletedOnboarding) {
-         // User is authenticated but needs onboarding
-         if (!inOnboarding) {
-            console.log('🔄 Layout - Redirecting to onboarding');
-            router.replace('/onboarding');
-         }
-      } else if (!isAuthenticated) {
-         // User is not authenticated - stay on landing or auth screens
-         if (inAuthGroup || inOnboarding) {
-            console.log('🔄 Layout - Redirecting to landing page');
-            router.replace('/');
-         }
-      }
+      };
+
+      // Delay navigation to ensure Stack is mounted
+      const timer = setTimeout(navigate, 0);
+      return () => clearTimeout(timer);
    }, [_hasHydrated, isAuthenticated, hasCompletedOnboarding, segments]);
 
    useEffect(() => {
