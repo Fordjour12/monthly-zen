@@ -125,7 +125,7 @@ export default function OnboardingScreen() {
                      ].map(({ key, label, icon }) => (
                         <Pressable
                            key={key}
-                           className={`flex-row items-center p-4 rounded-xl border-2`}
+                           className={`flex-row items-center p-4 rounded-xl border-2 mb-2`}
                            style={{
                               borderColor: theme === key ? colors.accent : colors.border,
                               backgroundColor: theme === key ? colors.accent + '10' : colors.surface,
@@ -155,7 +155,7 @@ export default function OnboardingScreen() {
                      Notifications
                   </Text>
                   <View className="space-y-3">
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -183,7 +183,7 @@ export default function OnboardingScreen() {
 
                      {notificationsEnabled && (
                         <>
-                           <View className="p-4 rounded-xl border" style={{
+                           <View className="p-4 rounded-xl border mb-2" style={{
                               backgroundColor: colors.surface,
                               borderColor: colors.border
                            }}>
@@ -209,7 +209,7 @@ export default function OnboardingScreen() {
                               </View>
                            </View>
 
-                           <View className="p-4 rounded-xl border" style={{
+                           <View className="p-4 rounded-xl border mb-2" style={{
                               backgroundColor: colors.surface,
                               borderColor: colors.border
                            }}>
@@ -235,7 +235,7 @@ export default function OnboardingScreen() {
                               </View>
                            </View>
 
-                           <View className="p-4 rounded-xl border" style={{
+                           <View className="p-4 rounded-xl border mb-2" style={{
                               backgroundColor: colors.surface,
                               borderColor: colors.border
                            }}>
@@ -261,7 +261,7 @@ export default function OnboardingScreen() {
                               </View>
                            </View>
 
-                           <View className="p-4 rounded-xl border" style={{
+                           <View className="p-4 rounded-xl border mb-2" style={{
                               backgroundColor: colors.surface,
                               borderColor: colors.border
                            }}>
@@ -294,42 +294,6 @@ export default function OnboardingScreen() {
                   </View>
                </View>
 
-               {/* Default View */}
-               <View className="mb-8">
-                  <Text className="text-lg font-sans-semibold mb-4" style={{ color: colors.foreground }}>
-                     Default Screen
-                  </Text>
-                  <View className="space-y-2">
-                     {[
-                        { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
-                        { key: 'calendar', label: 'Calendar', icon: 'calendar' },
-                        { key: 'tasks', label: 'Tasks', icon: 'checkmark-circle' },
-                        { key: 'plan', label: 'Plan', icon: 'list' },
-                     ].map(({ key, label, icon }) => (
-                        <Pressable
-                           key={key}
-                           className={`flex-row items-center p-3 rounded-lg border`}
-                           style={{
-                              borderColor: defaultView === key ? colors.accent : colors.border,
-                              backgroundColor: defaultView === key ? colors.accent + '10' : colors.surface,
-                           }}
-                           onPress={() => setDefaultView(key as any)}
-                        >
-                           <Ionicons
-                              name={icon as any}
-                              size={18}
-                              color={defaultView === key ? colors.accent : colors.muted}
-                           />
-                           <Text className={`ml-3 font-sans-medium flex-1`} style={{
-                              color: defaultView === key ? colors.accent : colors.foreground
-                           }}>{label}</Text>
-                           {defaultView === key && (
-                              <Ionicons name="checkmark" size={16} color={colors.accent} />
-                           )}
-                        </Pressable>
-                     ))}
-                  </View>
-               </View>
 
                {/* Language & Region */}
                <View className="mb-8">
@@ -371,7 +335,7 @@ export default function OnboardingScreen() {
                         </View>
                      </View>
 
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mt-3" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -412,7 +376,7 @@ export default function OnboardingScreen() {
                      Calendar & Tasks
                   </Text>
                   <View className="space-y-3">
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -438,7 +402,7 @@ export default function OnboardingScreen() {
                         </View>
                      </View>
 
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -467,7 +431,7 @@ export default function OnboardingScreen() {
                         </View>
                      </View>
 
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -486,7 +450,7 @@ export default function OnboardingScreen() {
                            ].map((priority) => (
                               <Pressable
                                  key={priority.key}
-                                 className={`flex-row items-center p-3 rounded-lg border`}
+                                 className={`flex-row items-center p-3 mb-2 rounded-lg border`}
                                  style={{
                                     borderColor: defaultTaskPriority === priority.key ? colors.accent : colors.border,
                                     backgroundColor: defaultTaskPriority === priority.key ? colors.accent + '10' : colors.surface,
@@ -513,7 +477,7 @@ export default function OnboardingScreen() {
                      UI Preferences
                   </Text>
                   <View className="space-y-3">
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -539,7 +503,7 @@ export default function OnboardingScreen() {
                         </View>
                      </View>
 
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>
@@ -573,7 +537,7 @@ export default function OnboardingScreen() {
                      Productivity
                   </Text>
                   <View className="space-y-3">
-                     <View className="p-4 rounded-xl border" style={{
+                     <View className="p-4 rounded-xl border mb-2" style={{
                         backgroundColor: colors.surface,
                         borderColor: colors.border
                      }}>

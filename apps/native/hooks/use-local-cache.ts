@@ -89,16 +89,7 @@ export function useGeneratePlan() {
       }: {
          userGoals: string;
          preferences?: {
-            workHours?: {
-               start?: string;
-               end?: string;
-               workdays?: string[];
-            };
-            energyPatterns?: {
-               highEnergyTimes?: string[];
-               lowEnergyTimes?: string[];
-               weekendPreference?: "work" | "rest" | "mixed";
-            };
+            weekendPreference?: "work" | "rest" | "mixed";
             taskComplexity?: "simple" | "balanced" | "ambitious";
             priorityFocus?: string[];
          };
@@ -112,10 +103,10 @@ export function useGeneratePlan() {
 
          // Simulate progress
          const stages = [
-            { type: 'validation', message: 'Validating your goals...', duration: 2000 },
-            { type: 'context', message: 'Analyzing your current commitments...', duration: 2000 },
+            { type: 'validation', message: 'Validating your goals...', duration: 3000 },
+            { type: 'context', message: 'Analyzing your current commitments...', duration: 3000 },
             { type: 'generating', message: 'Creating your personalized plan...', duration: 4000 },
-            { type: 'finalizing', message: 'Optimizing your monthly plan...', duration: 2000 }
+            { type: 'finalizing', message: 'Optimizing your monthly plan...', duration: 6000 }
          ];
 
          // Execute progress simulation
@@ -134,13 +125,14 @@ export function useGeneratePlan() {
 
             // Invalidate related queries
             queryClient.invalidateQueries({ queryKey: ['ai-suggestions'] });
+            console.log("res", result)
 
             return {
                success: true,
-               suggestionId: result.suggestionId,
+               /*suggestionId: result.suggestionId,
                content: result.content,
                insights: result.insights,
-               message: result.message,
+               message: result.message,*/
                cached: false,
             };
          } catch (error) {

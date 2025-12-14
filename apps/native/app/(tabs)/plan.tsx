@@ -33,12 +33,9 @@ interface PlanData {
 export default function Plan() {
    // Form state
    const [userGoals, setUserGoals] = useState(
-      "I want to learn React Native development, exercise 3 times per week, read 2 technical books, and improve my TypeScript skills. I also want to build a mobile app portfolio project and maintain a healthy work-life balance."
+      "I want to learn React Native development by building 3 mobile app projects, exercise 4 times per week (strength training Mon/Wed/Fri, cardio Tue/Thu), read 2 technical books about AI/ML, improve my TypeScript skills through online courses, and maintain a healthy work-life balance with 8 hours of sleep. I work 9 AM - 5 PM, Monday to Friday, have high energy in mornings for deep work, prefer exercising at 6 PM, and enjoy reading before bed. I want to focus on health, career development, and learning new technologies."
    );
-   const [workHours, setWorkHours] = useState("9 AM - 5 PM, Monday to Friday");
-   const [energyPatterns, setEnergyPatterns] = useState("High energy in morning (9-12), moderate after lunch (2-4), low energy in evening");
-   const [preferredTimes, setPreferredTimes] = useState("Deep work in morning, exercise at 6 PM, reading before bed");
-
+   
    // Additional preferences for better personalization
    const [taskComplexity, setTaskComplexity] = useState<"simple" | "balanced" | "ambitious">("balanced");
    const [priorityFocus, setPriorityFocus] = useState<string[]>(["health", "career", "learning"]);
@@ -116,8 +113,6 @@ export default function Plan() {
 
       // Build structured preferences according to backend schema
       const preferences = {
-         workHours: workHours.trim() ? parseWorkHours(workHours) : undefined,
-         energyPatterns: energyPatterns.trim() ? parseEnergyPatterns(energyPatterns) : undefined,
          taskComplexity,
          priorityFocus,
       };
@@ -312,83 +307,31 @@ export default function Plan() {
       return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
    };
 
-   // Helper function to parse work hours string into structured format
-   const parseWorkHours = (workHoursStr: string) => {
-      // Default values
-      const workHours = {
-         start: "09:00",
-         end: "17:00",
-         workdays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-      };
-
-      // Try to parse "9 AM - 5 PM, Monday to Friday" format
-      const timeMatch = workHoursStr.match(/(\d+)\s*(AM|PM)\s*-\s*(\d+)\s*(AM|PM)/i);
-      if (timeMatch) {
-         const [, startHour, startPeriod, endHour, endPeriod] = timeMatch;
-         workHours.start = `${startHour.padStart(2, '0')}:00`;
-         workHours.end = `${endHour.padStart(2, '0')}:00`;
-      }
-
-      // Check for weekend mentions
-      if (workHoursStr.toLowerCase().includes('saturday') || workHoursStr.toLowerCase().includes('weekend')) {
-         workHours.workdays.push("Saturday");
-      }
-      if (workHoursStr.toLowerCase().includes('sunday')) {
-         workHours.workdays.push("Sunday");
-      }
-
-      return workHours;
-   };
-
-   // Helper function to parse energy patterns
-   const parseEnergyPatterns = (energyStr: string) => {
-      const patterns = {
-         highEnergyTimes: [] as string[],
-         lowEnergyTimes: [] as string[],
-         weekendPreference: weekendPreference
-      };
-
-      const lowerEnergy = energyStr.toLowerCase();
-      if (lowerEnergy.includes('morning')) {
-         patterns.highEnergyTimes.push("morning");
-      }
-      if (lowerEnergy.includes('afternoon')) {
-         patterns.highEnergyTimes.push("afternoon");
-      }
-      if (lowerEnergy.includes('evening')) {
-         patterns.lowEnergyTimes.push("evening");
-      }
-      if (lowerEnergy.includes('night')) {
-         patterns.lowEnergyTimes.push("night");
-      }
-
-      return patterns;
-   };
-
+   
    return (
       <Container className="pt-9 ">
          <ScrollView showsVerticalScrollIndicator={false}>
             {/* Input Form - Section 1A from creation.md */}
             {!isGenerating && !finalPlan && (
                <Card variant="secondary" className="mb-6 p-4">
-                  <Card.Title className="mb-4 text-2xl">AI Monthly Plan</Card.Title>
-                  <Text className="text-foreground mb-2">{formatDateRange()}</Text>
-                  <Text className="text-foreground mb-4">
+                  <Card.Title className="mb-4 text-2xl font-sans-bold">AI Monthly Plan</Card.Title>
+                  <Text className="text-foreground font-sans mb-2">{formatDateRange()}</Text>
+                  <Text className="text-foreground font-sans mb-4">
                      Get a personalized monthly plan based on your goals and current commitments
                   </Text>
 
                   {/* Error Message */}
                   {error && (
                      <View className="mb-4 p-3 bg-danger/10 rounded-lg">
-                        <Text className="text-danger text-sm">{error}</Text>
+                        <Text className="text-danger text-sm font-sans">{error}</Text>
                      </View>
                   )}
 
                   {/* Rate Limit Status */}
                   <View className="mb-4 p-3 bg-surface/50 rounded-lg">
                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-orange-300 text-sm font-medium">Generations Remaining</Text>
-                        <Text className="text-orange-300 text-sm">
+                        <Text className="text-orange-300 text-sm font-sans-medium">Generations Remaining</Text>
+                        <Text className="text-orange-300 text-sm font-sans">
                            {rateLimitStatus.remaining} / {rateLimitStatus.limit}
                         </Text>
                      </View>
@@ -399,57 +342,27 @@ export default function Plan() {
                         />
                      </View>
                      {rateLimitStatus.isLimited && (
-                        <Text className="text-red-500 text-xs text-center">
+                        <Text className="text-red-500 text-xs text-center font-sans">
                            Rate limited. Resets in {getTimeUntilReset()}
                         </Text>
                      )}
                   </View>
 
                   {/* Goals Input */}
-                  <Text className="text-foreground font-medium mb-2">Your Goals *</Text>
+                  <Text className="text-foreground font-sans-medium mb-2">Your Goals *</Text>
                   <TextInput
-                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-                     placeholder="Describe your goals for this month (e.g., Learn React Native, Exercise 3x per week, Read 2 books)"
+                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider font-sans"
+                     placeholder="Describe your goals for this month in detail. Include specific work hours, energy patterns, preferred times for activities, and what you want to achieve. Example: 'I want to learn React Native development by building 3 mobile app projects, exercise 4 times per week (strength training Mon/Wed/Fri, cardio Tue/Thu), read 2 technical books about AI/ML, improve my TypeScript skills through online courses, and maintain a healthy work-life balance with 8 hours of sleep. I work 9 AM - 5 PM, Monday to Friday, have high energy in mornings for deep work, prefer exercising at 6 PM, and enjoy reading before bed.'"
                      value={userGoals}
                      onChangeText={setUserGoals}
                      placeholderTextColor={mutedColor}
                      multiline
-                     numberOfLines={3}
+                     numberOfLines={6}
                      textAlignVertical="top"
                   />
 
-                  {/* Work Hours Input */}
-                  <Text className="text-foreground font-medium mb-2">Work Hours (optional)</Text>
-                  <TextInput
-                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-                     placeholder="e.g., 9 AM - 5 PM, Monday to Friday"
-                     value={workHours}
-                     onChangeText={setWorkHours}
-                     placeholderTextColor={mutedColor}
-                  />
-
-                  {/* Energy Patterns Input */}
-                  <Text className="text-foreground font-medium mb-2">Energy Patterns (optional)</Text>
-                  <TextInput
-                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-                     placeholder="e.g., High energy in morning, low after lunch"
-                     value={energyPatterns}
-                     onChangeText={setEnergyPatterns}
-                     placeholderTextColor={mutedColor}
-                  />
-
-                  {/* Preferred Times Input */}
-                  <Text className="text-foreground font-medium mb-2">Preferred Times (optional)</Text>
-                  <TextInput
-                     className="mb-4 py-3 px-4 rounded-lg bg-surface text-foreground border border-divider"
-                     placeholder="e.g., Deep work in morning, exercise in evening"
-                     value={preferredTimes}
-                     onChangeText={setPreferredTimes}
-                     placeholderTextColor={mutedColor}
-                  />
-
                   {/* Task Complexity */}
-                  <Text className="text-foreground font-medium mb-2">Task Complexity</Text>
+                  <Text className="text-foreground font-sans-medium mb-2">Task Complexity</Text>
                   <View className="mb-4 flex-row gap-2">
                      {(['simple', 'balanced', 'ambitious'] as const).map((complexity) => (
                         <Pressable
@@ -461,7 +374,7 @@ export default function Plan() {
                                  : 'bg-surface border-divider'
                            }`}
                         >
-                           <Text className={`text-center capitalize ${
+                           <Text className={`text-center capitalize font-sans ${
                               taskComplexity === complexity ? 'text-white' : 'text-foreground'
                            }`}>
                               {complexity}
@@ -471,7 +384,7 @@ export default function Plan() {
                   </View>
 
                   {/* Priority Focus */}
-                  <Text className="text-foreground font-medium mb-2">Priority Focus Areas</Text>
+                  <Text className="text-foreground font-sans-medium mb-2">Priority Focus Areas</Text>
                   <View className="mb-4 flex-row flex-wrap gap-2">
                      {(['health', 'career', 'learning', 'relationships', 'finance', 'personal']).map((focus) => (
                         <Pressable
@@ -489,7 +402,7 @@ export default function Plan() {
                                  : 'bg-surface border-divider'
                            }`}
                         >
-                           <Text className={`text-sm capitalize ${
+                           <Text className={`text-sm capitalize font-sans ${
                               priorityFocus.includes(focus) ? 'text-white' : 'text-foreground'
                            }`}>
                               {focus}
@@ -499,7 +412,7 @@ export default function Plan() {
                   </View>
 
                   {/* Weekend Preference */}
-                  <Text className="text-foreground font-medium mb-2">Weekend Preference</Text>
+                  <Text className="text-foreground font-sans-medium mb-2">Weekend Preference</Text>
                   <View className="mb-6 flex-row gap-2">
                      {(['work', 'rest', 'mixed'] as const).map((preference) => (
                         <Pressable
@@ -511,7 +424,7 @@ export default function Plan() {
                                  : 'bg-surface border-divider'
                            }`}
                         >
-                           <Text className={`text-center capitalize ${
+                           <Text className={`text-center capitalize font-sans ${
                               weekendPreference === preference ? 'text-white' : 'text-foreground'
                            }`}>
                               {preference}
@@ -530,11 +443,11 @@ export default function Plan() {
                      {generatePlanMutation.isPending ? (
                         <ActivityIndicator size="small" color="#fff" />
                      ) : rateLimitStatus.isLimited ? (
-                        <Text className="text-red-600 font-medium text-center">
+                        <Text className="text-red-600 font-sans-medium text-center">
                            Rate Limited ({getTimeUntilReset()})
                         </Text>
                      ) : (
-                        <Text className="text-white font-medium text-center">
+                        <Text className="text-white font-sans-medium text-center">
                            Generate Monthly Plan ({rateLimitStatus.remaining} left)
                         </Text>
                      )}
@@ -545,7 +458,7 @@ export default function Plan() {
             {/* Plan Generation Progress - Section 1B from creation.md */}
             {(isGenerating || isRegenerating) && currentStage && !finalPlan && (
                <Card className="p-4 mb-6">
-                  <Card.Title className="mb-4">
+                  <Card.Title className="mb-4 font-sans-bold">
                      {isRegenerating ? "Regenerating Your Plan..." : "Generating Your Plan..."}
                   </Card.Title>
 
@@ -556,8 +469,8 @@ export default function Plan() {
                      {/* Progress Bar */}
                      <View className="mb-3">
                         <View className="flex-row justify-between items-center mb-2">
-                           <Text className="text-xs text-orange-600">Progress</Text>
-                           <Text className="text-xs text-orange-600">
+                           <Text className="text-xs text-orange-600 font-sans">Progress</Text>
+                           <Text className="text-xs text-orange-600 font-sans">
                               {Math.round(getStageProgress(currentStage.stage))}%
                            </Text>
                         </View>
@@ -574,12 +487,12 @@ export default function Plan() {
 
                      {/* Stage Info */}
                      <View className="flex-row items-center mb-3">
-                        <Text className="text-2xl mr-3">{getStageIcon(currentStage.stage)}</Text>
+                        <Text className="text-2xl mr-3 font-sans">{getStageIcon(currentStage.stage)}</Text>
                         <View className="flex-1">
-                           <Text className="text-orange-600 font-medium text-lg capitalize">
+                           <Text className="text-orange-600 font-sans-medium text-lg capitalize">
                               {currentStage.stage || "Processing"}
                            </Text>
-                           <Text className="text-orange-500 text-sm mt-1">
+                           <Text className="text-orange-500 text-sm mt-1 font-sans">
                               {currentStage.message}
                            </Text>
                         </View>
@@ -612,7 +525,7 @@ export default function Plan() {
                      <View className="p-4 bg-orange-500/20 rounded-xl mb-4">
                         <View className="flex-row items-center justify-center">
                            <ActivityIndicator size="small" color="#f97316" />
-                           <Text className="text-orange-400 ml-2">{currentStage.message}</Text>
+                           <Text className="text-orange-400 ml-2 font-sans">{currentStage.message}</Text>
                         </View>
                      </View>
                   )}

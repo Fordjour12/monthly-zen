@@ -18,11 +18,11 @@ import {
 import { aiQueries, taskQueries, habitQueries, goalQueries } from "@my-better-t-app/db/queries";
 import type { PlanSuggestionContent } from "@my-better-t-app/db";
 import {
-  getUserPreferences,
-  analyzePlanQuality,
-  checkCalendarConflicts,
-  buildUserContext
+   analyzePlanQuality,
+   checkCalendarConflicts,
+   buildUserContext
 } from "../lib/user-analysis";
+import { userPreferencesQueries } from "@my-better-t-app/db/queries";
 
 export const AiRouter = {
    healthCheck: publicProcedure.handler(() => {
@@ -35,113 +35,109 @@ export const AiRouter = {
       };
    }),
 
-      /**
-        * Generate a personalized monthly plan based on user goals and context
-        */
-      generatePlan: protectedProcedure
-         .input(
-            z.object({
-               userGoals: z.string().min(10, "Please provide more detailed goals"),
-               model: z.string().optional(),
-               preferences: z.object({
-                  workHours: z.object({
-                     start: z.string().optional(), // "09:00"
-                     end: z.string().optional(),   // "17:00"
-                     workdays: z.array(z.string()).optional(), // ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-                  }).optional(),
-                  energyPatterns: z.object({
-                     highEnergyTimes: z.array(z.string()).optional(), // ["morning", "afternoon"]
-                     lowEnergyTimes: z.array(z.string()).optional(), // ["evening"]
-                     weekendPreference: z.enum(["work", "rest", "mixed"]).optional(),
-                  }).optional(),
-                  taskComplexity: z.enum(["simple", "balanced", "ambitious"]).optional(),
-                  priorityFocus: z.array(z.string()).optional(), // ["health", "career", "learning", "relationships"]
-               }).optional(),
-            })
-         )
-         .handler(async ({ input, context }) => {
-            const userId = context.session?.user?.id;
-            if (!userId) {
-               throw new Error("User not authenticated");
-            }
+   /**
+     * Generate a personalized monthly plan based on user goals and context
+     */
+   generatePlan: protectedProcedure
+      .input(
+         z.object({
+            userGoals: z.string().min(10, "Please provide more detailed goals"),
+            model: z.string().optional(),
+            preferences: z.object({
+               weekendPreference: z.enum(["work", "rest", "mixed"]).optional(),
+               taskComplexity: z.enum(["simple", "balanced", "ambitious"]).optional(),
+               priorityFocus: z.array(z.string()).optional(), // ["health", "career", "learning", "relationships"]
+            }).optional(),
+         })
+      )
+      .handler(async ({ input, context }) => {
+         const userId = context.session?.user?.id;
+         if (!userId) {
+            throw new Error("User not authenticated");
+         }
+         console.log(input)
 
-            try {
-               // 🚀 ENHANCED: Gather user context for better personalization
-               const [userGoals, existingTasks, existingHabits, recentPlans, userPreferences] = await Promise.all([
-                  // Get active goals
-                  goalQueries.findByUser(userId, "active"),
-                  // Get incomplete tasks
-                  taskQueries.findByUser(userId, {}).then(tasks =>
-                     tasks.filter(task => task.status !== "completed")
-                  ),
-                  // Get active habits
-                  habitQueries.findByUser(userId).then(habits =>
-                     habits.filter(habit => habit.currentStreak >= 0) // Filter out habits with negative streak (if used for soft delete)
-                  ),
-                  // Get recent plan history (last 3)
-                  aiQueries.getUserSuggestions(userId, {
-                     type: "plan",
-                     limit: 3
-                  }),
-                  // Get user preferences if stored
-                  getUserPreferences(userId)
-               ]);
+         try {
+            const [userGoals, existingTasks, existingHabits, recentPlans, dbUserPreferences] = await Promise.all([
+               goalQueries.findByUser(userId, "active"),
+               taskQueries.findByUser(userId, {}).then(tasks =>
+                  tasks.filter(task => task.status !== "completed")
+               ),
+               habitQueries.findByUser(userId).then(habits =>
+                  habits.filter(habit => habit.currentStreak >= 0)
+               ),
+               aiQueries.getUserSuggestionsEnhanced(userId, { type: "plan", limit: 3 }),
+               userPreferencesQueries.getWithDefaults(userId)
+            ]);
 
-               // 🚀 ENHANCED: Build user context using the lib function
-               const userContext = buildUserContext(userGoals, existingTasks, existingHabits, recentPlans, input.preferences || userPreferences);
+            console.log("📋 Data loaded:", {
+               goals: userGoals.length,
+               tasks: existingTasks.length,
+               habits: existingTasks.length,
+               preferences: !!dbUserPreferences
+            });
 
-               // 🚀 ENHANCED: Generate Plan using personalized context
-               const PlanResult = await generatePlan(
-                  input.userGoals,
-                  {
-                     userId,
-                     model: input.model
-                  },
-                  userContext // 🆕 Pass rich user context as third parameter
-               );
+            // 🚀 ENHANCED: Build user context using the lib function
+            // Use input preferences if provided, otherwise merge with DB preferences
+            const mergedPreferences = {
+               ...dbUserPreferences,
+               ...input.preferences
+            };
 
-               if (!PlanResult.success || !PlanResult.data) {
-                  throw new Error(PlanResult.error || "Failed to generate Plan");
-               }
+            const userContext = buildUserContext(userGoals, existingTasks, existingHabits, recentPlans, mergedPreferences);
 
-               const PlanContent = PlanResult.data;
-
-               // 🚀 ENHANCED: Analyze and optimize plan
-               const planAnalysis = analyzePlanQuality(PlanContent, userContext);
-
-               // 🚀 ENHANCED: Check for conflicts with existing commitments
-               const conflicts = await checkCalendarConflicts(userId, PlanContent, userContext);
-
-               // 🚀 ENHANCED: Save suggestion
-               const suggestion = await aiQueries.createSuggestion(
+            // 🚀 ENHANCED: Generate Plan using personalized context
+            const PlanResult = await generatePlan(
+               input.userGoals,
+               {
                   userId,
-                  "plan",
-                  PlanContent
-               );
+                  model: input.model
+               },
+               userContext // 🆕 Pass rich user context as third parameter
+            );
 
-               return {
-                  suggestionId: suggestion.id,
-                  content: PlanContent,
-                  isRecent: false,
-                  message: `Personalized monthly plan generated successfully!`,
-                  insights: {
-                     analysis: planAnalysis,
-                     conflicts: conflicts.length,
-                     personalized: true,
-                     usedContext: {
-                        goals: userGoals.length,
-                        existingTasks: existingTasks.length,
-                        existingHabits: existingHabits.length
-                     }
-                  }
-               };
-            } catch (error) {
-               console.error("Generate Plan error:", error);
-               throw new Error(
-                  `Failed to generate Plan: ${error instanceof Error ? error.message : "Unknown error"}`
-               );
+            if (!PlanResult.success || !PlanResult.data) {
+               throw new Error(PlanResult.error || "Failed to generate Plan");
             }
-         }),
+
+            const PlanContent = PlanResult.data;
+
+            // 🚀 ENHANCED: Analyze and optimize plan
+            const planAnalysis = analyzePlanQuality(PlanContent, userContext);
+
+            // 🚀 ENHANCED: Check for conflicts with existing commitments
+            const conflicts = await checkCalendarConflicts(userId, PlanContent, userContext);
+
+            // 🚀 ENHANCED: Save suggestion
+            const suggestion = await aiQueries.createSuggestion(
+               userId,
+               "plan",
+               PlanContent
+            );
+
+            return {
+               suggestionId: suggestion.id,
+               content: PlanContent,
+               isRecent: false,
+               message: `Personalized monthly plan generated successfully!`,
+               insights: {
+                  analysis: planAnalysis,
+                  conflicts: conflicts.length,
+                  personalized: true,
+                  usedContext: {
+                     goals: userGoals.length,
+                     existingTasks: existingTasks.length,
+                     existingHabits: existingHabits.length
+                  }
+               }
+            };
+         } catch (error) {
+            console.error("Generate Plan error:", error);
+            throw new Error(
+               `Failed to generate Plan: ${error instanceof Error ? error.message : "Unknown error"}`
+            );
+         }
+      }),
 
 
 
