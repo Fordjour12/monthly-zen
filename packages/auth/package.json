@@ -1,0 +1,24 @@
+{
+  "name": "@monthly-zen/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@monthly-zen/config": "workspace:*"
+  },
+  "dependencies": {
+    "better-auth": "catalog:",
+    "@better-auth/expo": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@monthly-zen/db": "workspace:*"
+  }
+}
