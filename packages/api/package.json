@@ -11,18 +11,20 @@
   },
   "scripts": {},
   "dependencies": {
-    "@orpc/server": "catalog:",
+    "@monthly-zen/auth": "workspace:*",
+    "@monthly-zen/db": "workspace:*",
+    "@monthly-zen/types": "workspace:*",
+    "@openrouter/sdk": "^0.2.11",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "hono": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@monthly-zen/auth": "workspace:*",
-    "@monthly-zen/db": "workspace:*"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "catalog:",
-    "@monthly-zen/config": "workspace:*"
+    "@monthly-zen/config": "workspace:*",
+    "typescript": "catalog:"
   }
 }
