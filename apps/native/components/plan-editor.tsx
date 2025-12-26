@@ -130,9 +130,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
           </View>
           <View>
             <Text className="font-semibold">Edit Your Plan</Text>
-            <Text className="text-sm text-muted-foreground">
-              Customize your monthly plan details
-            </Text>
+            <Text className="text-sm text-foreground">Customize your monthly plan details</Text>
           </View>
         </View>
         <View className="flex gap-2 flex-row">
@@ -152,7 +150,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
         <Text className="font-semibold mb-4">Plan Information</Text>
         <View className="space-y-4">
           <View>
-            <Text className="text-sm text-muted-foreground mb-2">Plan Title</Text>
+            <Text className="text-sm text-foreground mb-2">Plan Title</Text>
             <TextInput
               value={editedPlan.title}
               onChangeText={handleTitleChange}
@@ -161,7 +159,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
             />
           </View>
           <View>
-            <Text className="text-sm text-muted-foreground mb-2">Month</Text>
+            <Text className="text-sm text-foreground mb-2">Month</Text>
             <TextInput
               value={editedPlan.month}
               onChangeText={handleMonthChange}
@@ -179,7 +177,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
             <Ionicons name="add" size={16} />
           </TouchableOpacity>
         </View>
-        <Text className="text-sm text-muted-foreground mb-4">
+        <Text className="text-sm text-foreground mb-4">
           Define your key objectives for this month
         </Text>
         <View className="space-y-3">
@@ -199,7 +197,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
                   name="trash"
                   size={20}
                   className={
-                    editedPlan.goals.length <= 1 ? "text-muted-foreground/50" : "text-destructive"
+                    editedPlan.goals.length <= 1 ? "text-foreground/50" : "text-destructive"
                   }
                 />
               </TouchableOpacity>
@@ -215,7 +213,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
             <Ionicons name="add" size={16} />
           </TouchableOpacity>
         </View>
-        <Text className="text-sm text-muted-foreground mb-4">
+        <Text className="text-sm text-foreground mb-4">
           Define specific tasks to achieve your goals
         </Text>
         <View className="space-y-4">
@@ -231,14 +229,14 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
                     name="trash"
                     size={20}
                     className={
-                      editedPlan.tasks.length <= 1 ? "text-muted-foreground/50" : "text-destructive"
+                      editedPlan.tasks.length <= 1 ? "text-foreground/50" : "text-destructive"
                     }
                   />
                 </TouchableOpacity>
               </View>
 
               <View>
-                <Text className="text-sm text-muted-foreground mb-2">Task Title</Text>
+                <Text className="text-sm text-foreground mb-2">Task Title</Text>
                 <TextInput
                   value={task.title}
                   onChangeText={(text) => handleTaskChange(index, "title", text)}
@@ -248,7 +246,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
               </View>
 
               <View>
-                <Text className="text-sm text-muted-foreground mb-2">Description</Text>
+                <Text className="text-sm text-foreground mb-2">Description</Text>
                 <TextInput
                   value={task.description || ""}
                   onChangeText={(text) => handleTaskChange(index, "description", text)}
@@ -260,7 +258,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
 
               <View className="flex gap-2 flex-row">
                 <View className="flex-1">
-                  <Text className="text-sm text-muted-foreground mb-2">Category</Text>
+                  <Text className="text-sm text-foreground mb-2">Category</Text>
                   <TextInput
                     value={task.category}
                     onChangeText={(text) => handleTaskChange(index, "category", text)}
@@ -269,7 +267,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
                   />
                 </View>
                 <View className="w-24">
-                  <Text className="text-sm text-muted-foreground mb-2">Priority</Text>
+                  <Text className="text-sm text-foreground mb-2">Priority</Text>
                   <TextInput
                     value={task.priority}
                     onChangeText={(text) => handleTaskChange(index, "priority", text)}
@@ -293,25 +291,25 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
         <View className="grid grid-cols-4 gap-4">
           <View className="items-center p-4 bg-muted/30 rounded-lg">
             <Text className="text-2xl font-bold text-primary">{editedPlan.goals.length}</Text>
-            <Text className="text-sm text-muted-foreground">Goals</Text>
+            <Text className="text-sm text-foreground">Goals</Text>
           </View>
           <View className="items-center p-4 bg-muted/30 rounded-lg">
             <Text className="text-2xl font-bold text-green-600 dark:text-green-400">
               {editedPlan.tasks.length}
             </Text>
-            <Text className="text-sm text-muted-foreground">Tasks</Text>
+            <Text className="text-sm text-foreground">Tasks</Text>
           </View>
           <View className="items-center p-4 bg-muted/30 rounded-lg">
             <Text className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {editedPlan.tasks.reduce((sum, task) => sum + (task.estimatedHours || 0), 0)}h
             </Text>
-            <Text className="text-sm text-muted-foreground">Total Hours</Text>
+            <Text className="text-sm text-foreground">Total Hours</Text>
           </View>
           <View className="items-center p-4 bg-muted/30 rounded-lg">
             <Text className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {editedPlan.tasks.filter((t) => t.priority === "High").length}
             </Text>
-            <Text className="text-sm text-muted-foreground">High Priority</Text>
+            <Text className="text-sm text-foreground">High Priority</Text>
           </View>
         </View>
       </Card>

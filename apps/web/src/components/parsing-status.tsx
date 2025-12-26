@@ -28,7 +28,7 @@ export function ParsingStatus({ isLoading, aiResponse, error }: ParsingStatusPro
               <span className="text-sm">Extracting structured data from AI response</span>
             </div>
             <Progress value={60} className="w-full" />
-            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+            <div className="grid grid-cols-3 gap-4 text-xs text-foreground">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full" />
                 JSON Extraction
@@ -59,7 +59,7 @@ export function ParsingStatus({ isLoading, aiResponse, error }: ParsingStatusPro
           <CardDescription>{error}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground">
             You can try regenerating the plan or proceed with available data.
           </p>
         </CardContent>
@@ -108,7 +108,7 @@ export function ParsingStatus({ isLoading, aiResponse, error }: ParsingStatusPro
         {/* Confidence Score */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle className="h-4 w-4 text-foreground" />
             <span className="text-sm font-medium">Confidence Score</span>
           </div>
           <Badge className={getConfidenceColor(metadata.confidence)}>{metadata.confidence}%</Badge>
@@ -117,7 +117,7 @@ export function ParsingStatus({ isLoading, aiResponse, error }: ParsingStatusPro
         {/* Format Detection */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Brain className="h-4 w-4 text-muted-foreground" />
+            <Brain className="h-4 w-4 text-foreground" />
             <span className="text-sm font-medium">Detected Format</span>
           </div>
           <Badge className={getFormatColor(metadata.detectedFormat)}>
@@ -129,10 +129,10 @@ export function ParsingStatus({ isLoading, aiResponse, error }: ParsingStatusPro
         {metadata.extractionNotes && (
           <div className="p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-foreground" />
               <span className="text-sm font-medium">Extraction Notes</span>
             </div>
-            <p className="text-xs text-muted-foreground">{metadata.extractionNotes}</p>
+            <p className="text-xs text-foreground">{metadata.extractionNotes}</p>
           </div>
         )}
 

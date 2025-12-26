@@ -108,7 +108,7 @@ export default function CalendarPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Error loading calendar</h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-foreground mb-4">{error}</p>
           <Button onClick={() => fetchTasks(selectedMonth)}>Retry</Button>
         </div>
       </div>
@@ -144,7 +144,7 @@ export default function CalendarPage() {
             </BreadcrumbList>
           </Breadcrumb>
 
-          {isLoading && <div className="text-sm text-muted-foreground">Loading...</div>}
+          {isLoading && <div className="text-sm text-foreground">Loading...</div>}
         </header>
 
         <div className="flex flex-1 p-4">

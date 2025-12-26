@@ -136,7 +136,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
           </div>
           <div>
             <h3 className="font-semibold">Edit Your Plan</h3>
-            <p className="text-sm text-muted-foreground">Customize your monthly plan details</p>
+            <p className="text-sm text-foreground">Customize your monthly plan details</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -360,25 +360,25 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <div className="text-2xl font-bold text-primary">{editedPlan.goals.length}</div>
-              <p className="text-sm text-muted-foreground">Goals</p>
+              <p className="text-sm text-foreground">Goals</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {editedPlan.tasks.length}
               </div>
-              <p className="text-sm text-muted-foreground">Tasks</p>
+              <p className="text-sm text-foreground">Tasks</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {editedPlan.tasks.reduce((sum, task) => sum + (task.estimatedHours || 0), 0)}h
               </div>
-              <p className="text-sm text-muted-foreground">Total Hours</p>
+              <p className="text-sm text-foreground">Total Hours</p>
             </div>
             <div className="text-center p-4 bg-muted/30 rounded-lg">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {editedPlan.tasks.filter((t) => t.priority === "High").length}
               </div>
-              <p className="text-sm text-muted-foreground">High Priority</p>
+              <p className="text-sm text-foreground">High Priority</p>
             </div>
           </div>
         </CardContent>

@@ -40,9 +40,7 @@ function FieldInfo({ field }: { field: AnyFieldApi }) {
           {field.state.meta.errors.map((err) => err.message).join(",")}
         </p>
       )}
-      {field.state.meta.isValidating && (
-        <p className="text-sm text-muted-foreground">Validating...</p>
-      )}
+      {field.state.meta.isValidating && <p className="text-sm text-foreground">Validating...</p>}
     </>
   );
 }

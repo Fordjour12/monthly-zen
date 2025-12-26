@@ -46,7 +46,7 @@ export function DirectPlanDisplay({
           </div>
           <div>
             <h3 className="font-semibold">Processing AI Response</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground">
               Parsing and structuring your personalized plan...
             </p>
           </div>
@@ -124,7 +124,7 @@ export function DirectPlanDisplay({
           </div>
           <div>
             <h3 className="font-semibold">AI Plan Generated Successfully!</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground">
               {monthlyPlan.totalTasks} tasks • {monthlyPlan.estimatedHours}h estimated •{" "}
               {metadata.confidence}% confidence
             </p>
@@ -151,7 +151,7 @@ export function DirectPlanDisplay({
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <BarChart3 className="h-4 w-4 text-foreground" />
               <span className="text-sm font-medium">AI Processing Quality</span>
             </div>
             <Badge variant={metadata.confidence >= 80 ? "default" : "secondary"}>
@@ -159,7 +159,7 @@ export function DirectPlanDisplay({
             </Badge>
           </div>
           <Progress value={metadata.confidence} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-2">{metadata.extractionNotes}</p>
+          <p className="text-xs text-foreground mt-2">{metadata.extractionNotes}</p>
         </CardContent>
       </Card>
 
@@ -173,7 +173,7 @@ export function DirectPlanDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-foreground leading-relaxed">
               {structuredData.monthly_summary}
             </p>
           </CardContent>
@@ -221,11 +221,11 @@ export function DirectPlanDisplay({
               {monthlyPlan.goals.slice(0, 3).map((goal, index) => (
                 <div key={index} className="flex items-start gap-2">
                   <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{goal}</p>
+                  <p className="text-sm text-foreground">{goal}</p>
                 </div>
               ))}
               {monthlyPlan.goals.length > 3 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-foreground">
                   +{monthlyPlan.goals.length - 3} more goals
                 </p>
               )}
@@ -254,7 +254,7 @@ export function DirectPlanDisplay({
                     <div>
                       <p className="font-medium text-sm">{task.title}</p>
                       {task.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+                        <p className="text-xs text-foreground mt-1">{task.description}</p>
                       )}
                     </div>
                   </div>
@@ -282,19 +282,19 @@ export function DirectPlanDisplay({
           <div className="grid grid-cols-3 gap-4 pt-4 border-t">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{monthlyPlan.totalTasks}</div>
-              <p className="text-xs text-muted-foreground">Total Tasks</p>
+              <p className="text-xs text-foreground">Total Tasks</p>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {monthlyPlan.estimatedHours}h
               </div>
-              <p className="text-xs text-muted-foreground">Est. Hours</p>
+              <p className="text-xs text-foreground">Est. Hours</p>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {metadata.confidence}%
               </div>
-              <p className="text-xs text-muted-foreground">AI Confidence</p>
+              <p className="text-xs text-foreground">AI Confidence</p>
             </div>
           </div>
         </CardContent>
@@ -314,11 +314,11 @@ export function DirectPlanDisplay({
               {structuredData.productivity_insights.slice(0, 3).map((insight, index) => (
                 <div key={index} className="flex items-start gap-2 p-2 bg-muted/30 rounded">
                   <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{insight}</p>
+                  <p className="text-sm text-foreground">{insight}</p>
                 </div>
               ))}
               {structuredData.productivity_insights.length > 3 && (
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-foreground text-center">
                   +{structuredData.productivity_insights.length - 3} more insights
                 </p>
               )}
@@ -331,7 +331,7 @@ export function DirectPlanDisplay({
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-foreground">
               Plan processed with {metadata.confidence}% accuracy from {metadata.detectedFormat}{" "}
               format
             </div>

@@ -62,7 +62,7 @@ export function AIPlanResponse({
           </div>
           <div>
             <h3 className="font-semibold">Generating Your Plan</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground">
               AI is creating your personalized monthly plan...
             </p>
           </div>
@@ -139,7 +139,7 @@ export function AIPlanResponse({
           </div>
           <div>
             <h3 className="font-semibold">Plan Generated Successfully!</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-foreground">
               {plan.totalTasks} tasks • {plan.estimatedHours}h estimated
             </p>
           </div>
@@ -189,11 +189,11 @@ export function AIPlanResponse({
               {plan.goals.slice(0, 3).map((goal, index) => (
                 <div key={index} className="flex items-start gap-2">
                   <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">{goal}</p>
+                  <p className="text-sm text-foreground">{goal}</p>
                 </div>
               ))}
               {plan.goals.length > 3 && (
-                <p className="text-xs text-muted-foreground">+{plan.goals.length - 3} more goals</p>
+                <p className="text-xs text-foreground">+{plan.goals.length - 3} more goals</p>
               )}
             </div>
           </div>
@@ -220,7 +220,7 @@ export function AIPlanResponse({
                     <div>
                       <p className="font-medium text-sm">{task.title}</p>
                       {task.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{task.description}</p>
+                        <p className="text-xs text-foreground mt-1">{task.description}</p>
                       )}
                     </div>
                   </div>
@@ -248,19 +248,19 @@ export function AIPlanResponse({
           <div className="grid grid-cols-3 gap-4 pt-4 border-t">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{plan.totalTasks}</div>
-              <p className="text-xs text-muted-foreground">Total Tasks</p>
+              <p className="text-xs text-foreground">Total Tasks</p>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {plan.estimatedHours}h
               </div>
-              <p className="text-xs text-muted-foreground">Est. Hours</p>
+              <p className="text-xs text-foreground">Est. Hours</p>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {plan.goals.length}
               </div>
-              <p className="text-xs text-muted-foreground">Goals</p>
+              <p className="text-xs text-foreground">Goals</p>
             </div>
           </div>
         </CardContent>
@@ -270,7 +270,7 @@ export function AIPlanResponse({
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-foreground">
               Need adjustments? You can edit this plan or generate a new one.
             </div>
             <div className="flex gap-2">

@@ -34,7 +34,7 @@ function Wrapper({
       )}
       {...props}
     >
-      <div className="text-muted-foreground px-1.5 py-2 text-xs font-medium">{title}</div>
+      <div className="text-foreground px-1.5 py-2 text-xs font-medium">{title}</div>
       <div
         data-slot="example-content"
         className={cn(

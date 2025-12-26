@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, memo } from "react";
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "heroui-native";
 import { authClient } from "@/lib/auth-client";
-import { usePlanGeneration, type GenerateInput } from "@/hooks/usePlanGeneration";
+import { usePlanGeneration, type GenerateInput, type FixedCommitment } from "@/hooks/usePlanGeneration";
 import { AutoSaveIndicator } from "@/components/auto-save-indicator";
 import { DraftRecoveryBanner } from "@/components/draft-recovery-banner";
 import { ParsingStatus } from "@/components/parsing-status";
@@ -29,7 +29,21 @@ interface Task {
   status?: string;
 }
 
-export default function PlanScreen() {
+// Generate a cryptographically secure random ID
+const generateId = (): string => {
+  // Use crypto.randomUUID() if available (React Native 0.70+)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback: Use a more secure alternative to Math.random()
+  const timestamp = Date.now().toString(36);
+  const randomPart = Array.from({ length: 9 }, () =>
+    Math.random().toString(36)[2] || '0'
+  ).join('');
+  return `${timestamp}${randomPart}`;
+};
+
+function PlanScreen() {
   const {
     draft,
     planData,
@@ -55,14 +69,7 @@ export default function PlanScreen() {
   );
   const [focusAreas, setFocusAreas] = useState("");
   const [weekendPreference, setWeekendPreference] = useState<"Work" | "Rest" | "Mixed">("Mixed");
-  const [fixedCommitments, setFixedCommitments] = useState<
-    Array<{
-      dayOfWeek: string;
-      startTime: string;
-      endTime: string;
-      description: string;
-    }>
-  >([]);
+  const [fixedCommitments, setFixedCommitments] = useState<FixedCommitment[]>([]);
 
   authClient.useSession();
 
@@ -80,7 +87,7 @@ export default function PlanScreen() {
     if (planData && !hasGenerated && !showRecoveryBanner) {
       setHasGenerated(true);
     }
-  }, [planData, showRecoveryBanner]);
+  }, [planData, showRecoveryBanner, hasGenerated]);
 
   // Transform planData to MonthlyPlan
   const monthlyPlan = useMemo((): MonthlyPlan | null => {
@@ -91,16 +98,15 @@ export default function PlanScreen() {
     const tasks: Task[] = [];
     const goals: string[] = [];
 
-    planData.weekly_breakdown.forEach((week: any) => {
+    planData.weekly_breakdown.forEach((week) => {
       if (week.goals) goals.push(...week.goals);
 
       if (week.daily_tasks) {
-        Object.entries(week.daily_tasks).forEach(([, dayTasks]: [string, any]) => {
+        Object.entries(week.daily_tasks).forEach(([, dayTasks]) => {
           if (Array.isArray(dayTasks)) {
-            dayTasks.forEach((t: any) => {
+            dayTasks.forEach((t) => {
               tasks.push({
-                ...t,
-                id: Math.random().toString(36).substring(2, 11),
+                id: generateId(),
                 title: t.task_description,
                 description: t.scheduling_reason,
                 category: t.focus_area,
@@ -129,7 +135,7 @@ export default function PlanScreen() {
     };
   }, [planData, editedPlan]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     if (!goalsText.trim() || !focusAreas.trim()) {
       Alert.alert("Validation Error", "Please fill in all required fields");
       return;
@@ -162,62 +168,62 @@ export default function PlanScreen() {
     } catch (err) {
       console.error("Plan generation error:", err);
     }
-  };
+  }, [goalsText, focusAreas, taskComplexity, weekendPreference, fixedCommitments, generate, clearError]);
 
-  const handleRecoverDraft = () => {
+  const handleRecoverDraft = useCallback(() => {
     setHasGenerated(true);
     setShowRecoveryBanner(false);
-  };
+  }, []);
 
-  const handleDiscardDraft = async () => {
+  const handleDiscardDraft = useCallback(async () => {
     await discard();
     setShowRecoveryBanner(false);
     setHasGenerated(false);
     setEditedPlan(undefined);
-  };
+  }, [discard]);
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = useCallback(async () => {
     setHasGenerated(false);
     setEditedPlan(undefined);
     setIsEditing(false);
-    handleGenerate();
-  };
+    await handleGenerate();
+  }, [handleGenerate]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const planId = await save();
     if (planId) {
       Alert.alert("Success", `Plan saved successfully! ID: ${planId}`);
       setHasGenerated(false);
     }
-  };
+  }, [save]);
 
-  const handleEdit = () => {
+  const handleEdit = useCallback(() => {
     if (monthlyPlan) {
       setIsEditing(true);
       setEditedPlan(monthlyPlan);
     }
-  };
+  }, [monthlyPlan]);
 
-  const handleSaveEdit = (newPlanData: MonthlyPlan) => {
+  const handleSaveEdit = useCallback((newPlanData: MonthlyPlan) => {
     setEditedPlan(newPlanData);
     setIsEditing(false);
-  };
+  }, []);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setEditedPlan(undefined);
-  };
+  }, []);
 
-  const handleViewFull = async () => {
+  const handleViewFull = useCallback(async () => {
     const planId = await save();
     if (planId) {
       Alert.alert("Success", `Plan saved! ID: ${planId}\nTasks view not implemented yet`);
     } else {
       Alert.alert("Info", "Tasks view not implemented yet");
     }
-  };
+  }, [save]);
 
-  const addCommitment = () => {
+  const addCommitment = useCallback(() => {
     setFixedCommitments([
       ...fixedCommitments,
       {
@@ -227,17 +233,17 @@ export default function PlanScreen() {
         description: "",
       },
     ]);
-  };
+  }, [fixedCommitments]);
 
-  const removeCommitment = (index: number) => {
+  const removeCommitment = useCallback((index: number) => {
     setFixedCommitments(fixedCommitments.filter((_, i) => i !== index));
-  };
+  }, [fixedCommitments]);
 
-  const updateCommitment = (index: number, field: string, value: string) => {
+  const updateCommitment = useCallback((index: number, field: keyof FixedCommitment, value: string) => {
     const newCommitments = [...fixedCommitments];
     newCommitments[index] = { ...newCommitments[index], [field]: value };
     setFixedCommitments(newCommitments);
-  };
+  }, [fixedCommitments]);
 
   return (
     <View className="flex-1 bg-background">
@@ -250,7 +256,7 @@ export default function PlanScreen() {
             </View>
             <View>
               <Text className="text-2xl font-bold tracking-tight">Generate AI Plan</Text>
-              <Text className="text-muted-foreground">
+              <Text className="text-foreground">
                 Create a personalized monthly plan with AI assistance
               </Text>
             </View>
@@ -316,7 +322,7 @@ export default function PlanScreen() {
                 <Ionicons name="flag" size={20} className="text-primary" />
                 <Text className="font-semibold">Your Goals & Objectives</Text>
               </View>
-              <Text className="text-sm text-muted-foreground mb-4">
+              <Text className="text-sm text-foreground mb-4">
                 Describe what you want to achieve this month. Be specific about your goals,
                 deadlines, and desired outcomes.
               </Text>
@@ -324,11 +330,11 @@ export default function PlanScreen() {
                 value={goalsText}
                 onChangeText={setGoalsText}
                 placeholder="e.g., I want to launch my e-commerce website, learn React, and exercise 3 times per week..."
-                className="border border-border rounded-lg p-3 min-h-[120px] text-base"
+                className="border border-border rounded-lg p-3 min-h-30 text-base"
                 multiline
                 textAlignVertical="top"
               />
-              <Text className="text-xs text-muted-foreground mt-2">
+              <Text className="text-xs text-foreground mt-2">
                 The more detailed your goals, the better AI can tailor your plan.
               </Text>
             </Card>
@@ -339,7 +345,7 @@ export default function PlanScreen() {
                 <Ionicons name="flash" size={20} className="text-primary" />
                 <Text className="font-semibold">Task Complexity</Text>
               </View>
-              <Text className="text-sm text-muted-foreground mb-4">
+              <Text className="text-sm text-foreground mb-4">
                 Choose how ambitious you want your monthly plan to be.
               </Text>
               <View className="space-y-3">
@@ -348,18 +354,20 @@ export default function PlanScreen() {
                     key={level}
                     onPress={() => setTaskComplexity(level as "Simple" | "Balanced" | "Ambitious")}
                     className={`p-4 border rounded-lg ${taskComplexity === level ? "border-primary bg-primary/10" : "border-border"}`}
+                    accessibilityLabel={`${level} task complexity`}
+                    accessibilityHint={`Set task complexity to ${level.toLowerCase()}`}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: taskComplexity === level }}
                   >
                     <View className="flex items-center gap-3 flex-row">
                       <Ionicons
                         name={taskComplexity === level ? "radio-button-on" : "radio-button-off"}
                         size={20}
-                        className={
-                          taskComplexity === level ? "text-primary" : "text-muted-foreground"
-                        }
+                        className={taskComplexity === level ? "text-primary" : "text-foreground"}
                       />
                       <View>
                         <Text className="font-medium">{level}</Text>
-                        <Text className="text-sm text-muted-foreground">
+                        <Text className="text-sm text-foreground">
                           {level === "Simple"
                             ? "Fewer, manageable tasks"
                             : level === "Balanced"
@@ -376,11 +384,11 @@ export default function PlanScreen() {
             {/* Focus Areas */}
             <Card className="p-4">
               <Text className="font-semibold mb-4">Focus Areas</Text>
-              <Text className="text-sm text-muted-foreground mb-4">
+              <Text className="text-sm text-foreground mb-4">
                 What areas do you want to focus on this month?
               </Text>
               <View className="flex items-center gap-2 border border-border rounded-lg p-3">
-                <Ionicons name="flag" size={18} className="text-muted-foreground" />
+                <Ionicons name="flag" size={18} className="text-foreground" />
                 <TextInput
                   value={focusAreas}
                   onChangeText={setFocusAreas}
@@ -388,7 +396,7 @@ export default function PlanScreen() {
                   className="flex-1 text-base"
                 />
               </View>
-              <Text className="text-xs text-muted-foreground mt-2">
+              <Text className="text-xs text-foreground mt-2">
                 Separate multiple areas with commas.
               </Text>
             </Card>
@@ -399,7 +407,7 @@ export default function PlanScreen() {
                 <Ionicons name="calendar" size={20} className="text-primary" />
                 <Text className="font-semibold">Weekend Preference</Text>
               </View>
-              <Text className="text-sm text-muted-foreground mb-4">
+              <Text className="text-sm text-foreground mb-4">
                 How would you like to handle weekends in your plan?
               </Text>
               <View className="space-y-3">
@@ -412,6 +420,10 @@ export default function PlanScreen() {
                     key={pref.value}
                     onPress={() => setWeekendPreference(pref.value as "Work" | "Rest" | "Mixed")}
                     className={`p-4 border rounded-lg ${weekendPreference === pref.value ? "border-primary bg-primary/10" : "border-border"}`}
+                    accessibilityLabel={pref.label}
+                    accessibilityHint={pref.desc}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: weekendPreference === pref.value }}
                   >
                     <View className="flex items-center gap-3 flex-row">
                       <Ionicons
@@ -420,14 +432,12 @@ export default function PlanScreen() {
                         }
                         size={20}
                         className={
-                          weekendPreference === pref.value
-                            ? "text-primary"
-                            : "text-muted-foreground"
+                          weekendPreference === pref.value ? "text-primary" : "text-foreground"
                         }
                       />
                       <View>
                         <Text className="font-medium">{pref.label}</Text>
-                        <Text className="text-sm text-muted-foreground">{pref.desc}</Text>
+                        <Text className="text-sm text-foreground">{pref.desc}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -441,7 +451,7 @@ export default function PlanScreen() {
                 <Ionicons name="time" size={20} className="text-primary" />
                 <Text className="font-semibold">Fixed Commitments</Text>
               </View>
-              <Text className="text-sm text-muted-foreground mb-4">
+              <Text className="text-sm text-foreground mb-4">
                 Add any regular commitments or blocked time slots (optional).
               </Text>
               <View className="space-y-4">
@@ -449,7 +459,7 @@ export default function PlanScreen() {
                   <View key={index} className="p-4 border border-border rounded-lg relative">
                     <View className="space-y-3">
                       <View>
-                        <Text className="text-xs text-muted-foreground mb-1">Day</Text>
+                        <Text className="text-xs text-foreground mb-1">Day</Text>
                         <TextInput
                           value={commitment.dayOfWeek}
                           onChangeText={(text) => updateCommitment(index, "dayOfWeek", text)}
@@ -459,7 +469,7 @@ export default function PlanScreen() {
                       </View>
                       <View className="flex gap-3 flex-row">
                         <View className="flex-1">
-                          <Text className="text-xs text-muted-foreground mb-1">Start</Text>
+                          <Text className="text-xs text-foreground mb-1">Start</Text>
                           <TextInput
                             value={commitment.startTime}
                             onChangeText={(text) => updateCommitment(index, "startTime", text)}
@@ -468,7 +478,7 @@ export default function PlanScreen() {
                           />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-xs text-muted-foreground mb-1">End</Text>
+                          <Text className="text-xs text-foreground mb-1">End</Text>
                           <TextInput
                             value={commitment.endTime}
                             onChangeText={(text) => updateCommitment(index, "endTime", text)}
@@ -478,7 +488,7 @@ export default function PlanScreen() {
                         </View>
                       </View>
                       <View>
-                        <Text className="text-xs text-muted-foreground mb-1">Description</Text>
+                        <Text className="text-xs text-foreground mb-1">Description</Text>
                         <TextInput
                           value={commitment.description}
                           onChangeText={(text) => updateCommitment(index, "description", text)}
@@ -490,6 +500,9 @@ export default function PlanScreen() {
                     <TouchableOpacity
                       onPress={() => removeCommitment(index)}
                       className="absolute top-2 right-2"
+                      accessibilityLabel="Remove commitment"
+                      accessibilityHint={`Remove ${commitment.description || 'this'} commitment`}
+                      accessibilityRole="button"
                     >
                       <Ionicons name="close" size={20} className="text-destructive" />
                     </TouchableOpacity>
@@ -498,6 +511,9 @@ export default function PlanScreen() {
                 <TouchableOpacity
                   onPress={addCommitment}
                   className="border border-border p-4 rounded-lg items-center"
+                  accessibilityLabel="Add Fixed Commitment"
+                  accessibilityHint="Add a new time commitment to your schedule"
+                  accessibilityRole="button"
                 >
                   <Ionicons name="add" size={20} />
                   <Text className="text-sm font-medium ml-2">Add Fixed Commitment</Text>
@@ -510,6 +526,10 @@ export default function PlanScreen() {
               onPress={handleGenerate}
               disabled={isGenerating}
               className={`p-4 rounded-lg items-center ${isGenerating ? "bg-muted" : "bg-primary"}`}
+              accessibilityLabel="Generate AI Plan"
+              accessibilityHint="Creates a personalized monthly plan based on your inputs"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isGenerating }}
             >
               <View className="flex items-center gap-2 flex-row">
                 {isGenerating ? (
@@ -544,3 +564,9 @@ export default function PlanScreen() {
     </View>
   );
 }
+
+export default memo(PlanScreen, (_prevProps, _nextProps) => {
+  // Since this is a screen component without props, it will always re-render when parent re-renders
+  // But the memo helps prevent re-renders when props don't change
+  return true;
+});

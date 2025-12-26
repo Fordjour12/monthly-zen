@@ -94,7 +94,7 @@ export function TokenQuotaCard({ quota, isLoading = false }: TokenQuotaCardProps
             value={quota.usagePercentage}
             className={`h-2 ${getProgressColor(quota.status)}`}
           />
-          <div className="flex justify-between text-sm text-muted-foreground">
+          <div className="flex justify-between text-sm text-foreground">
             <span>{quota.generationsUsed} used</span>
             <span>{quota.totalAllowed} total</span>
           </div>
@@ -108,7 +108,7 @@ export function TokenQuotaCard({ quota, isLoading = false }: TokenQuotaCardProps
             </div>
             <div>
               <p className="text-sm font-medium">{quota.remaining}</p>
-              <p className="text-xs text-muted-foreground">Remaining</p>
+              <p className="text-xs text-foreground">Remaining</p>
             </div>
           </div>
 
@@ -118,7 +118,7 @@ export function TokenQuotaCard({ quota, isLoading = false }: TokenQuotaCardProps
             </div>
             <div>
               <p className="text-sm font-medium">{quota.daysUntilReset}</p>
-              <p className="text-xs text-muted-foreground">Days until reset</p>
+              <p className="text-xs text-foreground">Days until reset</p>
             </div>
           </div>
 
@@ -133,7 +133,7 @@ export function TokenQuotaCard({ quota, isLoading = false }: TokenQuotaCardProps
                   day: "numeric",
                 })}
               </p>
-              <p className="text-xs text-muted-foreground">Reset date</p>
+              <p className="text-xs text-foreground">Reset date</p>
             </div>
           </div>
         </div>
@@ -154,7 +154,7 @@ export function TokenQuotaCard({ quota, isLoading = false }: TokenQuotaCardProps
               {quota.usagePercentage}%
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-foreground mt-1">
             {quota.generationsUsed} of {quota.totalAllowed} generations used
           </p>
         </div>

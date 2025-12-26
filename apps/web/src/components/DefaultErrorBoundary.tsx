@@ -54,7 +54,7 @@ export function DefaultCatchErrorBoundary({ error }: ErrorComponentProps) {
             </Alert>
 
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-foreground">
                 If this problem persists, please try refreshing the page or contact support.
               </p>
             </div>

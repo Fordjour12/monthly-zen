@@ -55,13 +55,13 @@ export function DraftRecoveryBanner({
             <div className="flex-1 space-y-3">
               <div>
                 <h3 className="text-lg font-semibold tracking-tight">Draft Recovered</h3>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-foreground mt-1">
                   Your unsaved plan from {timeAgo} is ready to continue
                 </p>
               </div>
 
               {/* Metadata */}
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-4 text-xs text-foreground">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
                   <span>Expires in {expiresIn}</span>

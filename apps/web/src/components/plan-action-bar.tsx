@@ -47,7 +47,7 @@ export function PlanActionBar({
         <div className="relative rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl shadow-2xl">
           <div className="flex items-center justify-between gap-3 p-4">
             {/* Left: Expiration info */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-foreground">
               {expiresAt && (
                 <>
                   <Clock className="h-3.5 w-3.5" />

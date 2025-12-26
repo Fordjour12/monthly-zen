@@ -32,15 +32,15 @@ export function DraftRecoveryBanner({
             <Text className="text-lg font-semibold tracking-tight text-foreground">
               Draft Recovered
             </Text>
-            <Text className="text-sm text-muted-foreground mt-1">
+            <Text className="text-sm text-foreground mt-1">
               Your unsaved plan from {timeAgo} is ready to continue
             </Text>
           </View>
 
           <View className="flex items-center gap-4 flex-row">
             <View className="flex items-center gap-1.5 flex-row">
-              <Ionicons name="time-outline" size={14} className="text-muted-foreground" />
-              <Text className="text-xs text-muted-foreground">Expires in {expiresIn}</Text>
+              <Ionicons name="time-outline" size={14} className="text-foreground" />
+              <Text className="text-xs text-foreground">Expires in {expiresIn}</Text>
             </View>
           </View>
 
@@ -65,7 +65,7 @@ export function DraftRecoveryBanner({
             onPress={onDismiss}
             className="h-8 w-8 items-center justify-center rounded-full"
           >
-            <Ionicons name="close" size={20} className="text-muted-foreground" />
+            <Ionicons name="close" size={20} className="text-foreground" />
           </TouchableOpacity>
         )}
       </View>
