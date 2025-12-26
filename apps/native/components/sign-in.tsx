@@ -1,20 +1,16 @@
-import { Card, useThemeColor } from "heroui-native";
-import { useState } from "react";
-import { ActivityIndicator, Text, TextInput, Pressable, View } from "react-native";
-
 import { authClient } from "@/lib/auth-client";
 import { queryClient } from "@/utils/orpc";
+import { useSemanticColors } from "@/utils/theme";
+import { useState } from "react";
+import { ActivityIndicator, Text, TextInput, Pressable, View } from "react-native";
+import { Card } from "heroui-native";
 
 function SignIn() {
+  const colors = useSemanticColors();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const mutedColor = useThemeColor("muted");
-  const accentColor = useThemeColor("accent");
-  const foregroundColor = useThemeColor("foreground");
-  const dangerColor = useThemeColor("danger");
 
   async function handleLogin() {
     setIsLoading(true);
@@ -57,7 +53,7 @@ function SignIn() {
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        placeholderTextColor={mutedColor}
+        placeholderTextColor={colors.muted}
         keyboardType="email-address"
         autoCapitalize="none"
       />
@@ -67,7 +63,7 @@ function SignIn() {
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        placeholderTextColor={mutedColor}
+        placeholderTextColor={colors.muted}
         secureTextEntry
       />
 
@@ -77,7 +73,7 @@ function SignIn() {
         className="bg-accent p-4 rounded-lg flex-row justify-center items-center active:opacity-70"
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={foregroundColor} />
+          <ActivityIndicator size="small" color={colors.foreground} />
         ) : (
           <Text className="text-foreground font-medium">Sign In</Text>
         )}

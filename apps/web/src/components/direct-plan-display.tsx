@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { type MonthlyPlan, type AIResponseWithMetadata } from "@testing-server/response-parser";
+import { type MonthlyPlan, type AIResponseWithMetadata } from "@monthly-zen/response-parser";
 
 interface DirectPlanDisplayProps {
   isLoading: boolean;

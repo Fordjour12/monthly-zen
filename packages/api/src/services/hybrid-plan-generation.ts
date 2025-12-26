@@ -1,6 +1,6 @@
 import * as db from "@monthly-zen/db";
 import { getOpenRouterService } from "../lib/openrouter";
-import { responseExtractor } from "../lib/response-extractor";
+import { responseExtractor } from "@monthly-zen/response-parser";
 import type { GenerationQuota } from "@monthly-zen/db";
 
 // Proper type for fixed commitments
@@ -98,7 +98,7 @@ export async function generatePlan(
       taskComplexity: input.taskComplexity,
       focusAreas: input.focusAreas,
       weekendPreference: input.weekendPreference,
-      fixedCommitmentsJson: input.fixedCommitmentsJson as unknown as Record<string, unknown>,
+      fixedCommitmentsJson: input.fixedCommitmentsJson,
     });
 
     if (!preference) {
@@ -231,7 +231,7 @@ function calculateQuotaStatus(quota: GenerationQuota): QuotaStatus {
   const remaining = Math.max(0, totalAllowed - generationsUsed);
   const usagePercentage = totalAllowed > 0 ? (generationsUsed / totalAllowed) * 100 : 0;
 
-  const resetDate = quota.resetsOn instanceof Date ? quota.resetsOn : new Date(quota.resetsOn);
+  const resetDate = new Date(quota.resetsOn);
   const today = new Date();
   const daysUntilReset = Math.ceil((resetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -260,10 +260,7 @@ async function checkAndResetQuota(
   existingQuota: GenerationQuota,
 ): Promise<GenerationQuota | null> {
   const now = new Date();
-  const resetsOn =
-    existingQuota.resetsOn instanceof Date
-      ? existingQuota.resetsOn
-      : new Date(existingQuota.resetsOn);
+  const resetsOn = new Date(existingQuota.resetsOn);
 
   if (resetsOn > now) {
     return existingQuota;
@@ -352,7 +349,7 @@ ${fixedCommitmentsText}
 
 **Context:**
 - Month: ${monthYear}
-- Current Date: ${currentDate.toISOString()}
+- Plan Start Date: ${currentDate.toISOString()} (Start scheduling tasks from this date, NOT from the beginning of the month)
 - Typical business hours: ${businessHoursStart} - ${businessHoursEnd}
 
 **Output Format (Strict JSON):**
@@ -386,14 +383,15 @@ ${fixedCommitmentsText}
 }
 
 **Scheduling Requirements (CRITICAL):**
-1. **RESPECT FIXED COMMITMENTS**: Absolutely DO NOT schedule any tasks during the user's fixed commitment time slots listed above
-2. For each scheduled task, verify start_time and end_time do NOT overlap with any fixed commitment
-3. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
-4. Respect the user's weekend preference (${input.weekendPreference})
-5. Focus primarily on these areas: ${input.focusAreas}
-6. Provide clear, actionable task descriptions with estimated durations
-7. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
-8. Spread tasks evenly throughout the week when possible
+1. **START FROM CURRENT DATE**: Begin scheduling tasks from ${currentDate.toISOString().split("T")[0]}, NOT from the beginning of the month
+2. **RESPECT FIXED COMMITMENTS**: Absolutely DO NOT schedule any tasks during the user's fixed commitment time slots listed above
+3. For each scheduled task, verify start_time and end_time do NOT overlap with any fixed commitment
+4. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
+5. Respect the user's weekend preference (${input.weekendPreference})
+6. Focus primarily on these areas: ${input.focusAreas}
+7. Provide clear, actionable task descriptions with estimated durations
+8. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
+9. Spread tasks evenly throughout the week when possible
 
 **Task Complexity Guide:**
 - Simple: 3-5 shorter tasks per day, 30-60 minutes each

@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { orpc } from "@/utils/orpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
 
 export interface TaskData {
   task_description: string;

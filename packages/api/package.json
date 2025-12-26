@@ -13,6 +13,7 @@
   "dependencies": {
     "@monthly-zen/auth": "workspace:*",
     "@monthly-zen/db": "workspace:*",
+    "@monthly-zen/response-parser": "workspace:*",
     "@monthly-zen/types": "workspace:*",
     "@openrouter/sdk": "^0.2.11",
     "@orpc/client": "catalog:",

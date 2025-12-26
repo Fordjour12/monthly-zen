@@ -1,9 +1,8 @@
-import { Card, useThemeColor } from "heroui-native";
-import { useState } from "react";
-import { ActivityIndicator, Text, TextInput, Pressable, View } from "react-native";
-
 import { authClient } from "@/lib/auth-client";
 import { queryClient } from "@/utils/orpc";
+import { useState } from "react";
+import { ActivityIndicator, Text, TextInput, Pressable, View } from "react-native";
+import { Card, useThemeColor } from "heroui-native";
 
 function signUpHandler({
   name,
