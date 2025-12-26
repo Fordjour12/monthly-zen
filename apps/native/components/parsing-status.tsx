@@ -23,13 +23,13 @@ export function ParsingStatus({
             <Ionicons name="sync" size={20} className="animate-spin text-primary" />
             <Text className="font-semibold">Parsing AI Response</Text>
           </View>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="text-sm text-foreground">
             Processing and structuring your personalized plan...
           </Text>
           <View className="h-2 bg-muted rounded-full overflow-hidden">
             <View className="h-full bg-primary w-[60%]" />
           </View>
-          <View className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+          <View className="grid grid-cols-3 gap-4 text-xs text-foreground">
             <View className="flex items-center gap-2 flex-row">
               <View className="w-2 h-2 bg-green-500 rounded-full" />
               <Text>JSON Extraction</Text>
@@ -56,8 +56,8 @@ export function ParsingStatus({
             <Ionicons name="alert-circle" size={20} className="text-destructive" />
             <Text className="font-semibold text-destructive">Parsing Failed</Text>
           </View>
-          <Text className="text-sm text-muted-foreground">{error}</Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="text-sm text-foreground">{error}</Text>
+          <Text className="text-sm text-foreground">
             You can try regenerating the plan or proceed with available data.
           </Text>
         </View>
@@ -83,13 +83,13 @@ export function ParsingStatus({
             />
             <Text className="font-semibold">Parsing Complete</Text>
           </View>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="text-sm text-foreground">
             AI response has been successfully processed and structured
           </Text>
 
           <View className="flex items-center justify-between flex-row">
             <View className="flex items-center gap-2 flex-row">
-              <Ionicons name="checkmark-circle" size={16} className="text-muted-foreground" />
+              <Ionicons name="checkmark-circle" size={16} className="text-foreground" />
               <Text className="text-sm font-medium">Confidence Score</Text>
             </View>
             <View className={`px-3 py-1 rounded-full ${getConfidenceColor(confidence)}`}>
@@ -99,7 +99,7 @@ export function ParsingStatus({
 
           <View className="flex items-center justify-between flex-row">
             <View className="flex items-center gap-2 flex-row">
-              <Ionicons name="sparkles" size={16} className="text-muted-foreground" />
+              <Ionicons name="sparkles" size={16} className="text-foreground" />
               <Text className="text-sm font-medium">Detected Format</Text>
             </View>
             <View className="bg-blue-500/20 px-3 py-1 rounded-full">

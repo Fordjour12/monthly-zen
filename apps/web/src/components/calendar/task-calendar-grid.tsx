@@ -99,7 +99,7 @@ export function TaskCalendarGrid({
 
       <div className="grid grid-cols-7 gap-2">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+          <div key={day} className="text-center text-sm font-medium text-foreground p-2">
             {day}
           </div>
         ))}
@@ -150,9 +150,7 @@ export function TaskCalendarGrid({
                     </div>
                   ))}
                   {dayTasks.length > 2 && (
-                    <div className="text-xs text-muted-foreground pl-1">
-                      +{dayTasks.length - 2} more
-                    </div>
+                    <div className="text-xs text-foreground pl-1">+{dayTasks.length - 2} more</div>
                   )}
                 </div>
               )}

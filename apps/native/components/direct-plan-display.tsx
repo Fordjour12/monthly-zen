@@ -46,7 +46,7 @@ export function DirectPlanDisplay({
             <Ionicons name="alert-circle" size={20} className="text-destructive" />
             <Text className="font-semibold text-destructive">Processing Failed</Text>
           </View>
-          <Text className="text-sm text-muted-foreground">{error}</Text>
+          <Text className="text-sm text-foreground">{error}</Text>
           <TouchableOpacity onPress={onRegenerate} className="border border-border p-3 rounded-lg">
             <Text className="text-sm text-center">Try Again</Text>
           </TouchableOpacity>
@@ -85,7 +85,7 @@ export function DirectPlanDisplay({
           </View>
           <View>
             <Text className="font-semibold">AI Plan Generated Successfully!</Text>
-            <Text className="text-sm text-muted-foreground">
+            <Text className="text-sm text-foreground">
               {monthlyPlan.totalTasks} tasks • {monthlyPlan.estimatedHours}h estimated
             </Text>
           </View>
@@ -107,7 +107,7 @@ export function DirectPlanDisplay({
         <View className="space-y-4">
           <View>
             <Text className="font-semibold text-lg">{monthlyPlan.title}</Text>
-            <Text className="text-sm text-muted-foreground mt-1">{monthlyPlan.month}</Text>
+            <Text className="text-sm text-foreground mt-1">{monthlyPlan.month}</Text>
           </View>
 
           <View>
@@ -116,11 +116,11 @@ export function DirectPlanDisplay({
               {monthlyPlan.goals.slice(0, 3).map((goal, index) => (
                 <View key={index} className="flex items-start gap-2 flex-row">
                   <View className="w-1.5 h-1.5 bg-primary rounded-full mt-2" />
-                  <Text className="text-sm text-muted-foreground flex-1">{goal}</Text>
+                  <Text className="text-sm text-foreground flex-1">{goal}</Text>
                 </View>
               ))}
               {monthlyPlan.goals.length > 3 && (
-                <Text className="text-xs text-muted-foreground">
+                <Text className="text-xs text-foreground">
                   +{monthlyPlan.goals.length - 3} more goals
                 </Text>
               )}
@@ -136,9 +136,7 @@ export function DirectPlanDisplay({
                     <View className="flex-1 gap-2">
                       <Text className="font-medium text-sm">{task.title}</Text>
                       {task.description && (
-                        <Text className="text-xs text-muted-foreground mt-1">
-                          {task.description}
-                        </Text>
+                        <Text className="text-xs text-foreground mt-1">{task.description}</Text>
                       )}
                     </View>
                     <View className="flex gap-2 flex-row items-center">
@@ -162,17 +160,17 @@ export function DirectPlanDisplay({
           <View className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
             <View className="items-center">
               <Text className="text-2xl font-bold text-primary">{monthlyPlan.totalTasks}</Text>
-              <Text className="text-xs text-muted-foreground">Total Tasks</Text>
+              <Text className="text-xs text-foreground">Total Tasks</Text>
             </View>
             <View className="items-center">
               <Text className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {monthlyPlan.estimatedHours}h
               </Text>
-              <Text className="text-xs text-muted-foreground">Est. Hours</Text>
+              <Text className="text-xs text-foreground">Est. Hours</Text>
             </View>
             <View className="items-center">
               <Text className="text-2xl font-bold text-blue-600 dark:text-blue-400">95%</Text>
-              <Text className="text-xs text-muted-foreground">AI Confidence</Text>
+              <Text className="text-xs text-foreground">AI Confidence</Text>
             </View>
           </View>
         </View>
@@ -180,7 +178,7 @@ export function DirectPlanDisplay({
 
       <Card className="p-4">
         <View className="flex items-center justify-between flex-row">
-          <Text className="text-sm text-muted-foreground">
+          <Text className="text-sm text-foreground">
             Plan processed with 95% accuracy from JSON format
           </Text>
           <View className="flex gap-2 flex-row">

@@ -71,8 +71,8 @@ export function AutoSaveIndicatorCompact({ status }: Pick<AutoSaveIndicatorProps
     >
       {status === "saving" && (
         <>
-          <Ionicons name="sync" size={12} className="animate-spin text-muted-foreground" />
-          <Text className="text-xs text-muted-foreground">Saving...</Text>
+          <Ionicons name="sync" size={12} className="animate-spin text-foreground" />
+          <Text className="text-xs text-foreground">Saving...</Text>
         </>
       )}
       {status === "saved" && (

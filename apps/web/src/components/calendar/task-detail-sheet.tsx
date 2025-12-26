@@ -100,8 +100,8 @@ export function TaskDetailSheet({
         <div className="mt-6 space-y-4">
           {totalCount === 0 ? (
             <div className="text-center py-12">
-              <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No tasks for this day</p>
+              <Clock className="h-12 w-12 text-foreground mx-auto mb-4" />
+              <p className="text-foreground">No tasks for this day</p>
               <Button variant="outline" className="mt-4" asChild>
                 <a href="/plan">
                   <Plus className="mr-2 h-4 w-4" />
@@ -131,7 +131,7 @@ export function TaskDetailSheet({
                       <p
                         className={cn(
                           "font-medium",
-                          task.isCompleted && "line-through text-muted-foreground",
+                          task.isCompleted && "line-through text-foreground",
                         )}
                       >
                         {task.taskDescription}
@@ -139,7 +139,7 @@ export function TaskDetailSheet({
                       <CheckCircle
                         className={cn(
                           "h-5 w-5 flex-shrink-0",
-                          task.isCompleted ? "text-green-500" : "text-muted-foreground",
+                          task.isCompleted ? "text-green-500" : "text-foreground",
                         )}
                       />
                     </div>
@@ -152,13 +152,13 @@ export function TaskDetailSheet({
                         {DIFFICULTY_LABELS[task.difficultyLevel]}
                       </Badge>
                       <Badge variant="secondary">{task.focusArea}</Badge>
-                      <span className="text-muted-foreground">
+                      <span className="text-foreground">
                         {format(task.startTime, "h:mm a")} - {format(task.endTime, "h:mm a")}
                       </span>
                     </div>
 
                     {task.schedulingReason && (
-                      <p className="text-sm text-muted-foreground">{task.schedulingReason}</p>
+                      <p className="text-sm text-foreground">{task.schedulingReason}</p>
                     )}
                   </div>
                 </div>

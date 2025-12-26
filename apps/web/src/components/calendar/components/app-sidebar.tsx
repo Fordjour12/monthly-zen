@@ -77,7 +77,7 @@ export function AppSidebar({
         <div className="px-2 py-4">
           <h3 className="text-sm font-medium mb-3 px-2">Focus Areas</h3>
           {isLoading ? (
-            <div className="text-sm text-muted-foreground px-2">Loading...</div>
+            <div className="text-sm text-foreground px-2">Loading...</div>
           ) : (
             <SidebarMenu>
               {focusAreas.map((area) => {
@@ -96,7 +96,7 @@ export function AppSidebar({
                         <span className="flex-1">{area.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{area.count}</span>
+                        <span className="text-xs text-foreground">{area.count}</span>
                         {isSelected && <Check className="h-4 w-4" />}
                       </div>
                     </SidebarMenuButton>

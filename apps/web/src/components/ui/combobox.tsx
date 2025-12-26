@@ -31,7 +31,7 @@ function ComboboxTrigger({ className, children, ...props }: ComboboxPrimitive.Tr
       <HugeiconsIcon
         icon={ArrowDown01Icon}
         strokeWidth={2}
-        className="text-muted-foreground size-4 pointer-events-none"
+        className="text-foreground size-4 pointer-events-none"
       />
     </ComboboxPrimitive.Trigger>
   );
@@ -166,7 +166,7 @@ function ComboboxLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Pro
   return (
     <ComboboxPrimitive.GroupLabel
       data-slot="combobox-label"
-      className={cn("text-muted-foreground px-2 py-2 text-xs", className)}
+      className={cn("text-foreground px-2 py-2 text-xs", className)}
       {...props}
     />
   );
@@ -181,7 +181,7 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
     <ComboboxPrimitive.Empty
       data-slot="combobox-empty"
       className={cn(
-        "text-muted-foreground hidden w-full justify-center py-2 text-center text-xs group-data-empty/combobox-content:flex",
+        "text-foreground hidden w-full justify-center py-2 text-center text-xs group-data-empty/combobox-content:flex",
         className,
       )}
       {...props}

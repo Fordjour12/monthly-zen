@@ -2,10 +2,29 @@ import { useState, useEffect, useCallback } from "react";
 
 const API_BASE = process.env.EXPO_PUBLIC_SERVER_URL || "";
 
+export interface TaskData {
+  task_description: string;
+  scheduling_reason?: string;
+  focus_area: string;
+  difficulty_level: "beginner" | "moderate" | "advanced";
+  [key: string]: unknown;
+}
+
+export interface DailyTasks {
+  [day: string]: TaskData[];
+}
+
+export interface WeekData {
+  week_number?: number;
+  goals?: string[];
+  daily_tasks?: DailyTasks;
+  [key: string]: unknown;
+}
+
 export interface PlanData {
   monthly_summary?: string;
-  weekly_breakdown?: any[];
-  [key: string]: any;
+  weekly_breakdown?: WeekData[];
+  [key: string]: unknown;
 }
 
 export interface DraftState {
@@ -15,12 +34,19 @@ export interface DraftState {
   expiresAt: string;
 }
 
+export interface FixedCommitment {
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+}
+
 export interface GenerateInput {
   goalsText: string;
   taskComplexity: "Simple" | "Balanced" | "Ambitious";
   focusAreas: string;
   weekendPreference: "Work" | "Rest" | "Mixed";
-  fixedCommitmentsJson: { commitments: any[] };
+  fixedCommitmentsJson: { commitments: FixedCommitment[] };
 }
 
 export interface GenerateResult {
@@ -56,8 +82,8 @@ export function usePlanGeneration() {
         setDraft(result.data);
         console.log("[usePlanGeneration] Recovered draft from previous session");
       }
-    } catch (err) {
-      console.log("[usePlanGeneration] No existing draft found");
+    } catch {
+      // No existing draft found, silently continue
     }
   }, []);
 

@@ -92,7 +92,7 @@ export function AutoSaveIndicatorCompact({ status }: Pick<AutoSaveIndicatorProps
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -10 }}
-      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+      className="inline-flex items-center gap-1.5 text-xs text-foreground"
     >
       {status === "saving" && (
         <>
