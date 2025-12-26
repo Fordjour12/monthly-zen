@@ -1,0 +1,17 @@
+{
+  "name": "@monthly-zen/response-parser",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@monthly-zen/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@monthly-zen/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

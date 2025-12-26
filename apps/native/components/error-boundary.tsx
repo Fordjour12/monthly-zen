@@ -79,7 +79,9 @@ export class ErrorBoundary extends Component<Props, State> {
               <View className="w-20 h-20 bg-destructive/10 rounded-full items-center justify-center mb-4">
                 <Ionicons name="alert-circle" size={40} className="text-destructive" />
               </View>
-              <Text className="text-2xl font-bold text-foreground mb-2">Oops! Something went wrong</Text>
+              <Text className="text-2xl font-bold text-foreground mb-2">
+                Oops! Something went wrong
+              </Text>
               <Text className="text-center text-muted-foreground">
                 An unexpected error occurred. Don't worry, your data is safe.
               </Text>
