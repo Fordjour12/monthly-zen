@@ -1,8 +1,4 @@
 {
-  "enabledMcpjsonServers": [
-    "context7",
-    "shadcn",
-    "better-auth"
-  ],
+  "enabledMcpjsonServers": ["context7", "shadcn", "better-auth"],
   "enableAllProjectMcpServers": true
 }

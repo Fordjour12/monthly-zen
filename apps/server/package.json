@@ -10,21 +10,21 @@
     "start": "bun run dist/index.js"
   },
   "dependencies": {
-    "hono": "catalog:",
-    "@orpc/server": "catalog:",
+    "@monthly-zen/api": "workspace:*",
+    "@monthly-zen/auth": "workspace:*",
+    "@monthly-zen/db": "workspace:*",
     "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@monthly-zen/api": "workspace:*",
-    "@monthly-zen/auth": "workspace:*",
-    "@monthly-zen/db": "workspace:*"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@monthly-zen/config": "workspace:*",
     "@types/bun": "catalog:",
-    "typescript": "catalog:",
     "tsdown": "^0.16.5",
-    "@monthly-zen/config": "workspace:*"
+    "typescript": "catalog:"
   }
 }

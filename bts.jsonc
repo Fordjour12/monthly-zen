@@ -9,16 +9,8 @@
   "orm": "drizzle",
   "backend": "hono",
   "runtime": "bun",
-  "frontend": [
-    "tanstack-start",
-    "native-uniwind"
-  ],
-  "addons": [
-    "husky",
-    "oxlint",
-    "ruler",
-    "turborepo"
-  ],
+  "frontend": ["tanstack-start", "native-uniwind"],
+  "addons": ["husky", "oxlint", "ruler", "turborepo"],
   "examples": [],
   "auth": "better-auth",
   "payments": "none",
@@ -26,5 +18,5 @@
   "dbSetup": "docker",
   "api": "orpc",
   "webDeploy": "none",
-  "serverDeploy": "none"
+  "serverDeploy": "none",
 }

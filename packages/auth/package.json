@@ -10,15 +10,15 @@
     }
   },
   "scripts": {},
-  "devDependencies": {
-    "typescript": "catalog:",
-    "@monthly-zen/config": "workspace:*"
-  },
   "dependencies": {
-    "better-auth": "catalog:",
     "@better-auth/expo": "catalog:",
+    "@monthly-zen/db": "workspace:*",
+    "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@monthly-zen/db": "workspace:*"
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@monthly-zen/config": "workspace:*",
+    "typescript": "catalog:"
   }
 }
