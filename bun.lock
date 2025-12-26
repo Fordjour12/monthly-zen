@@ -146,6 +146,8 @@
       "dependencies": {
         "@monthly-zen/auth": "workspace:*",
         "@monthly-zen/db": "workspace:*",
+        "@monthly-zen/types": "workspace:*",
+        "@openrouter/sdk": "^0.2.11",
         "@orpc/client": "catalog:",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
@@ -189,6 +191,13 @@
         "@monthly-zen/config": "workspace:*",
         "@types/pg": "^8.15.6",
         "drizzle-kit": "^0.31.8",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/types": {
+      "name": "@monthly-zen/types",
+      "devDependencies": {
+        "@monthly-zen/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
@@ -620,6 +629,8 @@
 
     "@monthly-zen/db": ["@monthly-zen/db@workspace:packages/db"],
 
+    "@monthly-zen/types": ["@monthly-zen/types@workspace:packages/types"],
+
     "@mswjs/interceptors": ["@mswjs/interceptors@0.40.0", "", { "dependencies": { "@open-draft/deferred-promise": "^2.2.0", "@open-draft/logger": "^0.3.0", "@open-draft/until": "^2.0.0", "is-node-process": "^1.2.0", "outvariant": "^1.4.3", "strict-event-emitter": "^0.5.1" } }, "sha512-EFd6cVbHsgLa6wa4RljGj6Wk75qoHxUSyc5asLyyPSyuhIcdS2Q3Phw6ImS1q+CkALthJRShiYfKANcQMuMqsQ=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.1.0", "", { "dependencies": { "@emnapi/core": "^1.7.1", "@emnapi/runtime": "^1.7.1", "@tybys/wasm-util": "^0.10.1" } }, "sha512-Fq6DJW+Bb5jaWE69/qOE0D1TUN9+6uWhCeZpdnSBk14pjLcCWR7Q8n49PTSPHazM37JqrsdpEthXy2xn6jWWiA=="],
@@ -649,6 +660,8 @@
     "@open-draft/logger": ["@open-draft/logger@0.3.0", "", { "dependencies": { "is-node-process": "^1.2.0", "outvariant": "^1.4.0" } }, "sha512-X2g45fzhxH238HKO4xbSr7+wBS8Fvw6ixhTDuvLd5mqh6bJJCFAPwU9mPDxbcrRtfxv4u5IHCEH77BmxvXmmxQ=="],
 
     "@open-draft/until": ["@open-draft/until@2.1.0", "", {}, "sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg=="],
+
+    "@openrouter/sdk": ["@openrouter/sdk@0.2.11", "", { "dependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-W6ji4J2O08RUkDmCBqDgiHkoH5ARb4xBZL/xTM98cDzes2iLBuGaF3z2PXMCC27UYTas2pyz+nn62iXjO+yQvg=="],
 
     "@orpc/client": ["@orpc/client@1.13.0", "", { "dependencies": { "@orpc/shared": "1.13.0", "@orpc/standard-server": "1.13.0", "@orpc/standard-server-fetch": "1.13.0", "@orpc/standard-server-peer": "1.13.0" } }, "sha512-50MWjaQrz+eSSymmcJuzF+1mHSgObAKht0KpizA2+ZxpFpeyIYX1JGGvDPILYtHp7EyIOoN5ngwp7j/RHc7UeQ=="],
 

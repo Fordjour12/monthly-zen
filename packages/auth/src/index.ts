@@ -1,4 +1,4 @@
-import { expo } from '@better-auth/expo';
+import { expo } from "@better-auth/expo";
 import { db } from "@monthly-zen/db";
 import * as schema from "@monthly-zen/db/schema/auth";
 import { betterAuth } from "better-auth";
@@ -10,7 +10,9 @@ export const auth = betterAuth({
 
     schema: schema,
   }),
-  trustedOrigins: [process.env.CORS_ORIGIN || "", "mybettertapp://", "exp://"],
+  trustedOrigins: [process.env.CORS_ORIGIN || "", "mybettertapp://", "exp://"].filter(
+    Boolean,
+  ) as string[],
   emailAndPassword: {
     enabled: true,
   },
@@ -21,5 +23,5 @@ export const auth = betterAuth({
       httpOnly: true,
     },
   },
-  plugins: [expo()]
+  plugins: [expo()],
 });

@@ -1,0 +1,14 @@
+{
+  "name": "@monthly-zen/types",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {},
+  "devDependencies": {
+    "@monthly-zen/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

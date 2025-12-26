@@ -19,16 +19,16 @@
     "db:stop": "docker compose stop",
     "db:down": "docker compose down"
   },
-  "devDependencies": {
-    "drizzle-kit": "^0.31.8",
-    "@types/pg": "^8.15.6",
-    "typescript": "catalog:",
-    "@monthly-zen/config": "workspace:*"
-  },
   "dependencies": {
+    "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "pg": "^8.16.3",
-    "dotenv": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@monthly-zen/config": "workspace:*",
+    "@types/pg": "^8.15.6",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "catalog:"
   }
 }
