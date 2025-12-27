@@ -20,6 +20,13 @@ export const monthlyPlans = pgTable("monthly_plans", {
   extractionConfidence: integer("extraction_confidence").default(0),
   extractionNotes: text("extraction_notes"),
 
+  // Draft fields
+  status: text("status", { enum: ["DRAFT", "CONFIRMED"] })
+    .notNull()
+    .default("CONFIRMED"),
+  draftKey: text("draft_key").unique(),
+  expiresAt: timestamp("expires_at"),
+
   generatedAt: timestamp("generated_at").notNull().defaultNow(),
 });
 

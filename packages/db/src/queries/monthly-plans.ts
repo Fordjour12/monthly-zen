@@ -58,3 +58,17 @@ export async function getCurrentMonthlyPlanWithTasks(userId: string, monthYear: 
     tasks,
   };
 }
+
+/**
+ * Verify that a user owns a specific plan
+ * Returns true if the user owns the plan, false otherwise
+ */
+export async function verifyPlanOwnership(planId: number, userId: string): Promise<boolean> {
+  const [plan] = await db
+    .select({ userId: monthlyPlans.userId })
+    .from(monthlyPlans)
+    .where(eq(monthlyPlans.id, planId))
+    .limit(1);
+
+  return plan?.userId === userId;
+}
