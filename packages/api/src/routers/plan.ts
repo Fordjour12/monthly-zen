@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { protectedProcedure } from "../index";
 import { generatePlan, confirmPlan } from "../services/hybrid-plan-generation";
-import { getDraft, deleteDraft, getLatestDraft } from "@monthly-zen/db";
-import { getCurrentMonthlyPlanWithTasks, updateTaskStatus } from "@monthly-zen/db";
+import {
+  getDraft,
+  deleteDraft,
+  getLatestDraft,
+  getCurrentMonthlyPlanWithTasks,
+} from "@monthly-zen/db";
 
 const generateInputSchema = z.object({
   goalsText: z.string().min(1, "Goals are required"),
@@ -179,20 +183,4 @@ export const planRouter = {
       throw new Error(error instanceof Error ? error.message : "Failed to fetch current plan");
     }
   }),
-
-  updateTask: protectedProcedure
-    .input(z.object({ taskId: z.number(), isCompleted: z.boolean() }))
-    .handler(async ({ input }) => {
-      try {
-        const updatedTask = await updateTaskStatus(input.taskId, input.isCompleted);
-
-        if (!updatedTask) {
-          throw new Error("Task not found");
-        }
-
-        return { success: true, data: updatedTask };
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Failed to update task status");
-      }
-    }),
 };
