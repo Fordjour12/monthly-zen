@@ -5,8 +5,8 @@ import { usePlanGeneration, GenerateInput } from "@/hooks/usePlanGeneration";
 import { usePlanData, WeekSectionData } from "@/hooks/usePlanData";
 import { usePlanFormState } from "@/hooks/usePlanFormState";
 import { PlanFormCollapsible } from "./plan-form-collapsible";
-import { WeekSection } from "./week-section";
-import { FloatingActionBar } from "./floating-action-bar";
+import { WeekSection } from "../tasks/week-section";
+import { FloatingActionBar } from "../tasks/floating-action-bar";
 import { useSemanticColors } from "@/utils/theme";
 
 export function PlanDashboard() {

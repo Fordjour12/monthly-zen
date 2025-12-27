@@ -1,6 +1,6 @@
 import React, { memo } from "react";
 import { View, Text } from "react-native";
-import { TaskItem } from "./task-item";
+import { TaskItem } from "../tasks/task-item";
 import { DayTasksItem } from "@/hooks/usePlanData";
 import { useSemanticColors } from "@/utils/theme";
 

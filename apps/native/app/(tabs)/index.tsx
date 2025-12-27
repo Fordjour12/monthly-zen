@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
 
-import { Container } from "@/components/container";
+import { Container } from "@/components/ui/container";
 import { router } from "expo-router";
 
 export default function Home() {

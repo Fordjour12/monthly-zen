@@ -1,29 +1,35 @@
-import { saveGeneratedPlan } from "../packages/db/src/queries/plan-generation";
-import { getCurrentMonthlyPlanWithTasks } from "../packages/db/src/queries/monthly-plans";
+import { createDraft } from "../packages/db/src/queries/plan-drafts";
+import { confirmDraftAsPlan } from "../packages/db/src/queries/plan-generation";
+import {
+  getMonthlyPlanByUserAndMonth,
+  getCurrentMonthlyPlanWithTasks,
+} from "../packages/db/src/queries/monthly-plans";
 import { db } from "../packages/db/src";
 import { user } from "../packages/db/src/schema/auth";
 import { userGoalsAndPreferences } from "../packages/db/src/schema/user-goals-and-preferences";
 import { eq } from "drizzle-orm";
+// Mock data needed for types
+import { monthlyPlans } from "../packages/db/src/schema/monthly-plans";
 
 async function main() {
-  console.log("Starting verification...");
+  console.log("Starting verification of DRAFT -> PLAN flow...");
 
   // 1. Setup Mock Data
   const timestamp = Date.now();
   const mockUserId = `test-user-${timestamp}`;
-  const mockMonth = "2025-01-01"; // Use a distinct month
+  const mockMonth = "2025-02-01"; // Distinct month
 
-  // Create a test user for foreign key constraints
+  // Create a test user
   try {
     await db.insert(user).values({
       id: mockUserId,
       email: `test-${timestamp}@example.com`,
       name: "Test User",
-      emailVerified: new Date(),
+      emailVerified: true,
       image: null,
     });
   } catch (e) {
-    console.log("User creation failed (might exist), continuing...", e);
+    console.log("User exists/failed", e);
   }
 
   // Create preferences
@@ -40,26 +46,19 @@ async function main() {
     .returning();
 
   const mockPlanData = {
-    monthly_summary: "This is a test plan.",
+    monthly_summary: "Confirmed Draft Plan",
     weekly_breakdown: [
       {
         week: 1,
         daily_tasks: {
           Monday: [
             {
-              task_description: "Test Task 1",
+              task_description: "Draft Task 1",
               focus_area: "Coding",
-              start_time: "2025-01-01T09:00:00Z",
-              end_time: "2025-01-01T10:00:00Z",
+              start_time: "2025-02-01T09:00:00Z",
+              end_time: "2025-02-01T10:00:00Z",
               difficulty_level: "Simple",
               scheduling_reason: "Testing",
-            },
-            {
-              description: "Test Task 2 (Legacy Format)", // Test fallback
-              focus_area: "Review",
-              start_time: "2025-01-01T11:00:00Z",
-              end_time: "2025-01-01T12:00:00Z",
-              difficulty_level: "Moderate",
             },
           ],
         },
@@ -67,62 +66,57 @@ async function main() {
     ],
   };
 
-  const aiResponse = {
-    rawContent: JSON.stringify(mockPlanData),
-    metadata: { contentLength: 100, format: "json" as const },
-  };
-
-  // 2. Run the Function Under Test
-  console.log("Calling saveGeneratedPlan...");
-  const planId = await saveGeneratedPlan(
+  // 2. Create Draft
+  console.log("Creating Draft...");
+  const { draftKey } = await createDraft(
     mockUserId,
+    mockPlanData,
     pref.id,
     mockMonth,
     "Test Prompt",
-    aiResponse,
-    mockPlanData,
-    "Summary",
-    90,
-    "Notes",
   );
+  console.log(`Draft created: ${draftKey}`);
 
-  if (!planId) {
-    console.error("FAILED: saveGeneratedPlan returned 0");
+  // 3. Verify NOT visible as Plan
+  const existingPlan = await getMonthlyPlanByUserAndMonth(mockUserId, mockMonth);
+  if (existingPlan) {
+    console.error("FAILED: Draft shouldn't be visible as confirmed plan yet");
     process.exit(1);
-  }
-  console.log(`Plan saved with ID: ${planId}`);
-
-  // 3. Verify Results
-  console.log("Verifying results...");
-  const result = await getCurrentMonthlyPlanWithTasks(mockUserId, mockMonth);
-
-  if (!result) {
-    console.error("FAILED: Could not fetch saved plan");
-    process.exit(1);
-  }
-
-  console.log(`Fetched plan. Task count: ${result.tasks.length}`);
-
-  if (result.tasks.length !== 2) {
-    console.error(`FAILED: Expected 2 tasks, found ${result.tasks.length}`);
-    process.exit(1);
-  }
-
-  const task1 = result.tasks.find((t) => t.taskDescription === "Test Task 1");
-  const task2 = result.tasks.find((t) => t.taskDescription === "Test Task 2 (Legacy Format)");
-
-  if (task1 && task2) {
-    console.log("SUCCESS: Both tasks found with correct descriptions.");
   } else {
-    console.error("FAILED: Task content mismatch", result.tasks);
+    console.log("SUCCESS: Draft is hidden from normal plan queries.");
+  }
+
+  // 4. Confirm Plan
+  console.log("Confirming Plan...");
+  const planId = await confirmDraftAsPlan(mockUserId, draftKey);
+  console.log(`Plan confirmed: ${planId}`);
+
+  // 5. Verify Plan & Tasks
+  const fullPlan = await getCurrentMonthlyPlanWithTasks(mockUserId, mockMonth);
+
+  if (!fullPlan) {
+    console.error("FAILED: Plan not found after confirmation");
+    process.exit(1);
+  }
+
+  if (fullPlan.status !== "CONFIRMED") {
+    console.error(`FAILED: Plan status is ${fullPlan.status}, expected CONFIRMED`);
+    process.exit(1);
+  }
+
+  if (fullPlan.tasks.length !== 1) {
+    console.error(`FAILED: Expected 1 task, got ${fullPlan.tasks.length}`);
+    process.exit(1);
+  }
+
+  if (fullPlan.tasks[0].taskDescription === "Draft Task 1") {
+    console.log("SUCCESS: Task extracted correctly.");
+  } else {
+    console.error("FAILED: Task mismatch");
     process.exit(1);
   }
 
   console.log("Verification Complete!");
-
-  // Cleanup (Optional, but good practice)
-  // In a real env we might truncate, but strict FKs make it annoying.
-  // We'll leave it as test data since we generate unique IDs.
   process.exit(0);
 }
 

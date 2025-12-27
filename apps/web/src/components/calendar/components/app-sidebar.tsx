@@ -14,7 +14,8 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { getFocusAreas } from "@/functions/calendar-server-fn";
+import { orpc } from "@/utils/orpc";
+import { useQuery } from "@tanstack/react-query";
 
 interface FocusArea {
   name: string;
@@ -31,26 +32,10 @@ export function AppSidebar({
   onToggleFocusArea: (area: string) => void;
   onTodayClick: () => void;
 }) {
-  const [focusAreas, setFocusAreas] = React.useState<FocusArea[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    const loadFocusAreas = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getFocusAreas();
-        if (result.success) {
-          setFocusAreas(result.data);
-        }
-      } catch (error) {
-        console.error("Failed to load focus areas:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadFocusAreas();
-  }, []);
+  const { data: focusAreasResult, isLoading } = useQuery(
+    orpc.calendar.getFocusAreas.queryOptions(),
+  );
+  const focusAreas = focusAreasResult?.success ? focusAreasResult.data : [];
 
   const user = {
     name: "User",

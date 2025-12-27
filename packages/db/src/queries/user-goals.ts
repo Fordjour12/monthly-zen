@@ -1,6 +1,6 @@
 import { db } from "../index";
 import { eq, desc } from "drizzle-orm";
-import { userGoalsAndPreferences } from "../schema";
+import { userGoalsAndPreferences, user } from "../schema";
 
 export interface CreateGoalPreferenceInput {
   userId: string;
@@ -52,4 +52,46 @@ export async function getLatestGoalPreference(userId: string) {
     .limit(1);
 
   return preference;
+}
+
+export async function updateGoalPreference(
+  userId: string,
+  input: Omit<CreateGoalPreferenceInput, "userId">,
+) {
+  const [preference] = await db
+    .update(userGoalsAndPreferences)
+    .set({
+      ...input,
+      inputSavedAt: new Date(),
+    })
+    .where(eq(userGoalsAndPreferences.userId, userId))
+    .returning();
+
+  return preference;
+}
+
+export async function upsertGoalPreference(
+  userId: string,
+  input: Omit<CreateGoalPreferenceInput, "userId">,
+) {
+  const existing = await getLatestGoalPreference(userId);
+
+  if (existing) {
+    return updateGoalPreference(userId, input);
+  }
+
+  return createGoalPreference({ userId, ...input });
+}
+
+export async function updateUserProfile(userId: string, input: { name?: string; image?: string }) {
+  const [updatedUser] = await db
+    .update(user)
+    .set({
+      ...input,
+      updatedAt: new Date(),
+    })
+    .where(eq(user.id, userId))
+    .returning();
+
+  return updatedUser;
 }

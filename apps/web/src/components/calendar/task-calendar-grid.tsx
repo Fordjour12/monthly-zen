@@ -1,25 +1,36 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Star } from "lucide-react";
 
-interface CalendarTask {
+export interface CalendarTask {
   id: number;
   taskDescription: string;
   focusArea: string;
   startTime: Date;
   endTime: Date;
-  difficultyLevel: "simple" | "moderate" | "advanced";
+  difficultyLevel: string | null;
   isCompleted: boolean;
+  completedAt: Date | null;
+  schedulingReason?: string | null;
 }
+
+export type ViewMode = "normal" | "heatmap";
 
 interface TaskCalendarGridProps {
   tasks: CalendarTask[];
   selectedMonth: Date;
   onMonthChange: (month: Date) => void;
   onDateSelect: (date: Date) => void;
+  filteredFocusAreas?: string[];
+  viewMode?: ViewMode;
+  habitStats?: Array<{
+    focusArea: string;
+    completionRate: number;
+  }>;
 }
 
 export function TaskCalendarGrid({
@@ -27,137 +38,151 @@ export function TaskCalendarGrid({
   selectedMonth,
   onMonthChange,
   onDateSelect,
+  filteredFocusAreas = [],
+  viewMode = "normal",
+  habitStats = [],
 }: TaskCalendarGridProps) {
+  // Filter tasks based on selected focus areas
+  const visibleTasks = React.useMemo(() => {
+    if (filteredFocusAreas.length === 0) return tasks;
+    return tasks.filter((t) => filteredFocusAreas.includes(t.focusArea));
+  }, [tasks, filteredFocusAreas]);
+
+  // Group tasks by date
   const tasksByDate = React.useMemo(() => {
     const grouped: Record<string, CalendarTask[]> = {};
-    tasks.forEach((task) => {
-      const dateKey = format(task.startTime, "yyyy-MM-dd");
+    visibleTasks.forEach((task) => {
+      const dateKey = new Date(task.startTime).toDateString();
       if (!grouped[dateKey]) grouped[dateKey] = [];
       grouped[dateKey].push(task);
     });
     return grouped;
-  }, [tasks]);
+  }, [visibleTasks]);
 
-  const getTasksOnDay = (date: Date): CalendarTask[] => {
-    const dateKey = format(date, "yyyy-MM-dd");
-    return tasksByDate[dateKey] || [];
+  // Get milestone tasks for a date
+  const getMilestonesForDay = (date: Date): CalendarTask[] => {
+    const dayTasks = tasksByDate[date.toDateString()] || [];
+    return dayTasks.filter(
+      (task) => task.difficultyLevel === "Ambitious" || task.difficultyLevel === "Hard",
+    );
   };
 
-  const getDayColor = (dayTasks: CalendarTask[]): string => {
-    if (dayTasks.length === 0) return "";
-    if (dayTasks.every((t) => t.isCompleted)) return "bg-green-500";
-    if (dayTasks.some((t) => t.isCompleted)) return "bg-yellow-500";
-    return "bg-blue-500";
+  const hasTasksOnDay = (date: Date): CalendarTask[] | null => {
+    const dateKey = date.toDateString();
+    return tasksByDate[dateKey] || null;
   };
 
-  const daysInMonth = React.useMemo(() => {
-    const year = selectedMonth.getFullYear();
-    const month = selectedMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-    const startingDayOfWeek = firstDay.getDay();
+  const getTaskColor = (tasks: CalendarTask[]): string => {
+    if (tasks.every((t) => t.isCompleted)) return "bg-green-100 text-green-700 border-green-200";
+    if (tasks.some((t) => t.isCompleted)) return "bg-yellow-50 text-yellow-700 border-yellow-200";
+    return "bg-blue-50 text-blue-700 border-blue-200";
+  };
 
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
+  // Get heatmap color for a day based on completion rate
+  const getHeatmapColor = (date: Date): string => {
+    const dayTasks = tasksByDate[date.toDateString()];
+    if (!dayTasks || dayTasks.length === 0) return "bg-transparent";
 
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      days.push(new Date(year, month, day));
-    }
+    const completedCount = dayTasks.filter((t) => t.isCompleted).length;
+    const completionRate = completedCount / dayTasks.length;
 
-    return days;
-  }, [selectedMonth]);
-
-  const monthName = format(selectedMonth, "MMMM yyyy");
+    if (completionRate === 1) return "bg-green-500";
+    if (completionRate >= 0.75) return "bg-green-400";
+    if (completionRate >= 0.5) return "bg-green-300";
+    if (completionRate >= 0.25) return "bg-green-200";
+    if (completionRate > 0) return "bg-green-100";
+    return "bg-gray-100";
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => {
-            const newMonth = new Date(selectedMonth);
-            newMonth.setMonth(newMonth.getMonth() - 1);
-            onMonthChange(newMonth);
-          }}
-          className="p-2 hover:bg-muted rounded"
-        >
-          ←
-        </button>
-        <h2 className="text-lg font-semibold">{monthName}</h2>
-        <button
-          onClick={() => {
-            const newMonth = new Date(selectedMonth);
-            newMonth.setMonth(newMonth.getMonth() + 1);
-            onMonthChange(newMonth);
-          }}
-          className="p-2 hover:bg-muted rounded"
-        >
-          →
-        </button>
-      </div>
+    <div className="p-4 bg-card rounded-lg border shadow-sm">
+      <Calendar
+        mode="single"
+        month={selectedMonth}
+        onMonthChange={onMonthChange}
+        selected={selectedMonth}
+        onSelect={(date) => date && onDateSelect(date)}
+        className="rounded-md"
+        classNames={{
+          months: "flex w-full flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+          month: "space-y-4 w-full",
+          table: "w-full border-collapse space-y-1",
+          head_row: "flex",
+          row: "flex w-full mt-2",
+          cell: "h-32 w-full text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+          day: cn(
+            "h-32 w-full p-2 font-normal aria-selected:opacity-100 hover:bg-accent/50 transition-colors flex flex-col items-start justify-start gap-1 rounded-md border border-transparent hover:border-border",
+            viewMode === "heatmap" && "relative overflow-hidden",
+          ),
+          day_today: "bg-accent text-accent-foreground font-bold border-primary/20",
+          day_outside: "text-muted-foreground opacity-50",
+          day_disabled: "text-muted-foreground opacity-50",
+          day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+          day_hidden: "invisible",
+        }}
+        components={{
+          DayContent: (props) => {
+            const { date } = props;
+            const dayTasks = hasTasksOnDay(date);
+            const milestones = getMilestonesForDay(date);
+            const isToday = new Date().toDateString() === date.toDateString();
 
-      <div className="grid grid-cols-7 gap-2">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-foreground p-2">
-            {day}
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-2">
-        {daysInMonth.map((date, i) => {
-          if (!date) {
-            return <div key={`empty-${i}`} className="aspect-square" />;
-          }
-
-          const dayTasks = getTasksOnDay(date);
-          const isToday = new Date().toDateString() === date.toDateString();
-          const dayColor = getDayColor(dayTasks);
-
-          return (
-            <div
-              key={format(date, "yyyy-MM-dd")}
-              onClick={() => onDateSelect(date)}
-              className={cn(
-                "aspect-square p-1 border rounded hover:bg-muted/50 cursor-pointer transition-colors",
-                isToday && "border-primary ring-1 ring-primary",
-              )}
-            >
-              <div className="flex items-start justify-between mb-1">
-                <span className={cn("text-sm", isToday && "font-bold")}>{date.getDate()}</span>
-                {dayTasks.length > 0 && (
-                  <Badge variant="outline" className={cn("h-5 min-w-5 px-1 text-xs", dayColor)}>
-                    {dayTasks.length}
-                  </Badge>
+            return (
+              <div className="w-full h-full flex flex-col items-start text-left relative">
+                {viewMode === "heatmap" && (
+                  <div
+                    className={cn("absolute inset-0 opacity-30 rounded-md", getHeatmapColor(date))}
+                  />
                 )}
-              </div>
-
-              {dayTasks.length > 0 && (
-                <div className="space-y-0.5 overflow-hidden">
-                  {dayTasks.slice(0, 2).map((task) => (
-                    <div
-                      key={task.id}
+                <div className="relative z-10 w-full h-full flex flex-col items-start">
+                  <div className="flex items-center gap-1 w-full">
+                    <span
                       className={cn(
-                        "truncate text-xs px-1 rounded",
-                        task.isCompleted
-                          ? "bg-green-100 text-green-700 line-through"
-                          : "bg-blue-100 text-blue-700",
+                        "text-sm p-1 rounded-full w-7 h-7 flex items-center justify-center flex-shrink-0",
+                        isToday && "bg-primary text-primary-foreground",
                       )}
-                      title={task.taskDescription}
                     >
-                      {task.taskDescription}
+                      {date.getDate()}
+                    </span>
+                    {milestones.length > 0 && (
+                      <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                    )}
+                  </div>
+
+                  {viewMode === "normal" && dayTasks && dayTasks.length > 0 && (
+                    <div className="w-full mt-1 space-y-1 overflow-hidden">
+                      {dayTasks.slice(0, 3).map((task) => (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded border truncate w-full",
+                            task.isCompleted
+                              ? "bg-muted text-muted-foreground line-through border-transparent"
+                              : "bg-primary/10 text-primary border-primary/20",
+                          )}
+                        >
+                          {task.taskDescription}
+                        </div>
+                      ))}
+                      {dayTasks.length > 3 && (
+                        <div className="text-[10px] text-muted-foreground pl-1">
+                          +{dayTasks.length - 3} more
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {dayTasks.length > 2 && (
-                    <div className="text-xs text-foreground pl-1">+{dayTasks.length - 2} more</div>
+                  )}
+
+                  {viewMode === "heatmap" && dayTasks && dayTasks.length > 0 && (
+                    <div className="mt-1 text-[10px] text-muted-foreground">
+                      {dayTasks.filter((t) => t.isCompleted).length}/{dayTasks.length}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          },
+        }}
+      />
     </div>
   );
 }

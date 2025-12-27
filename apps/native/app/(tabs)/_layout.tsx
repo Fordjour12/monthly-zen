@@ -34,12 +34,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="explore"
         options={{
-          title: "Explore",
+          title: "Discover",
           headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="compass" size={size} color={color} />
+            <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: "Calendar",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="calendar" size={size} color={color} />
           ),
         }}
       />
@@ -50,6 +60,26 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="bulb" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="plans"
+        options={{
+          title: "Plans",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="document-text" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="generate-plan"
+        options={{
+          title: "Generate",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="flash" size={size} color={color} />
           ),
         }}
       />

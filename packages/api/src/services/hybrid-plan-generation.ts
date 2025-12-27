@@ -124,7 +124,13 @@ export async function generatePlan(
       `[Plan Generation] Plan data extracted, confidence: ${parsedResponse.metadata.confidence}%`,
     );
 
-    const { draftKey } = await db.createDraft(input.userId, planData, preference.id, currentMonth);
+    const { draftKey } = await db.createDraft(
+      input.userId,
+      planData,
+      preference.id,
+      currentMonth,
+      prompt,
+    );
 
     console.log(`[Plan Generation] Draft created with key: ${draftKey}`);
 
@@ -156,44 +162,16 @@ export async function confirmPlan(
   try {
     console.log(`[Plan Confirm] Starting for user: ${userId}, draft: ${draftKey}`);
 
-    const draft = await db.getDraft(userId, draftKey);
-    if (!draft) {
-      return { success: false, error: "Draft not found or expired" };
-    }
+    const planId = await db.confirmDraftAsPlan(userId, draftKey);
 
-    console.log(`[Plan Confirm] Draft found, saving to monthly_plans...`);
-
-    const planId = await db.saveGeneratedPlan(
-      userId,
-      draft.goalPreferenceId,
-      draft.monthYear,
-      "",
-      {
-        rawContent: JSON.stringify(draft.planData),
-        metadata: {
-          contentLength: JSON.stringify(draft.planData).length,
-          format: "json" as const,
-        },
-      },
-      draft.planData,
-      typeof draft.planData === "object" && draft.planData !== null
-        ? ((draft.planData as Record<string, unknown>).monthly_summary as string)
-        : undefined,
-      90,
-      "Draft confirmed and saved",
-    );
-
-    console.log(`[Plan Confirm] Plan saved with ID: ${planId}`);
-
-    await db.deleteDraft(userId, draftKey);
-    console.log(`[Plan Confirm] Draft deleted`);
+    console.log(`[Plan Confirm] Plan confirmed and saved with ID: ${planId}`);
 
     return { success: true, planId };
   } catch (error) {
     console.error("[Plan Confirm] Failed:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Save failed",
+      error: error instanceof Error ? error.message : "Confirm failed",
     };
   }
 }

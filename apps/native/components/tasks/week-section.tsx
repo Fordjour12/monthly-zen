@@ -9,7 +9,7 @@ import Animated, {
   useAnimatedRef,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
-import { DayTasks } from "./day-tasks";
+import { DayTasks } from "../calendar/day-tasks";
 import { WeekSectionData } from "@/hooks/usePlanData";
 import { useSemanticColors } from "@/utils/theme";
 import { Card } from "heroui-native";

@@ -1,12 +1,9 @@
-"use client";
-
 import * as React from "react";
 import { DayPicker, getDefaultClassNames, type DayButton } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowLeftIcon, ArrowRightIcon, ArrowDownIcon } from "@hugeicons/core-free-icons";
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react";
 
 function Calendar({
   className,
@@ -71,18 +68,21 @@ function Calendar({
           "select-none font-medium",
           captionLayout === "label"
             ? "text-sm"
-            : "cn-calendar-caption-label rounded-(--cell-radius) flex items-center gap-1 text-sm  [&>svg]:text-foreground [&>svg]:size-3.5",
+            : "cn-calendar-caption-label rounded-(--cell-radius) flex items-center gap-1 text-sm  [&>svg]:text-muted-foreground [&>svg]:size-3.5",
           defaultClassNames.caption_label,
         ),
         table: "w-full border-collapse",
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
-          "text-foreground rounded-(--cell-radius) flex-1 font-normal text-[0.8rem] select-none",
+          "text-muted-foreground rounded-(--cell-radius) flex-1 font-normal text-[0.8rem] select-none",
           defaultClassNames.weekday,
         ),
         week: cn("flex w-full mt-2", defaultClassNames.week),
         week_number_header: cn("select-none w-(--cell-size)", defaultClassNames.week_number_header),
-        week_number: cn("text-[0.8rem] select-none text-foreground", defaultClassNames.week_number),
+        week_number: cn(
+          "text-[0.8rem] select-none text-muted-foreground",
+          defaultClassNames.week_number,
+        ),
         day: cn(
           "relative w-full rounded-(--cell-radius) h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius) group/day aspect-square select-none",
           props.showWeekNumber
@@ -103,8 +103,11 @@ function Calendar({
           "bg-muted text-foreground rounded-(--cell-radius) data-[selected=true]:rounded-none",
           defaultClassNames.today,
         ),
-        outside: cn("text-foreground aria-selected:text-foreground", defaultClassNames.outside),
-        disabled: cn("text-foreground opacity-50", defaultClassNames.disabled),
+        outside: cn(
+          "text-muted-foreground aria-selected:text-muted-foreground",
+          defaultClassNames.outside,
+        ),
+        disabled: cn("text-muted-foreground opacity-50", defaultClassNames.disabled),
         hidden: cn("invisible", defaultClassNames.hidden),
         ...classNames,
       }}
@@ -114,35 +117,14 @@ function Calendar({
         },
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
-            return (
-              <HugeiconsIcon
-                icon={ArrowLeftIcon}
-                strokeWidth={2}
-                className={cn("size-4", className)}
-                {...props}
-              />
-            );
+            return <ChevronLeftIcon className={cn("size-4", className)} {...props} />;
           }
 
           if (orientation === "right") {
-            return (
-              <HugeiconsIcon
-                icon={ArrowRightIcon}
-                strokeWidth={2}
-                className={cn("size-4", className)}
-                {...props}
-              />
-            );
+            return <ChevronRightIcon className={cn("size-4", className)} {...props} />;
           }
 
-          return (
-            <HugeiconsIcon
-              icon={ArrowDownIcon}
-              strokeWidth={2}
-              className={cn("size-4", className)}
-              {...props}
-            />
-          );
+          return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
         },
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...props }) => {

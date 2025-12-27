@@ -1,7 +1,7 @@
 import { View, Text } from "react-native";
 import { useSemanticColors } from "@/utils/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { PlanDashboard } from "@/components/plan-dashboard";
+import { PlanDashboard } from "@/components/plans/plan-dashboard";
 import { authClient } from "@/lib/auth-client";
 
 export default function PlanScreen() {

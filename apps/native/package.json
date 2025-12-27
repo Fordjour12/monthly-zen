@@ -20,6 +20,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@monthly-zen/api": "workspace:*",
+    "@monthly-zen/types": "workspace:*",
     "@orpc/client": "catalog:",
     "@orpc/tanstack-query": "catalog:",
     "@react-navigation/drawer": "^7.3.9",

@@ -6,7 +6,11 @@ import {
   deleteDraft,
   getLatestDraft,
   getCurrentMonthlyPlanWithTasks,
+  getMonthlyPlansByUser,
+  getMonthlyPlanWithTasks,
+  verifyPlanOwnership,
 } from "@monthly-zen/db";
+import { responseExtractor } from "@monthly-zen/response-parser";
 
 const generateInputSchema = z.object({
   goalsText: z.string().min(1, "Goals are required"),
@@ -183,4 +187,69 @@ export const planRouter = {
       throw new Error(error instanceof Error ? error.message : "Failed to fetch current plan");
     }
   }),
+
+  getPlans: protectedProcedure.handler(async ({ context }) => {
+    try {
+      const userId = context.session?.user?.id;
+
+      if (!userId) {
+        throw new Error("Authentication required");
+      }
+
+      const plans = await getMonthlyPlansByUser(userId);
+
+      return {
+        success: true,
+        data: plans.map((plan) => ({
+          id: plan.id,
+          monthYear: plan.monthYear,
+          summary: plan.monthlySummary,
+          status: plan.status,
+          generatedAt: plan.generatedAt,
+          confidence: plan.extractionConfidence,
+        })),
+      };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Failed to fetch plans");
+    }
+  }),
+
+  getPlanById: protectedProcedure
+    .input(z.object({ planId: z.number() }))
+    .handler(async ({ input, context }) => {
+      try {
+        const userId = context.session?.user?.id;
+
+        if (!userId) {
+          throw new Error("Authentication required");
+        }
+
+        const ownership = await verifyPlanOwnership(input.planId, userId);
+        if (!ownership) {
+          throw new Error("You do not have access to this plan");
+        }
+
+        const planWithTasks = await getMonthlyPlanWithTasks(input.planId);
+
+        if (!planWithTasks) {
+          throw new Error("Plan not found");
+        }
+
+        const parsedResponse = responseExtractor.extractAllStructuredData(
+          typeof planWithTasks.rawAiResponse === "string"
+            ? planWithTasks.rawAiResponse
+            : JSON.stringify(planWithTasks.aiResponseRaw),
+        );
+
+        return {
+          success: true,
+          data: {
+            plan: planWithTasks,
+            parsed: parsedResponse,
+          },
+        };
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : "Failed to fetch plan");
+      }
+    }),
 };

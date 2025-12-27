@@ -1,3 +1,6 @@
+import { db } from "../index";
+import { eq, and } from "drizzle-orm";
+import { monthlyPlans } from "../schema";
 import { createMonthlyPlan } from "./monthly-plans";
 import { createPlanTasks } from "./plan-tasks";
 
@@ -32,9 +35,40 @@ export async function saveGeneratedPlan(
   }
 
   // Extract and save tasks
+  // Note: We duplicate this logic in confirmDraftAsPlan. Ideally extract to helper.
+  await extractAndSaveTasks(newPlan.id, planData);
+
+  return newPlan.id;
+}
+
+export async function confirmDraftAsPlan(userId: string, draftKey: string) {
+  // 1. Promote Draft to Plan (update status)
+  const [updatedPlan] = await db
+    .update(monthlyPlans)
+    .set({ status: "CONFIRMED" })
+    .where(
+      and(
+        eq(monthlyPlans.userId, userId),
+        eq(monthlyPlans.draftKey, draftKey),
+        eq(monthlyPlans.status, "DRAFT"),
+      ),
+    )
+    .returning();
+
+  if (!updatedPlan) {
+    throw new Error("Draft not found or already confirmed");
+  }
+
+  // 2. Extract and Save Tasks
+  // The planData is stored in aiResponseRaw
+  await extractAndSaveTasks(updatedPlan.id, updatedPlan.aiResponseRaw);
+
+  return updatedPlan.id;
+}
+
+async function extractAndSaveTasks(planId: number, planData: any) {
   try {
     const tasksToSave: any[] = [];
-    const planId = newPlan.id;
 
     // Handle both potential structures (raw parsed object or direct properties)
     const weeks = planData.weekly_breakdown || (planData as any).weeks || [];
@@ -73,12 +107,10 @@ export async function saveGeneratedPlan(
       console.warn(`[saveGeneratedPlan] No tasks found to save for plan ${planId}`);
     }
   } catch (error) {
-    console.error(`[saveGeneratedPlan] Failed to save tasks for plan ${newPlan.id}:`, error);
+    console.error(`[saveGeneratedPlan] Failed to save tasks for plan ${planId}:`, error);
     // We don't throw here to ensure the plan itself is at least returned,
     // though in a perfect world we might want a transaction.
   }
-
-  return newPlan.id;
 }
 
 export async function savePlanTasks(
