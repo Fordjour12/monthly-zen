@@ -8,7 +8,8 @@
   },
   "scripts": {},
   "dependencies": {
-    "@monthly-zen/types": "workspace:*"
+    "@monthly-zen/types": "workspace:*",
+    "date-fns": "catalog:"
   },
   "devDependencies": {
     "@monthly-zen/config": "workspace:*",

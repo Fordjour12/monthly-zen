@@ -24,6 +24,7 @@
     "@orpc/tanstack-query": "catalog:",
     "@react-navigation/drawer": "^7.3.9",
     "@react-navigation/elements": "^2.8.1",
+    "@shopify/flash-list": "2.0.2",
     "@tanstack/react-query": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
