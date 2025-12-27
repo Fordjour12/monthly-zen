@@ -53,6 +53,16 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="tasks"
+        options={{
+          title: "Tasks",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="checkmark-circle" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
