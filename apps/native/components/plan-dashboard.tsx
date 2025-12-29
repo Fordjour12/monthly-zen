@@ -8,8 +8,6 @@ import { PlanFormCollapsible } from "./plan-form-collapsible";
 import { WeekSection } from "./week-section";
 import { FloatingActionBar } from "./floating-action-bar";
 import { useSemanticColors } from "@/utils/theme";
-import { Ionicons } from "@expo/vector-icons";
-import { Button } from "heroui-native";
 
 export function PlanDashboard() {
   const {
