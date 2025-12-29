@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, type } from "expo-router";
+import { Tabs } from "expo-router";
 import { useThemeColor } from "heroui-native";
 
 export default function TabLayout() {
@@ -9,7 +9,6 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
         headerStyle: {
           backgroundColor: themeColorBackground,
         },
@@ -21,12 +20,14 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: themeColorBackground,
         },
+        tabBarActiveTintColor: themeColorForeground,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
+          headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -36,8 +37,19 @@ export default function TabLayout() {
         name="two"
         options={{
           title: "Explore",
+          headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="compass" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="plan"
+        options={{
+          title: "Plan",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Ionicons name="bulb" size={size} color={color} />
           ),
         }}
       />
