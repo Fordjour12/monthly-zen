@@ -42,11 +42,13 @@ function RouteComponent() {
     }),
   );
 
-  const tasks = (tasksQuery.data?.data as any[]) || [];
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => t.isCompleted).length;
-  const pendingTasks = totalTasks - completedTasks;
-  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+import type { Task } from "@/hooks/useTasks";
+
+const tasks = (tasksQuery.data?.data as Task[]) || [];
+const totalTasks = tasks.length;
+const completedTasks = tasks.filter((t) => t.isCompleted).length;
+const pendingTasks = totalTasks - completedTasks;
+const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">

@@ -89,7 +89,7 @@ export const tasksRouter = {
         }
 
         // Ownership check
-        if (task.userId !== userId) {
+        if (task.userId !== String(userId)) {
           throw new Error("Access denied");
         }
 

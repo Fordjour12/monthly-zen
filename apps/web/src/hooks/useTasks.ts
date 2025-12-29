@@ -84,17 +84,20 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
   const focusAreasQuery = useQuery(orpc.tasks.getFocusAreas.queryOptions());
 
   // Task completion toggle mutation
+  // Get the query key from orpc
+  const tasksQueryKey = orpc.tasks.list.queryOptions({ input: queryInput }).queryKey;
+
   const toggleTaskMutation = useMutation(
     orpc.tasks.update.mutationOptions({
       onMutate: async ({ taskId, isCompleted }) => {
         // Cancel outgoing refetches
-        await queryClient.cancelQueries({ queryKey: ["tasks", "list"] });
+        await queryClient.cancelQueries({ queryKey: tasksQueryKey });
 
         // Snapshot previous value
-        const previousTasks = queryClient.getQueryData(["tasks", "list", queryInput]);
+        const previousTasks = queryClient.getQueryData(tasksQueryKey);
 
         // Optimistically update
-        queryClient.setQueryData(["tasks", "list", queryInput], (old: any) => {
+        queryClient.setQueryData(tasksQueryKey, (old: any) => {
           if (!old?.data) return old;
           return {
             ...old,
@@ -109,12 +112,12 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
       onError: (_err, _variables, context) => {
         // Rollback on error
         if (context?.previousTasks) {
-          queryClient.setQueryData(["tasks", "list", queryInput], context.previousTasks);
+          queryClient.setQueryData(tasksQueryKey, context.previousTasks);
         }
       },
       onSettled: () => {
         // Refetch to ensure consistency
-        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+        queryClient.invalidateQueries({ queryKey: tasksQueryKey });
       },
     }),
   );
