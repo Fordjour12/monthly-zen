@@ -165,12 +165,8 @@ export function usePlanGeneration() {
       return null;
     }
 
-    try {
-      const response = await confirmMutation.mutateAsync({ draftKey: draft.draftKey });
-      return response.data.planId;
-    } catch (err) {
-      throw err;
-    }
+    const response = await confirmMutation.mutateAsync({ draftKey: draft.draftKey });
+    return response.data.planId;
   }, [draft, confirmMutation]);
 
   const discard = useCallback(async () => {

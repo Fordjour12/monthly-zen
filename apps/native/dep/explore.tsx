@@ -91,7 +91,7 @@ const TemplateCard = ({ template, primary }: { template: any; primary: string })
 );
 
 export default function ExploreScreen() {
-  const { primary, accent } = useSemanticColors();
+  const { primary } = useSemanticColors();
   const [activeCategory, setActiveCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
 

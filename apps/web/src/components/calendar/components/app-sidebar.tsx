@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Plus, Calendar as CalendarIcon, Check } from "lucide-react";
+import { Calendar as CalendarIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "./date-picker";
 import { NavUser } from "./nav-user";
@@ -16,12 +16,6 @@ import {
 } from "@/components/ui/sidebar";
 import { orpc } from "@/utils/orpc";
 import { useQuery } from "@tanstack/react-query";
-
-interface FocusArea {
-  name: string;
-  count: number;
-  color: string;
-}
 
 export function AppSidebar({
   selectedFocusAreas,

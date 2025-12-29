@@ -40,7 +40,7 @@ export function CalendarGrid({
   onDateSelect,
   onMonthChange,
 }: CalendarGridProps) {
-  const { primary, surface, muted, border, foreground } = useSemanticColors();
+  const { muted: _muted, border: _border, foreground } = useSemanticColors();
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
 
   const days = useMemo(() => {
@@ -138,7 +138,7 @@ export function CalendarGrid({
 
       {/* Days Grid */}
       <View className="flex-row flex-wrap">
-        {days.map((day, idx) => {
+        {days.map((day, _idx) => {
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const isToday = isSameDay(day, new Date());

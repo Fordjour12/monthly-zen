@@ -1,13 +1,5 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-  useSharedValue,
-  measure,
-  runOnUI,
-  useAnimatedRef,
-} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { DayTasks } from "../calendar/day-tasks";
 import { WeekSectionData } from "@/hooks/usePlanData";
@@ -22,7 +14,7 @@ interface WeekSectionProps {
 
 export const WeekSection = memo(
   ({ section, onToggleExpand, onToggleTaskComplete }: WeekSectionProps) => {
-    const { primary, foreground, muted } = useSemanticColors();
+    const { primary, muted } = useSemanticColors();
 
     return (
       <View className="mb-4 mx-4">

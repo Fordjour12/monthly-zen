@@ -8,12 +8,7 @@ import { useRouter } from "expo-router";
 import { orpc } from "@/utils/orpc";
 import { format } from "date-fns";
 import { Container } from "@/components/ui/container";
-import type {
-  AIResponseWithMetadata,
-  StructuredAIResponse,
-  WeeklyBreakdown,
-  TaskDescription,
-} from "@monthly-zen/types";
+import type { AIResponseWithMetadata, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
 
 interface TaskItem {
   id: string;

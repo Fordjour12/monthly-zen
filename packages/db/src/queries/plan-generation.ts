@@ -76,7 +76,7 @@ async function extractAndSaveTasks(planId: number, planData: any) {
     if (Array.isArray(weeks)) {
       for (const week of weeks) {
         if (week.daily_tasks) {
-          for (const [day, dayTasks] of Object.entries(week.daily_tasks)) {
+          for (const [_day, dayTasks] of Object.entries(week.daily_tasks)) {
             if (Array.isArray(dayTasks)) {
               for (const task of dayTasks as any[]) {
                 // Parse dates - ensure they are Date objects

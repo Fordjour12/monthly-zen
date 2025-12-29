@@ -6,7 +6,6 @@ import {
   AlertCircle,
   RefreshCw,
   Download,
-  Edit,
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

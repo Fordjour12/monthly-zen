@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Star } from "lucide-react";
 
@@ -40,6 +39,7 @@ export function TaskCalendarGrid({
   onDateSelect,
   filteredFocusAreas = [],
   viewMode = "normal",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   habitStats = [],
 }: TaskCalendarGridProps) {
   // Filter tasks based on selected focus areas
@@ -70,12 +70,6 @@ export function TaskCalendarGrid({
   const hasTasksOnDay = (date: Date): CalendarTask[] | null => {
     const dateKey = date.toDateString();
     return tasksByDate[dateKey] || null;
-  };
-
-  const getTaskColor = (tasks: CalendarTask[]): string => {
-    if (tasks.every((t) => t.isCompleted)) return "bg-green-100 text-green-700 border-green-200";
-    if (tasks.some((t) => t.isCompleted)) return "bg-yellow-50 text-yellow-700 border-yellow-200";
-    return "bg-blue-50 text-blue-700 border-blue-200";
   };
 
   // Get heatmap color for a day based on completion rate

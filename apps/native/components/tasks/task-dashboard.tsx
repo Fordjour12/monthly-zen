@@ -33,7 +33,7 @@ export function TaskDashboard() {
     refetch,
   } = useTasks();
 
-  const { primary, foreground } = useSemanticColors();
+  const { primary } = useSemanticColors();
 
   const hasFilters = !!(
     filters.focusArea ||

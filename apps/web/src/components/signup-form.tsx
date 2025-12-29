@@ -49,11 +49,11 @@ function FieldInfo({ field }: { field: AnyFieldApi }) {
 
 export function SignupForm({
   className,
-  onSubmit,
+  _onSubmit,
   isLoading = false,
   ...props
 }: React.ComponentProps<"div"> & {
-  onSubmit?: (values: { name: string; email: string; password: string }) => Promise<void> | void;
+  _onSubmit?: (values: { name: string; email: string; password: string }) => Promise<void> | void;
   isLoading?: boolean;
 }) {
   const navigate = useNavigate({

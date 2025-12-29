@@ -1,77 +1,71 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, Alert, ScrollView } from "react-native";
+import React from "react";
+import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { authClient } from "@/lib/auth-client";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, Divider, TextField } from "heroui-native";
 import { useSemanticColors } from "@/utils/theme";
+import { Card, Divider, TextField } from "heroui-native";
+import { Container } from "@/components/ui/container";
+import { useAuthStore } from "@/stores/auth-store";
+import { useForm, type AnyFieldApi } from "@tanstack/react-form";
+import { z } from "zod";
+
+const SignInSchema = z.object({
+  email: z.email("Please enter a valid email address").min(1, "Email is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+function FieldInfo({ field }: { field: AnyFieldApi }) {
+  return (
+    <>
+      {field.state.meta.isTouched && !field.state.meta.isValid && (
+        <Text className="text-sm text-danger">
+          {field.state.meta.errors.map((err: unknown) => String(err)).join(",")}
+        </Text>
+      )}
+    </>
+  );
+}
 
 export default function SignInScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const colors = useSemanticColors();
   const router = useRouter();
+  const { signIn, isLoading, error } = useAuthStore();
 
-  const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    await authClient.signIn.email(
-      {
-        email,
-        password,
-        callbackURL: "/(tabs)",
-      },
-      {
-        onError: (ctx) => {
-          setError(ctx.error.message || "Failed to sign in");
-          setIsLoading(false);
-        },
-        onSuccess: () => {
-          console.log("📱 Sign-in successful, navigating to main app");
-          router.replace("/(tabs)");
-        },
-        onFinished: () => {
-          setIsLoading(false);
-        },
-      },
-    );
-  };
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    validators: {
+      onChange: SignInSchema,
+      onBlur: SignInSchema,
+      onSubmit: SignInSchema,
+    },
+    onSubmit: async ({ value }) => {
+      await signIn({ email: value.email, password: value.password });
+      if (useAuthStore.getState().isLoggedIn) {
+        router.replace("/(tabs)");
+      }
+    },
+  });
 
   const handleGoogleSignIn = () => {
     Alert.alert("Coming Soon", "Google Sign In will be available soon!");
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="border-b border-border px-4 py-6">
-        <View className="flex items-center gap-3 flex-row">
-          <View className="h-10 w-10 bg-primary/10 rounded-lg items-center justify-center">
-            <Ionicons name="log-in" size={20} color={colors.primary} />
-          </View>
-          <View>
+    <Container>
+      <ScrollView className="flex-1 px-4 py-8" contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="flex-1 justify-center">
+          <View className="pt-2 pb-5">
             <Text className="text-2xl font-bold tracking-tight text-foreground">Welcome Back</Text>
             <Text className="text-sm text-muted-foreground">
               Sign in to continue to your account
             </Text>
           </View>
-        </View>
-      </View>
 
-      <ScrollView className="flex-1 px-4 py-8" contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 justify-center">
           <Card className="p-6">
-            {/* Google Sign In Button */}
             <Pressable
               className="rounded-2xl py-3.5 px-5 flex-row items-center justify-center mb-6"
               style={{ backgroundColor: colors.accent }}
@@ -85,72 +79,83 @@ export default function SignInScreen() {
               <Text className="text-base font-semibold text-background">Sign in with Google</Text>
             </Pressable>
 
-            {/* Divider */}
             <View className="flex-row items-center my-5">
-              <Divider />
+              <Divider orientation="horizontal" variant="thin" />
               <Text className="text-xs px-3 text-muted-foreground">or continue with email</Text>
-              <Divider />
+              <Divider orientation="horizontal" variant="thin" />
             </View>
 
-            {/* Email Input */}
-            <TextField isRequired>
-              <TextField.Label>Email</TextField.Label>
-              <TextField.Input
-                value={email}
-                onChangeText={setEmail}
-                placeholder="your@email.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-              >
-                <TextField.InputStartContent>
-                  <Ionicons name="mail-outline" size={20} color={colors.muted} />
-                </TextField.InputStartContent>
-              </TextField.Input>
-            </TextField>
+            <form.Field
+              name="email"
+              children={(field) => (
+                <TextField isRequired>
+                  <TextField.Label>Email</TextField.Label>
+                  <TextField.Input
+                    value={field.state.value}
+                    onChangeText={field.handleChange}
+                    placeholder="your@email.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                  >
+                    <TextField.InputStartContent>
+                      <Ionicons name="mail-outline" size={20} color={colors.muted} />
+                    </TextField.InputStartContent>
+                  </TextField.Input>
+                  <FieldInfo field={field} />
+                </TextField>
+              )}
+            />
 
-            {/* Password Input */}
-            <TextField className="mt-4" isRequired>
-              <TextField.Label>Password</TextField.Label>
-              <TextField.Input
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                secureTextEntry
-                autoComplete="password"
-                autoCorrect={false}
-              >
-                <TextField.InputStartContent>
-                  <Ionicons name="lock-closed-outline" size={20} color={colors.muted} />
-                </TextField.InputStartContent>
-              </TextField.Input>
-            </TextField>
+            <form.Field
+              name="password"
+              children={(field) => (
+                <TextField className="mt-4" isRequired>
+                  <TextField.Label>Password</TextField.Label>
+                  <TextField.Input
+                    value={field.state.value}
+                    onChangeText={field.handleChange}
+                    placeholder="Enter your password"
+                    secureTextEntry
+                    autoComplete="password"
+                    autoCorrect={false}
+                  >
+                    <TextField.InputStartContent>
+                      <Ionicons name="lock-closed-outline" size={20} color={colors.muted} />
+                    </TextField.InputStartContent>
+                  </TextField.Input>
+                  <FieldInfo field={field} />
+                </TextField>
+              )}
+            />
 
-            {/* Error Message */}
             {error && (
-              <View className="rounded-lg p-3 mt-4 bg-destructive/10 border border-destructive">
-                <Text className="text-sm text-center text-destructive">{error}</Text>
+              <View className="rounded-lg p-3 mt-4 bg-danger/10 border border-danger">
+                <Text className="text-sm text-center text-danger">{error}</Text>
               </View>
             )}
 
-            {/* Sign In Button */}
-            <Pressable
-              className="rounded-2xl py-4 items-center mt-5 mb-4"
-              style={{
-                backgroundColor: isLoading || !email || !password ? colors.border : colors.primary,
-                opacity: isLoading || !email || !password ? 0.5 : 1,
-              }}
-              onPress={handleSignIn}
-              disabled={isLoading || !email || !password}
-              android_ripple={{ color: "rgba(255,255,255,0.1)" }}
-            >
-              <Text className="text-base font-semibold text-primary-foreground">
-                {isLoading ? "Signing in..." : "Sign in"}
-              </Text>
-            </Pressable>
+            <form.Subscribe
+              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              children={([canSubmit, isSubmitting]) => (
+                <Pressable
+                  className="rounded-2xl py-4 items-center mt-5 mb-4"
+                  style={{
+                    backgroundColor: !canSubmit || isSubmitting ? colors.border : colors.primary,
+                    opacity: !canSubmit || isSubmitting ? 0.5 : 1,
+                  }}
+                  onPress={() => form.handleSubmit()}
+                  disabled={!canSubmit || isSubmitting || isLoading}
+                  android_ripple={{ color: "rgba(255,255,255,0.1)" }}
+                >
+                  <Text className="text-base font-semibold text-primary-foreground">
+                    {isSubmitting || isLoading ? "Signing in..." : "Sign in"}
+                  </Text>
+                </Pressable>
+              )}
+            />
 
-            {/* Sign Up Link */}
             <View className="flex-row justify-center items-center">
               <Text className="text-sm text-muted-foreground">Don't have an account? </Text>
               <Link href="/sign-up" asChild>
@@ -162,6 +167,6 @@ export default function SignInScreen() {
           </Card>
         </View>
       </ScrollView>
-    </View>
+    </Container>
   );
 }

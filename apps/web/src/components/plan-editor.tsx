@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Edit2, Save, X, Plus, Trash2, Calendar, Clock, Target, AlertCircle } from "lucide-react";
+import { Edit2, Save, X, Plus, Trash2, Clock, Target, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { type MonthlyPlan, type PlanTask } from "@monthly-zen/response-parser";
 
@@ -72,6 +71,7 @@ export function PlanEditor({ monthlyPlan, onSave, onCancel }: PlanEditorProps) {
       priority: "Medium",
       category: "General",
       estimatedHours: 2,
+      completed: false,
     };
     setEditedPlan((prev) => ({
       ...prev,

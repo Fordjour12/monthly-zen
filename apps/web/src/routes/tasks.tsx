@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-import { createFileRoute } from "@tanstack/react-router";
 import { getUser } from "@/functions/get-user";
 import { redirect } from "@tanstack/react-router";
 

@@ -11,18 +11,14 @@ import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { orpc } from "@/utils/orpc";
 
 export default function CalendarScreen() {
-  const { primary, surface, muted, border } = useSemanticColors();
+  const { primary, surface, muted } = useSemanticColors();
   const queryClient = useQueryClient();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   // Fetch tasks for the current month
-  const {
-    data: tasksResult,
-    isLoading,
-    error,
-  } = useQuery(
+  const { data: tasksResult, isLoading } = useQuery(
     orpc.calendar.getTasks.queryOptions({
       input: { month: format(currentMonth, "yyyy-MM") },
     }),

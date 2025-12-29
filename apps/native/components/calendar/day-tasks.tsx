@@ -2,7 +2,6 @@ import React, { memo } from "react";
 import { View, Text } from "react-native";
 import { TaskItem } from "../tasks/task-item";
 import { DayTasksItem } from "@/hooks/usePlanData";
-import { useSemanticColors } from "@/utils/theme";
 
 interface DayTasksProps {
   dayWithTasks: DayTasksItem;
@@ -10,7 +9,8 @@ interface DayTasksProps {
 }
 
 export const DayTasks = memo(({ dayWithTasks, onToggleTaskComplete }: DayTasksProps) => {
-  const { muted } = useSemanticColors();
+  // muted is kept for future use when styling task items
+  // const { muted } = useSemanticColors();
 
   if (dayWithTasks.tasks.length === 0) {
     return null;

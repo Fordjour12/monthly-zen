@@ -32,8 +32,6 @@ const GeneratePlanFormDataSchema = z.object({
   }),
 });
 
-type GeneratePlanFormData = z.infer<typeof GeneratePlanFormDataSchema>;
-
 const taskComplexityOptions = [
   { value: "Simple", label: "Simple", description: "Fewer, manageable tasks" },
   { value: "Balanced", label: "Balanced", description: "Mix of easy and challenging" },

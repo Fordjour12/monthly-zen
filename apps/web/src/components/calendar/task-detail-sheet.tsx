@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   Sheet,
   SheetContent,
@@ -10,8 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, Clock, CheckCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarTask } from "./task-calendar-grid";
 

@@ -32,7 +32,7 @@ const difficultyOptions: { value: DifficultyLevel | "all"; label: string }[] = [
 ];
 
 export function TaskFilterBar({ filters, onUpdateFilter, onToggleSort }: TaskFilterBarProps) {
-  const { primary, muted, foreground, background } = useSemanticColors();
+  const { muted, foreground } = useSemanticColors();
 
   return (
     <View className="bg-card border-b border-border">

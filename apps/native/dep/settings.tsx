@@ -22,7 +22,7 @@ const weekendPreferenceOptions = [
 ] as const;
 
 export default function SettingsScreen() {
-  const { primary, danger, muted } = useSemanticColors();
+  const { primary, danger } = useSemanticColors();
   const queryClient = useQueryClient();
 
   // Queries

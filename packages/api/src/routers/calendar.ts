@@ -113,7 +113,7 @@ export const calendarRouter = {
 
   updateTaskStatus: protectedProcedure
     .input(z.object({ taskId: z.number(), isCompleted: z.boolean() }))
-    .handler(async ({ input, context }) => {
+    .handler(async ({ input }) => {
       try {
         const updatedTask = await updateTaskStatus(input.taskId, input.isCompleted);
         return { success: true, data: updatedTask };
