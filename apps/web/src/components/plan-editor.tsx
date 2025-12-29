@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { type MonthlyPlan, type PlanTask } from "@testing-server/response-parser";
+import { type MonthlyPlan, type PlanTask } from "@monthly-zen/response-parser";
 
 interface PlanEditorProps {
   monthlyPlan: MonthlyPlan;
