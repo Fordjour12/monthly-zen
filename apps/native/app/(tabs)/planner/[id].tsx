@@ -1,6 +1,5 @@
-import { Stack, useLocalSearchParams } from "expo-router";
-import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { View, Text, Pressable } from "react-native";
 import { PlanView } from "@/components/plans/plan-view";
 import { authClient } from "@/lib/auth-client";
 import { Container } from "@/components/ui/container";
@@ -12,6 +11,7 @@ export default function PlanDetail() {
   const { accent, danger } = useSemanticColors();
   const { id } = useLocalSearchParams();
   authClient.useSession();
+  const router = useRouter();
 
   const planId = Array.isArray(id) ? parseInt(id[0], 10) : parseInt(id || "0", 10);
 
@@ -26,9 +26,14 @@ export default function PlanDetail() {
 
   return (
     <Container>
-      <View className="pb-3">
-        <HugeiconsIcon icon={ArrowLeft01FreeIcons} size={20} color={accent} />
-        <Text>Back</Text>
+      <View>
+        <Pressable
+          className="pt-9 flex-row gap-2 items-center align-middle"
+          onPress={() => router.push("/(tabs)/planner")}
+        >
+          <HugeiconsIcon icon={ArrowLeft01FreeIcons} size={20} color={accent} />
+          <Text className="text-foreground">Back</Text>
+        </Pressable>
       </View>
       <PlanView planId={planId} />
     </Container>

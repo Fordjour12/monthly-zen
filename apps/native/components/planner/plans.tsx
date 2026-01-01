@@ -3,13 +3,9 @@ import { useRouter } from "expo-router";
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Button, Skeleton } from "heroui-native";
-import { Container } from "@/components/ui/container";
+import { Card, Button } from "heroui-native";
 import { EmptyState } from "@/components/ui/empty-state";
 import { orpc } from "@/utils/orpc";
-import { AddSquareFreeIcons } from "@hugeicons/core-free-icons";
-import { useSemanticColors } from "@/utils/theme";
-import { HugeiconsIcon } from "@hugeicons/react-native";
 import { PlansSkeleton } from "@/components/loading-skeleton";
 
 interface PlanListItem {
@@ -59,33 +55,20 @@ function formatDate(date: Date | string) {
   }
 }
 
-function PlansList({
-  plans,
-  router,
-  foreground,
-}: {
-  plans: PlanListItem[];
-  router: any;
-  foreground: string;
-}) {
+function PlansList({ plans, router }: { plans: PlanListItem[]; router?: any }) {
   return (
     <ScrollView
+      className="flex-1"
       contentContainerClassName="p-4 pb-24"
       refreshControl={<RefreshControl refreshing={false} onRefresh={() => {}} />}
     >
-      <View className="mb-6 mt-4">
-        <Text className="text-3xl font-bold text-foreground mb-2">My Plans</Text>
-        <Text className="text-muted-foreground">View all your generated monthly plans</Text>
-      </View>
-      <View className="flex-row justify-end mb-4">
-        <Button
-          onPress={() => router.push("/(tabs)/planner")}
-          variant="primary"
-          className="rounded-none"
-        >
-          <HugeiconsIcon icon={AddSquareFreeIcons} size={20} color={foreground} />
-          <Text className="text-white font-medium ml-1">New Plan</Text>
-        </Button>
+      <View className="flex-row justify-between items-center mb-4">
+        <View>
+          <Text className="text-xl font-bold text-foreground">My Plans</Text>
+          <Text className="text-muted-foreground text-sm">
+            View all your generated monthly plans
+          </Text>
+        </View>
       </View>
       <View className="gap-4">
         {plans.map((plan) => (
@@ -148,31 +131,31 @@ function ErrorView({ error, refetch }: { error: Error | null; refetch: () => voi
 function EmptyView({ router }: { router: any }) {
   return (
     <ScrollView
+      className="flex-1"
       contentContainerClassName="p-4 flex-1"
       refreshControl={<RefreshControl refreshing={false} onRefresh={() => {}} />}
     >
       <View className="mb-6 mt-4">
-        <Text className="text-3xl font-bold text-foreground mb-2">My Plans</Text>
-        <Text className="text-muted-foreground">View all your generated monthly plans</Text>
+        <Text className="text-xl font-bold text-foreground">My Plans</Text>
+        <Text className="text-muted-foreground text-sm">View all your generated monthly plans</Text>
       </View>
       <EmptyState
         title="No plans yet"
         description="You haven't generated any plans yet. Create your first AI-powered monthly plan to get started."
-        actionLabel="Generate Your First Plan"
+        actionLabel="Go to Templates"
         onAction={() => router.replace("/(tabs)/planner")}
       />
     </ScrollView>
   );
 }
 
-export default function Plans() {
+export default function MyPlansTab() {
   const router = useRouter();
-  const { foreground } = useSemanticColors();
   const { data: result, isLoading, error, refetch } = useQuery(orpc.plan.getPlans.queryOptions());
   const plans = (result?.data as PlanListItem[] | undefined) || [];
 
   return (
-    <Container>
+    <>
       {isLoading ? (
         <PlansSkeleton />
       ) : error ? (
@@ -180,8 +163,8 @@ export default function Plans() {
       ) : plans.length === 0 ? (
         <EmptyView router={router} />
       ) : (
-        <PlansList plans={plans} router={router} foreground={foreground} />
+        <PlansList plans={plans} router={router} />
       )}
-    </Container>
+    </>
   );
 }

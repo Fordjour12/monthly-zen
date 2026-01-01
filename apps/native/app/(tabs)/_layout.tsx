@@ -2,7 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useThemeColor } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { AiEditingIcon, Calendar01Icon, Home12Icon } from "@hugeicons/core-free-icons";
+import {
+  AiEditingIcon,
+  Calendar01Icon,
+  Home12Icon,
+  TeacherIcon,
+  UserCircleIcon,
+} from "@hugeicons/core-free-icons";
 
 export default function TabLayout() {
   const themeColorForeground = useThemeColor("foreground");
@@ -62,6 +68,26 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <HugeiconsIcon icon={AiEditingIcon} size={size} color={color} strokeWidth={1.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="coaching"
+        options={{
+          title: "Coaching",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <HugeiconsIcon icon={TeacherIcon} size={size} color={color} strokeWidth={1.5} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <HugeiconsIcon icon={UserCircleIcon} size={size} color={color} strokeWidth={1.5} />
           ),
         }}
       />
