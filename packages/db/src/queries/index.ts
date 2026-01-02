@@ -10,3 +10,4 @@ export * from "./tasks";
 export * from "./coaching";
 export * from "./habits";
 export * from "./reminders";
+export * from "./pattern-detection";
