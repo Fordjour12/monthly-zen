@@ -1,359 +1,200 @@
-import React, { useState } from "react";
-import { StyleSheet, ScrollView, View, Text, TouchableOpacity, Switch, Image } from "react-native";
-import FeatherIcon from "@expo/vector-icons/Feather";
-import { Container } from "@/components/ui";
+import React from "react";
+import { View, Text, TouchableOpacity, Image, Alert, Switch } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
+import Constants from "expo-constants";
+import { useAuthStore } from "@/stores/auth-store";
+import { Container } from "@/components/ui/container";
+import { useAppTheme } from "@/contexts/app-theme-context";
 
-export default function Example() {
-  const [form, setForm] = useState({
-    emailNotifications: true,
-    pushNotifications: false,
-  });
+export default function ProfileScreen() {
+  const { user, signOut } = useAuthStore();
+  const { isLight, toggleTheme } = useAppTheme();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/sign-in");
+        },
+      },
+    ]);
+  };
+
+  const handleSupport = () => {
+    Linking.openURL("mailto:support@monthlyzen.com");
+  };
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View className="mb-6">
+      <Text className="text-sm font-medium text-muted-foreground uppercase tracking-wider ml-4 mb-2">
+        {title}
+      </Text>
+      <View className="bg-surface rounded-2xl overflow-hidden border border-border shadow-sm">
+        {children}
+      </View>
+    </View>
+  );
+
+  const Row = ({
+    icon,
+    label,
+    value,
+    onPress,
+    isLast,
+    isDestructive,
+    rightElement,
+  }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    value?: string;
+    onPress?: () => void;
+    isLast?: boolean;
+    isDestructive?: boolean;
+    rightElement?: React.ReactNode;
+  }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      className={`flex-row items-center px-4 py-3.5 bg-surface ${
+        !isLast ? "border-b border-border" : ""
+      }`}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View
+        className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+          isDestructive ? "bg-red-100 dark:bg-red-900/30" : "bg-muted/30"
+        }`}
+      >
+        <Ionicons
+          name={icon}
+          size={18}
+          color={isDestructive ? "#ef4444" : isLight ? "#525252" : "#a3a3a3"}
+        />
+      </View>
+      <Text
+        className={`flex-1 text-base font-medium ${
+          isDestructive ? "text-red-500" : "text-foreground"
+        }`}
+      >
+        {label}
+      </Text>
+      {value && <Text className="text-muted-foreground text-sm mr-2">{value}</Text>}
+      {rightElement || (
+        <Ionicons name="chevron-forward" size={20} color={isLight ? "#d4d4d4" : "#525252"} />
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <Container>
-      <View style={styles.header}>
-        <View style={styles.headerAction}>
-          <TouchableOpacity
-            onPress={() => {
-              // handle onPress
-            }}
-          >
-            <FeatherIcon color="#000" name="arrow-left" size={24} />
-          </TouchableOpacity>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View className="flex-1 pb-24 pt-12">
+        <View className="px-4 mb-8">
+          <Text className="text-3xl font-bold text-foreground">Profile</Text>
         </View>
 
-        <Text numberOfLines={1} style={styles.headerTitle}>
-          Settings
-        </Text>
-
-        <View style={[styles.headerAction, { alignItems: "flex-end" }]}>
-          <TouchableOpacity
-            onPress={() => {
-              // handle onPress
-            }}
-          >
-            <FeatherIcon color="#000" name="more-vertical" size={24} />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.section, { paddingTop: 4 }]}>
-          <Text style={styles.sectionTitle}>Account</Text>
-
-          <View style={styles.sectionBody}>
+        {/* User Card */}
+        <View className="px-4 mb-8">
+          <View className="flex-row items-center bg-surface p-4 rounded-3xl border border-border shadow-sm">
+            <Image
+              source={{
+                uri:
+                  user?.image ||
+                  `https://ui-avatars.com/api/?name=${user?.name || "User"}&background=random`,
+              }}
+              className="w-16 h-16 rounded-full border-2 border-surface shadow-sm"
+            />
+            <View className="ml-4 flex-1">
+              <Text className="text-xl font-bold text-foreground">{user?.name || "User"}</Text>
+              <Text className="text-muted-foreground">{user?.email || "No email"}</Text>
+            </View>
             <TouchableOpacity
               onPress={() => {
-                // handle onPress
+                Alert.alert("Coming Soon", "Edit profile functionality coming soon.");
               }}
-              style={styles.profile}
+              className="w-10 h-10 rounded-full bg-muted/20 items-center justify-center"
             >
-              <Image
-                alt=""
-                source={{
-                  uri: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=facearea&facepad=2.5&w=256&h=256&q=80",
-                }}
-                style={styles.profileAvatar}
-              />
-
-              <View style={styles.profileBody}>
-                <Text style={styles.profileName}>John Doe</Text>
-
-                <Text style={styles.profileHandle}>john@example.com</Text>
-              </View>
-
-              <FeatherIcon color="#bcbcbc" name="chevron-right" size={22} />
+              <Ionicons name="pencil" size={20} color={isLight ? "#525252" : "#a3a3a3"} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-
-          <View style={styles.sectionBody}>
-            <View style={[styles.rowWrapper, styles.rowFirst]}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Language</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <Text style={styles.rowValue}>English</Text>
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.rowWrapper}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Location</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <Text style={styles.rowValue}>Los Angeles, CA</Text>
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.rowWrapper}>
-              <View style={styles.row}>
-                <Text style={styles.rowLabel}>Email Notifications</Text>
-
-                <View style={styles.rowSpacer} />
-
+        <View className="px-4">
+          <Section title="Account Settings">
+            <Row
+              icon="notifications-outline"
+              label="Notifications"
+              rightElement={
                 <Switch
-                  onValueChange={(emailNotifications) => setForm({ ...form, emailNotifications })}
-                  style={{ transform: [{ scaleX: 0.95 }, { scaleY: 0.95 }] }}
-                  value={form.emailNotifications}
+                  trackColor={{ false: "#767577", true: "#3b82f6" }}
+                  thumbColor={"#f4f3f4"}
+                  ios_backgroundColor="#3e3e3e"
+                  value={true} // TODO: Connect to state
+                  onValueChange={() => {}}
                 />
-              </View>
-            </View>
-
-            <View style={[styles.rowWrapper, styles.rowLast]}>
-              <View style={styles.row}>
-                <Text style={styles.rowLabel}>Push Notifications</Text>
-
-                <View style={styles.rowSpacer} />
-
+              }
+            />
+            <Row
+              icon="moon-outline"
+              label="Dark Mode"
+              isLast
+              rightElement={
                 <Switch
-                  onValueChange={(pushNotifications) => setForm({ ...form, pushNotifications })}
-                  style={{ transform: [{ scaleX: 0.95 }, { scaleY: 0.95 }] }}
-                  value={form.pushNotifications}
+                  trackColor={{ false: "#767577", true: "#3b82f6" }}
+                  thumbColor={"#f4f3f4"}
+                  ios_backgroundColor="#3e3e3e"
+                  value={!isLight}
+                  onValueChange={toggleTheme}
                 />
-              </View>
-            </View>
+              }
+            />
+          </Section>
+
+          <Section title="Support">
+            <Row
+              icon="help-circle-outline"
+              label="Help Center"
+              onPress={() => Alert.alert("Coming Soon")}
+            />
+            <Row icon="mail-outline" label="Contact Support" onPress={handleSupport} />
+            <Row
+              icon="document-text-outline"
+              label="Terms & Privacy"
+              onPress={() => Alert.alert("Coming Soon")}
+              isLast
+            />
+          </Section>
+
+          <Section title="Danger Zone">
+            <Row
+              icon="log-out-outline"
+              label="Sign Out"
+              onPress={handleSignOut}
+              isDestructive
+              isLast
+            />
+          </Section>
+
+          <View className="items-center mt-8">
+            <Text className="text-xs text-muted-foreground text-center">
+              Version {Constants.expoConfig?.version || "1.0.0"}
+            </Text>
+            <Text className="text-xs text-muted-foreground/50 text-center mt-1">
+              Monthly Zen © {new Date().getFullYear()}
+            </Text>
           </View>
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resources</Text>
-
-          <View style={styles.sectionBody}>
-            <View style={[styles.rowWrapper, styles.rowFirst]}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Contact Us</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.rowWrapper}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Report Bug</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.rowWrapper}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Rate in App Store</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.rowWrapper, styles.rowLast]}>
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={styles.rowLabel}>Terms and Privacy</Text>
-
-                <View style={styles.rowSpacer} />
-
-                <FeatherIcon color="#bcbcbc" name="chevron-right" size={19} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionBody}>
-            <View
-              style={[styles.rowWrapper, styles.rowFirst, styles.rowLast, { alignItems: "center" }]}
-            >
-              <TouchableOpacity
-                onPress={() => {
-                  // handle onPress
-                }}
-                style={styles.row}
-              >
-                <Text style={[styles.rowLabel, styles.rowLabelLogout]}>Log Out</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.contentFooter}>App Version 2.24 #50491</Text>
-      </ScrollView>
+      </View>
     </Container>
   );
 }
-
-const styles = StyleSheet.create({
-  /** Header */
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 16,
-  },
-  headerAction: {
-    width: 40,
-    height: 40,
-    alignItems: "flex-start",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: "600",
-    color: "#000",
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    textAlign: "center",
-  },
-  /** Content */
-  content: {
-    paddingHorizontal: 16,
-  },
-  contentFooter: {
-    marginTop: 24,
-    fontSize: 13,
-    fontWeight: "500",
-    textAlign: "center",
-    color: "#a69f9f",
-  },
-  /** Section */
-  section: {
-    paddingVertical: 12,
-  },
-  sectionTitle: {
-    margin: 8,
-    marginLeft: 12,
-    fontSize: 13,
-    letterSpacing: 0.33,
-    fontWeight: "500",
-    color: "#a69f9f",
-    textTransform: "uppercase",
-  },
-  sectionBody: {
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  /** Profile */
-  profile: {
-    padding: 12,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 9999,
-    marginRight: 12,
-  },
-  profileBody: {
-    marginRight: "auto",
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#292929",
-  },
-  profileHandle: {
-    marginTop: 2,
-    fontSize: 16,
-    fontWeight: "400",
-    color: "#858585",
-  },
-  /** Row */
-  row: {
-    height: 44,
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingRight: 12,
-  },
-  rowWrapper: {
-    paddingLeft: 16,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  rowFirst: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  rowLabel: {
-    fontSize: 16,
-    letterSpacing: 0.24,
-    color: "#000",
-  },
-  rowSpacer: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-  },
-  rowValue: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#ababab",
-    marginRight: 4,
-  },
-  rowLast: {
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-  },
-  rowLabelLogout: {
-    width: "100%",
-    textAlign: "center",
-    fontWeight: "600",
-    color: "#dc2626",
-  },
-});
