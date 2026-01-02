@@ -7,3 +7,4 @@ export * from "./progress";
 export * from "./plan-generation";
 export * from "./quota";
 export * from "./tasks";
+export * from "./coaching";

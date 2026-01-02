@@ -6,3 +6,5 @@ export * from "./plan-tasks";
 export * from "./generation-quota";
 export * from "./quota-history";
 export * from "./ai-request-logs";
+export * from "./coaching-insights";
+export * from "./user-patterns";

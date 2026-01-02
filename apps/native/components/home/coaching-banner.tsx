@@ -1,17 +1,43 @@
 import { View, Text, Pressable } from "react-native";
 import { Card } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useCoaching } from "@/hooks/useCoaching";
 
 interface CoachingBannerProps {
   onViewAll?: () => void;
 }
 
 export function CoachingBanner({ onViewAll }: CoachingBannerProps) {
-  const insight = {
-    title: "Third Week Drop-off Detected",
-    description:
-      "Your productivity typically dips in the third week of the month. Consider lighter tasks.",
-  };
+  const { insights, isLoading, generateInsights } = useCoaching();
+
+  // Get the highest priority insight
+  const topInsight = insights[0];
+
+  if (isLoading && insights.length === 0) {
+    return null; // Don't show banner while loading initial data
+  }
+
+  if (insights.length === 0) {
+    return (
+      <Card className="mx-4 mb-4 p-4 bg-primary/10 border-primary/30">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="sparkles" size={20} color="#3b82f6" />
+            <Text className="font-semibold text-foreground">AI Coaching</Text>
+          </View>
+        </View>
+        <Text className="text-sm text-muted-foreground mb-3">
+          Get personalized insights to improve your productivity
+        </Text>
+        <Pressable
+          className="py-2.5 px-4 rounded-lg bg-primary items-center justify-center"
+          onPress={generateInsights}
+        >
+          <Text className="text-white font-medium">Generate Insights</Text>
+        </Pressable>
+      </Card>
+    );
+  }
 
   return (
     <Card className="mx-4 mb-4 p-4 bg-warning/10 border-warning/30">
@@ -27,9 +53,9 @@ export function CoachingBanner({ onViewAll }: CoachingBannerProps) {
         )}
       </View>
 
-      <Text className="text-lg font-bold text-foreground mb-1">{insight.title}</Text>
+      <Text className="text-lg font-bold text-foreground mb-1">{topInsight.title}</Text>
 
-      <Text className="text-sm text-muted-foreground mb-3">{insight.description}</Text>
+      <Text className="text-sm text-muted-foreground mb-3">{topInsight.description}</Text>
 
       <View className="flex-row gap-2">
         <Pressable

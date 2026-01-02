@@ -9,12 +9,26 @@ import {
   TodaysTasksCard,
   HeatmapCard,
 } from "@/components/home";
+import { useEffect } from "react";
+import { useCoaching } from "@/hooks/useCoaching";
+import { useRouter } from "expo-router";
 
 export default function Home() {
+  const router = useRouter();
+  const { loadCoachingData } = useCoaching();
+
+  useEffect(() => {
+    loadCoachingData();
+  }, [loadCoachingData]);
+
+  const handleViewAllCoaching = () => {
+    router.push("/coaching");
+  };
+
   return (
     <Container>
       <HomeHeader />
-      <CoachingBanner />
+      <CoachingBanner onViewAll={handleViewAllCoaching} />
       <MorningIntentions />
       <MetricsRow />
       <QuickActions />

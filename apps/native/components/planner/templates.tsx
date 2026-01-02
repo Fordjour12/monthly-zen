@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
 import { Card, Button, Divider, Tabs, Skeleton } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import CreateSheet from "./create-sheet";
+import { useRouter } from "expo-router";
 
-// Updated categories
 const CATEGORIES = [
   { key: "all", label: "All" },
   { key: "productivity", label: "Productivity" },
@@ -131,13 +128,11 @@ const TemplateCard = ({
 
 export default function TemplatesTab() {
   const { primary } = useSemanticColors();
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateData | null>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
 
-  // Simulate loading when category changes
   useEffect(() => {
     setIsLoading(true);
     const timer = setTimeout(() => setIsLoading(false), 800);
@@ -154,148 +149,124 @@ export default function TemplatesTab() {
   });
 
   const handleApply = (template: TemplateData) => {
-    setSelectedTemplate(template);
-    bottomSheetRef.current?.expand();
+    const templateData = JSON.stringify({
+      goalsText: template.description,
+      taskComplexity: template.complexity,
+      focusAreas: template.focusAreas,
+    });
+    router.push({
+      pathname: "/(tabs)/planner/create",
+      params: { template: templateData },
+    });
   };
 
   const handleCreateNew = () => {
-    setSelectedTemplate(null);
-    bottomSheetRef.current?.expand();
-  };
-
-  const handleSheetClose = () => {
-    setSelectedTemplate(null);
+    router.push("/(tabs)/planner/create");
   };
 
   return (
-    <Container>
-      <ScrollView className="flex-1" contentContainerClassName="pb-24">
-        <View className="px-4 pt-4 pb-2">
-          <View className="flex-row justify-between items-center mb-2">
-            <View>
-              <Text className="text-3xl font-bold text-foreground">Discover</Text>
-              <Text className="text-muted-foreground mt-1 text-xs">
-                Find inspiration for your next monthly plan.
-              </Text>
-            </View>
-            <Button variant="primary" onPress={handleCreateNew} className="rounded-none">
-              <Ionicons name="add" size={20} color="white" />
-              <Text className="text-white font-bold ml-1">Create</Text>
-            </Button>
+    <ScrollView className="flex-1" contentContainerClassName="pb-24">
+      <View className="px-4 pt-4 pb-2">
+        <View className="flex-row justify-between items-center mb-2">
+          <View>
+            <Text className="text-3xl font-bold text-foreground">Discover</Text>
+            <Text className="text-muted-foreground mt-1">
+              Find inspiration for your next monthly plan.
+            </Text>
           </View>
+          <Button variant="primary" onPress={handleCreateNew}>
+            <Ionicons name="add" size={20} color="white" />
+            <Text className="text-white font-bold ml-1">Create</Text>
+          </Button>
         </View>
+      </View>
 
-        {/* Search Bar */}
-        <View className="px-4 mb-4">
-          <View className="flex-row items-center bg-card border border-border rounded-lg px-3">
-            <Ionicons name="search" size={20} color={primary} />
-            <TextInput
-              className="flex-1 p-3 text-foreground"
-              placeholder="Search templates..."
-              placeholderTextColor="#6b7280"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery !== "" && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close" size={20} color={primary} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* Category Tabs */}
-        <View className="mb-4">
-          <Tabs
-            value={activeCategory}
-            onValueChange={setActiveCategory}
-            variant="pill"
-            className="px-4"
-          >
-            <Tabs.List className="rounded-none">
-              <Tabs.ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <Tabs.Indicator className="bg-primary" />
-                {CATEGORIES.map((cat) => (
-                  <Tabs.Trigger key={cat.key} value={cat.key}>
-                    <Tabs.Label
-                      className={`${activeCategory === cat.key ? "text-accent font-bold" : "text-muted-foreground"}`}
-                    >
-                      {cat.label}
-                    </Tabs.Label>
-                  </Tabs.Trigger>
-                ))}
-              </Tabs.ScrollView>
-            </Tabs.List>
-          </Tabs>
-        </View>
-
-        {/* Template Cards */}
-        <View className="px-4">
-          {isLoading ? (
-            // Skeleton Loading State
-            <View className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="mb-4 p-4 border border-border bg-card">
-                  <View className="flex-row items-center gap-3 mb-4">
-                    <Skeleton className="size-12 rounded-full" />
-                    <View className="flex-1 gap-2">
-                      <Skeleton className="h-4 w-2/3 rounded" />
-                      <Skeleton className="h-3 w-1/3 rounded" />
-                    </View>
-                  </View>
-                  <Skeleton className="h-16 w-full rounded-lg mb-4" />
-                  <Divider className="mb-4" />
-                  <View className="flex-row justify-between items-center">
-                    <Skeleton className="h-4 w-1/2 rounded" />
-                    <Skeleton className="h-8 w-20 rounded" />
-                  </View>
-                </Card>
-              ))}
-            </View>
-          ) : (
-            // Content State
-            <>
-              {filteredTemplates.map((template) => (
-                <TemplateCard
-                  key={template.id}
-                  template={template}
-                  primary={primary}
-                  onApply={handleApply}
-                />
-              ))}
-
-              {filteredTemplates.length === 0 && (
-                <View className="items-center justify-center py-20">
-                  <Ionicons name="search-outline" size={48} color={primary} />
-                  <Text className="text-muted-foreground mt-4 text-lg">No templates found.</Text>
-                  <Text className="text-muted-foreground text-sm">
-                    Try adjusting your search or category.
-                  </Text>
-                </View>
-              )}
-            </>
+      <View className="px-4 mb-4">
+        <View className="flex-row items-center bg-card border border-border rounded-lg px-3">
+          <Ionicons name="search" size={20} color={primary} />
+          <TextInput
+            className="flex-1 p-3 text-foreground"
+            placeholder="Search templates..."
+            placeholderTextColor="#6b7280"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery !== "" && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close" size={20} color={primary} />
+            </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </View>
 
-      {/* Create Sheet Modal */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        snapPoints={["100%"]}
-        index={-1}
-        onChange={(index) => {
-          if (index === -1) handleSheetClose();
-        }}
-        backgroundStyle={{ backgroundColor: "rgb(10, 10, 10)" }}
-        handleIndicatorStyle={{ backgroundColor: "#6b7280" }}
-      >
-        <BottomSheetView className="flex-1">
-          <CreateSheet
-            template={selectedTemplate}
-            onClose={() => bottomSheetRef.current?.close()}
-          />
-        </BottomSheetView>
-      </BottomSheet>
-    </Container>
+      <View className="mb-4">
+        <Tabs
+          value={activeCategory}
+          onValueChange={setActiveCategory}
+          variant="line"
+          className="px-4"
+        >
+          <Tabs.List className="border-b border-divider w-full">
+            <Tabs.ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <Tabs.Indicator className="bg-primary" />
+              {CATEGORIES.map((cat) => (
+                <Tabs.Trigger key={cat.key} value={cat.key} className="px-4 py-3">
+                  <Tabs.Label
+                    className={`${activeCategory === cat.key ? "text-primary font-bold" : "text-muted-foreground"}`}
+                  >
+                    {cat.label}
+                  </Tabs.Label>
+                </Tabs.Trigger>
+              ))}
+            </Tabs.ScrollView>
+          </Tabs.List>
+        </Tabs>
+      </View>
+
+      <View className="px-4">
+        {isLoading ? (
+          <View className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="mb-4 p-4 border border-border bg-card">
+                <View className="flex-row items-center gap-3 mb-4">
+                  <Skeleton className="size-12 rounded-full" />
+                  <View className="flex-1 gap-2">
+                    <Skeleton className="h-4 w-2/3 rounded" />
+                    <Skeleton className="h-3 w-1/3 rounded" />
+                  </View>
+                </View>
+                <Skeleton className="h-16 w-full rounded-lg mb-4" />
+                <Divider className="mb-4" />
+                <View className="flex-row justify-between items-center">
+                  <Skeleton className="h-4 w-1/2 rounded" />
+                  <Skeleton className="h-8 w-20 rounded" />
+                </View>
+              </Card>
+            ))}
+          </View>
+        ) : (
+          <>
+            {filteredTemplates.map((template) => (
+              <TemplateCard
+                key={template.id}
+                template={template}
+                primary={primary}
+                onApply={handleApply}
+              />
+            ))}
+
+            {filteredTemplates.length === 0 && (
+              <View className="items-center justify-center py-20">
+                <Ionicons name="search-outline" size={48} color={primary} />
+                <Text className="text-muted-foreground mt-4 text-lg">No templates found.</Text>
+                <Text className="text-muted-foreground text-sm">
+                  Try adjusting your search or category.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    </ScrollView>
   );
 }

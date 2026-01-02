@@ -1,10 +1,14 @@
 import { View, Text } from "react-native";
-import React from "react";
+import { CoachingDashboard } from "@/components/coaching/coaching-dashboard";
+import { useEffect } from "react";
+import { useCoaching } from "@/hooks/useCoaching";
 
-export default function Index() {
-  return (
-    <View>
-      <Text>index</Text>
-    </View>
-  );
+export default function CoachingIndex() {
+  const { loadCoachingData, isLoading } = useCoaching();
+
+  useEffect(() => {
+    loadCoachingData();
+  }, [loadCoachingData]);
+
+  return <CoachingDashboard />;
 }

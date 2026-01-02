@@ -11,16 +11,13 @@ import { useSemanticColors } from "@/utils/theme";
 
 export function PlanDashboard() {
   const {
-    draft,
     planData,
     isGenerating,
     isSaving,
     error: hookError,
-    hasDraft,
     generate,
     save,
     discard,
-    checkForExistingDraft,
     clearError,
   } = usePlanGeneration();
 
@@ -53,17 +50,12 @@ export function PlanDashboard() {
     }
   }, [planData, isGenerating]);
 
-  // Initial check
-  useEffect(() => {
-    checkForExistingDraft();
-  }, [checkForExistingDraft]);
-
   // Expand form if no plan
   useEffect(() => {
-    if (!hasDraft && !planData) {
+    if (!planData) {
       setIsFormExpanded(true);
     }
-  }, [hasDraft, planData]);
+  }, [planData]);
 
   const handleGenerate = useCallback(async () => {
     if (!goalsText.trim() || !focusAreas.trim()) {
@@ -104,17 +96,15 @@ export function PlanDashboard() {
   ]);
 
   const handleRefresh = useCallback(async () => {
-    if (!hasDraft && !planData) return;
+    if (!planData) return;
 
     setRefreshing(true);
 
     if (goalsText && focusAreas) {
       await handleGenerate();
-    } else {
-      checkForExistingDraft();
     }
     setRefreshing(false);
-  }, [hasDraft, planData, handleGenerate, goalsText, focusAreas, checkForExistingDraft]);
+  }, [planData, handleGenerate, goalsText, focusAreas]);
 
   const handleSave = useCallback(async () => {
     const planId = await save();
@@ -184,13 +174,6 @@ export function PlanDashboard() {
           onRemoveCommitment={removeCommitment}
           onUpdateCommitment={updateCommitment}
         />
-        {hasDraft && !isGenerating && (
-          <View className="px-4 mb-2 flex-row items-center justify-between">
-            <Text className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
-              Draft Plan
-            </Text>
-          </View>
-        )}
       </View>
     ),
     [
@@ -212,7 +195,6 @@ export function PlanDashboard() {
       addCommitment,
       removeCommitment,
       updateCommitment,
-      hasDraft,
     ],
   );
 

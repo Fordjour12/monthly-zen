@@ -1,13 +1,25 @@
-import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { z } from "zod";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { useSemanticColors } from "@/utils/theme";
-import { Card, TextField, Button, RadioGroup, Divider } from "heroui-native";
+import { Card, TextField, Button, RadioGroup, Divider, useToast } from "heroui-native";
+import { Container } from "@/components/ui/container";
 import { DayPickerField } from "@/components/ui/day-picker-field";
 import { AppDateTimePicker } from "@/components/ui/DateTimePicker";
-import { useRouter } from "expo-router";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { ArrowLeft01FreeIcons } from "@hugeicons/core-free-icons";
+import { usePlanGeneration } from "@/hooks/usePlanGeneration";
+import type { GenerateInput } from "@/hooks/usePlanGeneration";
 
 const GeneratePlanFormDataSchema = z.object({
   goalsText: z.string().min(1, "Goals are required"),
@@ -44,21 +56,6 @@ const weekendPreferenceOptions: Array<{
   { value: "Mixed", label: "Light Tasks", description: "Easy activities only" },
 ];
 
-interface TemplateData {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  complexity: string;
-  focusAreas: string;
-  icon: string;
-}
-
-interface CreateSheetProps {
-  template: TemplateData | null;
-  onClose: () => void;
-}
-
 function FieldInfo({ field }: { field: AnyFieldApi }) {
   return (
     <>
@@ -71,9 +68,12 @@ function FieldInfo({ field }: { field: AnyFieldApi }) {
   );
 }
 
-export default function CreateSheet({ template, onClose }: CreateSheetProps) {
-  const { primary, danger } = useSemanticColors();
+export default function CreatePlan() {
+  const { primary, danger, accent } = useSemanticColors();
+  const { template } = useLocalSearchParams<{ template?: string }>();
   const router = useRouter();
+  const { generate, isGenerating, error, clearError, draft } = usePlanGeneration();
+  const { toast } = useToast();
 
   const form = useForm({
     defaultValues: {
@@ -94,28 +94,69 @@ export default function CreateSheet({ template, onClose }: CreateSheetProps) {
       onSubmit: GeneratePlanFormDataSchema,
     },
     onSubmit: async ({ value }) => {
-      console.log("Form Submitted:", value);
-      onClose();
-      // Navigate to plans tab after successful submission
-      router.setParams({ tab: "plans" });
+      clearError();
+
+      const validCommitments = value.commitments.filter(
+        (c) => c.dayOfWeek && c.startTime && c.endTime && c.description,
+      );
+
+      const input: GenerateInput = {
+        goalsText: value.goalsText,
+        taskComplexity: value.taskComplexity,
+        focusAreas: value.focusAreas,
+        weekendPreference: value.weekendPreference,
+        fixedCommitmentsJson: {
+          commitments: validCommitments,
+        },
+      };
+
+      try {
+        await generate(input);
+      } catch (err) {
+        console.error("Plan generation error:", err);
+        toast.show({
+          variant: "danger",
+          label: "Generation Failed",
+          description: "Failed to generate plan. Please try again.",
+        });
+      }
     },
   });
 
-  // Pre-fill form if template is provided
   useEffect(() => {
     if (template) {
-      form.setFieldValue("goalsText", template.description || "");
-      form.setFieldValue("focusAreas", template.focusAreas || "");
-      if (template.complexity) {
-        const complexityMap: Record<string, TaskComplexity> = {
-          Simple: "Simple",
-          Balanced: "Balanced",
-          Ambitious: "Ambitious",
-        };
-        form.setFieldValue("taskComplexity", complexityMap[template.complexity] || "Balanced");
+      try {
+        const data = JSON.parse(template);
+        form.setFieldValue("goalsText", data.goalsText || "");
+        if (data.taskComplexity) {
+          form.setFieldValue("taskComplexity", data.taskComplexity);
+        }
+        form.setFieldValue("focusAreas", data.focusAreas || "");
+        if (data.weekendPreference) {
+          form.setFieldValue("weekendPreference", data.weekendPreference);
+        }
+      } catch (e) {
+        console.error("Failed to parse template data:", e);
       }
     }
   }, [template]);
+
+  useEffect(() => {
+    if (draft) {
+      setTimeout(() => {
+        toast.show({
+          variant: "success",
+          label: "Plan Generated!",
+          description: "Your plan has been created successfully. You can now view and save it.",
+          actionLabel: "View Plan",
+          onActionPress: ({ hide }) => {
+            hide();
+            router.replace({ pathname: "/(tabs)/planner", params: { tab: "plans" } });
+          },
+        });
+      }, 500);
+    }
+  }, [draft, router, toast]);
 
   const addCommitment = () => {
     const currentCommitments = form.getFieldValue("commitments");
@@ -126,20 +167,22 @@ export default function CreateSheet({ template, onClose }: CreateSheetProps) {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="flex-row justify-between items-center p-4 border-b border-border">
-        <Text className="text-xl font-bold text-foreground">
-          {template ? `Create from: ${template.title}` : "Create New Plan"}
-        </Text>
-        <TouchableOpacity onPress={onClose} className="p-2">
-          <Ionicons name="close" size={24} color={primary} />
-        </TouchableOpacity>
+    <Container>
+      <View className="pt-10 pb-4">
+        <Pressable onPress={() => router.back()} className="flex-row items-center gap-2">
+          <HugeiconsIcon icon={ArrowLeft01FreeIcons} size={24} color={accent} />
+          <Text className="text-xl font-bold text-foreground">Create New Plan</Text>
+        </Pressable>
+        {error && (
+          <View className="mt-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex-row items-start gap-2">
+            <Ionicons name="alert-circle" size={20} color={danger} />
+            <Text className="text-danger flex-1 text-sm">{error}</Text>
+          </View>
+        )}
       </View>
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="p-4 pb-10"
+        contentContainerClassName="pb-24"
         keyboardShouldPersistTaps="handled"
       >
         <Card className="mx-2">
@@ -291,19 +334,23 @@ export default function CreateSheet({ template, onClose }: CreateSheetProps) {
                   onPress={() => form.handleSubmit()}
                   variant="primary"
                   className="mt-6 h-12"
-                  isDisabled={!canSubmit || isSubmitting}
+                  isDisabled={!canSubmit || isSubmitting || isGenerating}
                 >
-                  <Text className="text-white font-bold text-lg">
-                    {isSubmitting ? "Generating..." : "Generate Plan"}
-                  </Text>
-                  <Ionicons name="sparkles" size={20} color="white" />
+                  {isGenerating || isSubmitting ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <Text className="text-white font-bold text-lg">Generate Plan</Text>
+                      <Ionicons name="sparkles" size={20} color="white" />
+                    </>
+                  )}
                 </Button>
               )}
             />
           </Card.Body>
         </Card>
       </ScrollView>
-    </View>
+    </Container>
   );
 }
 
@@ -366,7 +413,7 @@ function CommitmentItem({ index, danger, form }: { index: number; danger?: strin
               label="Start"
               mode="time"
               value={field.state.value ? parseTimeString(field.state.value) : null}
-              onChange={(date) => field.setValue(formatTimeToString(date))}
+              onChange={(date: Date | null) => field.setValue(formatTimeToString(date))}
             />
           )}
         </form.Field>
@@ -377,7 +424,7 @@ function CommitmentItem({ index, danger, form }: { index: number; danger?: strin
               label="End"
               mode="time"
               value={field.state.value ? parseTimeString(field.state.value) : null}
-              onChange={(date) => field.setValue(formatTimeToString(date))}
+              onChange={(date: Date | null) => field.setValue(formatTimeToString(date))}
             />
           )}
         </form.Field>
