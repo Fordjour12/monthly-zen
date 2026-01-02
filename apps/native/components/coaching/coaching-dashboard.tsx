@@ -5,6 +5,7 @@ import { InsightCard } from "./insight-card";
 import { useCoaching } from "@/hooks/useCoaching";
 import type { Insight } from "@/hooks/useCoaching";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useRouter } from "expo-router";
 
 interface CoachingDashboardProps {
   onNavigateToGoals?: () => void;
@@ -22,6 +23,8 @@ export function CoachingDashboard({ onNavigateToGoals }: CoachingDashboardProps)
   const handleDismissInsight = (insightId: number, action?: string) => {
     dismissInsight(insightId, action);
   };
+
+  const router = useRouter();
 
   return (
     <ScrollView
@@ -116,6 +119,22 @@ export function CoachingDashboard({ onNavigateToGoals }: CoachingDashboardProps)
               <View>
                 <Text className="font-semibold text-foreground">Coaching Goals</Text>
                 <Text className="text-sm text-muted-foreground">Set and track personal goals</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+          </Card>
+        </Pressable>
+        <Pressable onPress={() => router.push("/(tabs)/task/habit")} className="mt-2">
+          <Card className="p-4 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center">
+                <Ionicons name="flag" size={20} color="#3b82f6" />
+              </View>
+              <View>
+                <Text className="font-semibold text-foreground">Habits</Text>
+                <Text className="text-sm text-muted-foreground">
+                  View & Track personal habit formed
+                </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#6b7280" />

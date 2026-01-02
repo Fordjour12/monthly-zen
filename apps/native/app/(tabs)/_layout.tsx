@@ -6,7 +6,8 @@ import {
   AiEditingIcon,
   Calendar01Icon,
   Home12Icon,
-  TeacherIcon,
+  Tag01Icon,
+  TeachingIcon,
   UserCircleIcon,
 } from "@hugeicons/core-free-icons";
 
@@ -77,10 +78,21 @@ export default function TabLayout() {
           title: "Coaching",
           headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <HugeiconsIcon icon={TeacherIcon} size={size} color={color} strokeWidth={1.5} />
+            <HugeiconsIcon icon={TeachingIcon} size={size} color={color} strokeWidth={1.5} />
           ),
         }}
       />
+      <Tabs.Screen
+        name="task"
+        options={{
+          title: "Tasks",
+          headerShown: false,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <HugeiconsIcon icon={Tag01Icon} size={size} color={color} strokeWidth={1.5} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{
