@@ -10,14 +10,15 @@ interface CoachingBannerProps {
 export function CoachingBanner({ onViewAll }: CoachingBannerProps) {
   const { insights, isLoading, generateInsights } = useCoaching();
 
-  // Get the highest priority insight
-  const topInsight = insights[0];
+  // Handle undefined insights
+  const insightList = insights || [];
+  const topInsight = insightList[0];
 
-  if (isLoading && insights.length === 0) {
+  if (isLoading && insightList.length === 0) {
     return null; // Don't show banner while loading initial data
   }
 
-  if (insights.length === 0) {
+  if (insightList.length === 0) {
     return (
       <Card className="mx-4 mb-4 p-4 bg-primary/10 border-primary/30">
         <View className="flex-row items-center justify-between mb-3">

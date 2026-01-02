@@ -47,6 +47,7 @@
   "dependencies": {
     "date-fns": "catalog:",
     "dotenv": "catalog:",
+    "tailwind-variants": "^3.2.2",
     "zod": "catalog:"
   },
   "devDependencies": {
