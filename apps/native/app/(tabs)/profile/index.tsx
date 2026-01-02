@@ -120,7 +120,7 @@ export default function ProfileScreen() {
             </View>
             <TouchableOpacity
               onPress={() => {
-                Alert.alert("Coming Soon", "Edit profile functionality coming soon.");
+                router.push("/profile/edit-profile");
               }}
               className="w-10 h-10 rounded-full bg-muted/20 items-center justify-center"
             >
@@ -131,6 +131,11 @@ export default function ProfileScreen() {
 
         <View className="px-4">
           <Section title="Account Settings">
+            <Row
+              icon="person-outline"
+              label="Goal Preferences"
+              onPress={() => router.push("/profile/edit-preferences")}
+            />
             <Row
               icon="notifications-outline"
               label="Notifications"
@@ -164,13 +169,13 @@ export default function ProfileScreen() {
             <Row
               icon="help-circle-outline"
               label="Help Center"
-              onPress={() => Alert.alert("Coming Soon")}
+              onPress={() => router.push("/profile/help")}
             />
             <Row icon="mail-outline" label="Contact Support" onPress={handleSupport} />
             <Row
               icon="document-text-outline"
               label="Terms & Privacy"
-              onPress={() => Alert.alert("Coming Soon")}
+              onPress={() => router.push("/profile/terms")}
               isLast
             />
           </Section>
