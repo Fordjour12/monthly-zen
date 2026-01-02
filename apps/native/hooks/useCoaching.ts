@@ -32,8 +32,6 @@ export interface CoachingStats {
 }
 
 export function useCoaching() {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [stats, setStats] = useState<CoachingStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -60,10 +58,9 @@ export function useCoaching() {
 
   const generateInsightsMutation = useMutation({
     ...orpc.coaching.generateInsights.mutationOptions(),
-    onSuccess: (response) => {
-      if (response.success && response.data) {
-        setInsights((prev) => [response.data as unknown as Insight, ...prev]);
-      }
+    onSuccess: () => {
+      insightsQuery.refetch();
+      statsQuery.refetch();
     },
     onError: (err: Error) => {
       console.error("Failed to generate insights:", err);
@@ -73,6 +70,7 @@ export function useCoaching() {
   const dismissMutation = useMutation({
     ...orpc.coaching.dismiss.mutationOptions(),
     onSuccess: () => {
+      insightsQuery.refetch();
       statsQuery.refetch();
     },
     onError: (err: Error) => {
@@ -106,7 +104,6 @@ export function useCoaching() {
   const dismissInsight = useCallback(
     async (insightId: number, action?: string) => {
       await dismissMutation.mutateAsync({ insightId, action });
-      setInsights((prev) => prev.filter((i) => i.id !== insightId));
     },
     [dismissMutation],
   );

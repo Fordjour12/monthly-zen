@@ -9,7 +9,7 @@ import { useSemanticColors } from "@/utils/theme";
 
 export function PlanProgressCard() {
   const router = useRouter();
-  const { primary, muted } = useSemanticColors();
+  const { primary } = useSemanticColors();
 
   const { data: planData, isLoading } = useQuery({
     queryKey: ["plan", "current"],

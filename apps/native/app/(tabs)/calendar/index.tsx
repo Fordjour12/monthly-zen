@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, Alert, ActivityIndicator, TouchableOpacity } from "react-native";
 import { Stack } from "expo-router";
 import { format } from "date-fns";
@@ -11,7 +11,7 @@ import { CalendarGrid } from "@/components/calendar/calendar-grid";
 import { orpc } from "@/utils/orpc";
 
 export default function CalendarScreen() {
-  const { primary, surface, muted } = useSemanticColors();
+  const { primary, muted } = useSemanticColors();
   const queryClient = useQueryClient();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());

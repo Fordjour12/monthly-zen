@@ -1,78 +1,187 @@
-# monthly-zen
+# Monthly Zen
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Start, Hono, ORPC, and more.
+Monthly Zen is an AI-powered habit coaching and monthly planning platform designed to help users build consistent habits, achieve their goals, and maintain productivity without burning out.
+
+## What Monthly Zen Does
+
+- **AI-Powered Monthly Planning**: Generate personalized monthly plans based on your goals, priorities, and schedule constraints
+- **Habit Tracking**: Track task completion across the month with visual calendar and heatmap views
+- **Predictive Coaching Insights**: AI analyzes your patterns to detect burnout risks, identify your most productive days, and suggest maintenance weeks before you hit a wall
+- **Pattern Recognition**: Understand your weekly and monthly productivity rhythms through data-driven insights
 
 ## Features
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Start** - SSR framework with TanStack Router
-- **React Native** - Build mobile apps using React
-- **Expo** - Tools for React Native development
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **shadcn/ui** - Reusable UI components
-- **Hono** - Lightweight, performant server framework
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Husky** - Git hooks for code quality
-- **Oxlint** - Oxlint + Oxfmt (linting & formatting)
+### Core Functionality
+
+- **Monthly Plan Generation**: AI creates balanced monthly plans considering your goals, focus areas, task complexity preferences, and fixed commitments
+- **Habit & Task Management**: Daily task views with completion tracking, organized by week and focus area
+- **Coaching Dashboard**: AI-generated insights about your productivity patterns, burnout risk, and personalized suggestions
+- **Calendar Views**: Monthly calendar with heatmap visualization showing completion trends
+- **Pattern Analytics**: Weekly completion patterns, day-of-week analysis, and focus area trends
+
+### AI Coaching Features
+
+- **Burnout Risk Detection**: Predictive alerts when your patterns suggest potential exhaustion
+- **Maintenance Mode Suggestions**: AI recommends reduced-intensity weeks based on your historical data
+- **Peak Energy Identification**: Identifies your most productive days and times
+- **Declining Trend Alerts**: Warns when focus areas show decreasing completion rates
+- **Actionable Insights**: Every insight includes a concrete suggested action you can accept, dismiss, or snooze
+
+### Platforms
+
+- **Web App**: Full-featured desktop experience with TanStack Start (React SSR)
+- **Mobile App**: Native iOS and Android experience with Expo React Native
+
+## Tech Stack
+
+- **TypeScript** - Type safety throughout the codebase
+- **TanStack Start** - SSR React framework with file-based routing
+- **React Native + Expo** - Cross-platform mobile development
+- **Hono + oRPC** - High-performance backend with end-to-end type-safe APIs
+- **PostgreSQL + Drizzle ORM** - Type-safe database operations
+- **Better-Auth** - Secure authentication with email/password
+- **OpenRouter** - AI integration for plan generation and coaching insights
+- **Tailwind CSS** - Utility-first styling (v4 for web, NativeWind for mobile)
+- **HeroUI Native** - Beautiful, accessible React Native components
 - **Turborepo** - Optimized monorepo build system
-
-## Getting Started
-
-First, install the dependencies:
-
-```bash
-bun install
-```
-
-## Database Setup
-
-This project uses PostgreSQL with Drizzle ORM.
-
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
-
-```bash
-bun run db:push
-```
-
-Then, run the development server:
-
-```bash
-bun run dev
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-Use the Expo Go app to run the mobile application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+- **Bun** - Fast JavaScript runtime and package manager
 
 ## Project Structure
 
 ```
 monthly-zen/
 ├── apps/
-│   ├── web/         # Frontend application (React + TanStack Start)
-│   ├── native/      # Mobile application (React Native, Expo)
-│   └── server/      # Backend API (Hono, ORPC)
+│   ├── web/              # TanStack Start web application
+│   ├── native/           # Expo React Native mobile app
+│   └── server/           # Hono backend server
 ├── packages/
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/              # oRPC routers and business logic
+│   ├── auth/             # Better-Auth configuration
+│   ├── db/               # Drizzle schema and database queries
+│   ├── types/            # Shared TypeScript types
+│   └── response-parser/  # AI response parsing utilities
+└── docs/                 # Feature plans and technical documentation
+```
+
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) runtime
+- PostgreSQL database
+- OpenRouter API key (for AI features)
+
+### Installation
+
+```bash
+# Install dependencies
+bun install
+```
+
+### Database Setup
+
+```bash
+# Start PostgreSQL container
+bun run db:start
+
+# Push schema to database
+bun run db:push
+```
+
+### Environment Configuration
+
+Configure the following environment variables:
+
+**Server** (`apps/server/.env`):
+
+- `DATABASE_URL` - PostgreSQL connection string
+- `BETTER_AUTH_SECRET` - Secret for auth tokens
+- `BETTER_AUTH_URL` - Auth API URL
+- `OPENROUTER_API_KEY` - For AI plan generation
+- `CORS_ORIGIN` - Web app URL
+
+**Web** (`apps/web/.env`):
+
+- `VITE_SERVER_URL` - Backend server URL
+
+**Native** (`apps/native/.env`):
+
+- `EXPO_PUBLIC_SERVER_URL` - Backend server URL
+- `APP_VARIANT` - development/preview/production
+
+### Running the App
+
+```bash
+# Start all apps in development mode
+bun run dev
+
+# Or run individual apps:
+bun run dev:web     # Web app at http://localhost:3000
+bun run dev:server  # API server at http://localhost:3001
+bun run dev:native  # Expo dev server
 ```
 
 ## Available Scripts
 
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run dev:native`: Start the React Native/Expo development server
-- `bun run db:push`: Push schema changes to database
-- `bun run db:studio`: Open database studio UI
-- `bun run check`: Run Oxlint and Oxfmt
+| Command               | Description                               |
+| --------------------- | ----------------------------------------- |
+| `bun run dev`         | Start all applications                    |
+| `bun run dev:web`     | Start web app only                        |
+| `bun run dev:server`  | Start API server only                     |
+| `bun run dev:native`  | Start Expo development server             |
+| `bun run build`       | Build all applications                    |
+| `bun run check-types` | TypeScript type checking                  |
+| `bun run check`       | Run linter (oxlint) and formatter (oxfmt) |
+| `bun run db:start`    | Start PostgreSQL container                |
+| `bun run db:push`     | Push schema changes                       |
+| `bun run db:studio`   | Open Drizzle Studio                       |
+
+## API Endpoints
+
+The API uses oRPC for type-safe client-server communication:
+
+| Router     | Description                            |
+| ---------- | -------------------------------------- |
+| `calendar` | Monthly plan and task CRUD operations  |
+| `coaching` | Coaching insights and goals management |
+| `plans`    | Plan generation and preferences        |
+
+## Key Concepts
+
+### Monthly Plans
+
+A monthly plan is generated by AI based on:
+
+- Your goals for the month
+- Preferred task complexity (Simple, Balanced, Ambitious)
+- Focus areas you want to prioritize
+- Weekend work preferences
+- Fixed commitments (meetings, appointments)
+
+### Coaching Insights
+
+AI-generated observations about your patterns:
+
+- **Burnout Risk**: Detects overwork patterns before exhaustion
+- **Week 3 Drop-off**: Identifies mid-month fatigue patterns
+- **Peak Energy Day**: Your most productive day of the week
+- **Declining Focus Areas**: Areas showing decreasing engagement
+- **Maintenance Mode**: Suggested recovery weeks
+
+### Maintenance Mode
+
+When AI detects burnout risk or recurring drop-offs, it can suggest "Maintenance Mode" weeks with:
+
+- Reduced task load
+- More rest-focused activities
+- Flexible scheduling
+
+## Documentation
+
+- [Feature Plans](./docs/) - Detailed feature specifications
+- [API Documentation](./packages/api/) - oRPC router documentation
+- [Database Schema](./packages/db/src/schema/) - Drizzle schema definitions
+
+## License
+
+MIT

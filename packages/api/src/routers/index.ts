@@ -7,6 +7,7 @@ import { tasksRouter } from "./tasks";
 import { userRouter } from "./user";
 import { calendarRouter } from "./calendar";
 import { coachingRouter } from "./coaching";
+import { habitsRouter } from "./habits";
 
 export const appRouter = {
   healthCheck: publicProcedure.handler(() => {
@@ -24,6 +25,7 @@ export const appRouter = {
   user: userRouter,
   calendar: calendarRouter,
   coaching: coachingRouter,
+  habits: habitsRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

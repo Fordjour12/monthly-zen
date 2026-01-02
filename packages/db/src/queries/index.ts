@@ -8,3 +8,5 @@ export * from "./plan-generation";
 export * from "./quota";
 export * from "./tasks";
 export * from "./coaching";
+export * from "./habits";
+export * from "./reminders";

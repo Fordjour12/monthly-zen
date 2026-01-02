@@ -14,7 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ChevronLeft, ChevronRight, Flame, List } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flame, List, Calendar as CalendarIcon } from "lucide-react";
 import { orpc } from "@/utils/orpc";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -145,7 +145,7 @@ export default function CalendarPage() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage className="font-semibold text-lg">
-                  {format(selectedMonth, "MMMM yyyy")}
+                  {viewMode === "week" ? "Week View" : format(selectedMonth, "MMMM yyyy")}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
@@ -164,7 +164,24 @@ export default function CalendarPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Normal View</p>
+                  <p>Month View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "week" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("week")}
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Week View</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

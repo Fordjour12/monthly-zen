@@ -23,7 +23,7 @@ interface HeatmapHorizontalLabelsProps {
   weeksToShow?: number;
   onDayPress?: (day: DayData) => void;
   showLabels?: boolean;
-  title?: string;
+  _title?: string;
 }
 
 type HeatmapColor = "gray" | "green" | "blue" | "yellow" | "red";
@@ -33,7 +33,7 @@ export function HeatmapHorizontalLabels({
   weeksToShow = 4,
   onDayPress,
   showLabels = true,
-  title = "Activity",
+  _title = "Activity",
 }: HeatmapHorizontalLabelsProps) {
   const colors = useSemanticColors();
 

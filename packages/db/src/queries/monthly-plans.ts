@@ -76,6 +76,19 @@ export async function getMonthlyPlansByUser(userId: string, limit = 20, offset =
   return plans;
 }
 
+/**
+ * Get all monthly plans for a user (without pagination)
+ */
+export async function getMonthlyPlansByUserId(userId: string) {
+  const plans = await db
+    .select()
+    .from(monthlyPlans)
+    .where(eq(monthlyPlans.userId, userId))
+    .orderBy(desc(monthlyPlans.generatedAt));
+
+  return plans;
+}
+
 export async function getMonthlyPlansByUserWithTaskCount(userId: string) {
   const plans = await db
     .select()

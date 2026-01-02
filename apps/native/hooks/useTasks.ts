@@ -1,8 +1,8 @@
 /**
  * useTasks Hook - Task Management for Native
  *
- * Provides task list querying with filters, task status mutations,
- * and focus area fetching for the Task Dashboard.
+ * Provides comprehensive task management including CRUD operations,
+ * reminders, filtering, and statistics.
  */
 
 import { useState, useCallback, useMemo } from "react";
@@ -31,16 +31,47 @@ export interface TaskFilters {
 export interface Task {
   id: number;
   planId: number;
-  weekNumber: number;
-  dayOfWeek: string;
   taskDescription: string;
   focusArea: string;
+  startTime: string;
+  endTime: string;
   difficultyLevel: string;
   schedulingReason: string | null;
   isCompleted: boolean;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  reminder?: TaskReminder | null;
+}
+
+export interface TaskReminder {
+  id: number;
+  taskId: number;
+  userId: string;
+  reminderTime: string;
+  isSent: boolean;
+  isAcknowledged: boolean;
+  createdAt: string;
+}
+
+export interface CreateTaskInput {
+  taskDescription: string;
+  focusArea: string;
+  startTime: string;
+  endTime: string;
+  difficultyLevel?: DifficultyLevel;
+  schedulingReason?: string;
+  hasReminder?: boolean;
+  reminderTime?: string;
+}
+
+export interface UpdateTaskInput {
+  taskDescription?: string;
+  focusArea?: string;
+  startTime?: string;
+  endTime?: string;
+  difficultyLevel?: DifficultyLevel;
+  schedulingReason?: string;
 }
 
 // ============================================
@@ -80,20 +111,47 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
     }),
   );
 
-  // Focus areas query (for filter dropdown)
+  // Focus areas query
   const focusAreasQuery = useQuery(orpc.tasks.getFocusAreas.queryOptions());
 
-  // Task completion toggle mutation
-  const toggleTaskMutation = useMutation(
+  // Reminders query
+  const remindersQuery = useQuery(orpc.tasks.getReminders.queryOptions());
+
+  // Create task mutation
+  const createTaskMutation = useMutation(
+    orpc.tasks.create.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks", "reminders"] });
+      },
+    }),
+  );
+
+  // Update task mutation
+  const updateTaskMutation = useMutation(
     orpc.tasks.update.mutationOptions({
-      onMutate: async ({ taskId, isCompleted }) => {
-        // Cancel outgoing refetches
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+      },
+    }),
+  );
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation(
+    orpc.tasks.delete.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks", "reminders"] });
+      },
+    }),
+  );
+
+  // Toggle task completion mutation
+  const toggleTaskMutation = useMutation(
+    orpc.tasks.toggle.mutationOptions({
+      onMutate: async ({ taskId, isCompleted }: { taskId: number; isCompleted: boolean }) => {
         await queryClient.cancelQueries({ queryKey: ["tasks", "list"] });
-
-        // Snapshot previous value
         const previousTasks = queryClient.getQueryData(["tasks", "list", queryInput]);
-
-        // Optimistically update
         queryClient.setQueryData(["tasks", "list", queryInput], (old: any) => {
           if (!old?.data) return old;
           return {
@@ -103,23 +161,44 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
             ),
           };
         });
-
         return { previousTasks };
       },
-      onError: (_err, _variables, context) => {
-        // Rollback on error
+      onError: (
+        _err: Error,
+        _variables: { taskId: number; isCompleted: boolean },
+        context?: { previousTasks: unknown },
+      ) => {
         if (context?.previousTasks) {
           queryClient.setQueryData(["tasks", "list", queryInput], context.previousTasks);
         }
       },
       onSettled: () => {
-        // Refetch to ensure consistency
         queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
       },
     }),
   );
 
-  // Filter update helpers
+  // Set reminder mutation
+  const setReminderMutation = useMutation(
+    orpc.tasks.setReminder.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks", "reminders"] });
+      },
+    }),
+  );
+
+  // Delete reminder mutation
+  const deleteReminderMutation = useMutation(
+    orpc.tasks.deleteReminder.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks", "reminders"] });
+      },
+    }),
+  );
+
+  // Filter helpers
   const updateFilter = useCallback(<K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -139,6 +218,50 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
     }));
   }, []);
 
+  // Task CRUD actions
+  const createTask = useCallback(
+    async (input: CreateTaskInput) => {
+      return createTaskMutation.mutateAsync(input);
+    },
+    [createTaskMutation],
+  );
+
+  const updateTask = useCallback(
+    async (taskId: number, updates: UpdateTaskInput) => {
+      return updateTaskMutation.mutateAsync({ taskId, ...updates });
+    },
+    [updateTaskMutation],
+  );
+
+  const deleteTask = useCallback(
+    async (taskId: number) => {
+      return deleteTaskMutation.mutateAsync({ taskId });
+    },
+    [deleteTaskMutation],
+  );
+
+  const toggleTask = useCallback(
+    async (taskId: number, isCompleted: boolean) => {
+      await toggleTaskMutation.mutateAsync({ taskId, isCompleted });
+    },
+    [toggleTaskMutation],
+  );
+
+  // Reminder actions
+  const setReminder = useCallback(
+    async (taskId: number, reminderTime: string) => {
+      return setReminderMutation.mutateAsync({ taskId, reminderTime });
+    },
+    [setReminderMutation],
+  );
+
+  const deleteReminder = useCallback(
+    async (taskId: number) => {
+      return deleteReminderMutation.mutateAsync({ taskId });
+    },
+    [deleteReminderMutation],
+  );
+
   // Computed stats
   const stats = useMemo(() => {
     const tasks = (tasksQuery.data?.data as Task[]) || [];
@@ -150,24 +273,26 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
     return { total, completed, pending, completionRate };
   }, [tasksQuery.data]);
 
-  // Toggle task completion
-  const toggleTask = useCallback(
-    async (taskId: number, isCompleted: boolean) => {
-      await toggleTaskMutation.mutateAsync({ taskId, isCompleted });
-    },
-    [toggleTaskMutation],
-  );
+  // Get pending reminders
+  const reminders = useMemo(() => {
+    return (remindersQuery.data?.data as TaskReminder[]) || [];
+  }, [remindersQuery.data]);
 
   return {
     // Data
     tasks: (tasksQuery.data?.data as Task[]) || [],
     focusAreas: (focusAreasQuery.data?.data as string[]) || [],
+    reminders,
     stats,
 
     // Loading states
     isLoading: tasksQuery.isLoading,
     isFetching: tasksQuery.isFetching,
-    isUpdating: toggleTaskMutation.isPending,
+    isCreating: createTaskMutation.isPending,
+    isUpdating: updateTaskMutation.isPending,
+    isDeleting: deleteTaskMutation.isPending,
+    isToggling: toggleTaskMutation.isPending,
+    isSettingReminder: setReminderMutation.isPending,
 
     // Error states
     error: tasksQuery.error?.message || null,
@@ -179,7 +304,12 @@ export function useTasks(initialFilters?: Partial<TaskFilters>) {
     toggleSort,
 
     // Actions
+    createTask,
+    updateTask,
+    deleteTask,
     toggleTask,
+    setReminder,
+    deleteReminder,
     refetch: tasksQuery.refetch,
   };
 }

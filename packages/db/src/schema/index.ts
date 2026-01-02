@@ -8,3 +8,5 @@ export * from "./quota-history";
 export * from "./ai-request-logs";
 export * from "./coaching-insights";
 export * from "./user-patterns";
+export * from "./habits";
+export * from "./reminders";

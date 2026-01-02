@@ -7,9 +7,6 @@ import {
 import { db } from "../packages/db/src";
 import { user } from "../packages/db/src/schema/auth";
 import { userGoalsAndPreferences } from "../packages/db/src/schema/user-goals-and-preferences";
-import { eq } from "drizzle-orm";
-// Mock data needed for types
-import { monthlyPlans } from "../packages/db/src/schema/monthly-plans";
 
 async function main() {
   console.log("Starting verification of DRAFT -> PLAN flow...");

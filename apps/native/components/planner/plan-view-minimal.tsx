@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { View, Text, RefreshControl, TouchableOpacity, ScrollView } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Button, Skeleton, Surface } from "heroui-native";
+import { Button, Skeleton, Surface } from "heroui-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { orpc } from "@/utils/orpc";

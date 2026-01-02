@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Calendar as CalendarIcon, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarTask } from "./task-calendar-grid";
 
@@ -22,9 +23,19 @@ interface TaskDetailSheetProps {
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-  Simple: "bg-green-100 text-green-700 hover:bg-green-100",
-  Balanced: "bg-blue-100 text-blue-700 hover:bg-blue-100",
-  Ambitious: "bg-orange-100 text-orange-700 hover:bg-orange-100",
+  Simple: "bg-green-100 text-green-700 hover:bg-green-100 border-green-200",
+  Balanced: "bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200",
+  Ambitious: "bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200",
+  Hard: "bg-red-100 text-red-700 hover:bg-red-100 border-red-200",
+};
+
+const FOCUS_AREA_COLORS: Record<string, string> = {
+  Career: "bg-purple-100 text-purple-700 border-purple-200",
+  Health: "bg-green-100 text-green-700 border-green-200",
+  Learning: "bg-blue-100 text-blue-700 border-blue-200",
+  Personal: "bg-pink-100 text-pink-700 border-pink-200",
+  Productivity: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  Relationships: "bg-rose-100 text-rose-700 border-rose-200",
 };
 
 export function TaskDetailSheet({
@@ -36,6 +47,7 @@ export function TaskDetailSheet({
 }: TaskDetailSheetProps) {
   const completedCount = tasks.filter((t) => t.isCompleted).length;
   const totalCount = tasks.length;
+  const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -55,6 +67,17 @@ export function TaskDetailSheet({
               ? "No tasks scheduled for this day."
               : `${completedCount} of ${totalCount} tasks completed.`}
           </SheetDescription>
+
+          {/* Progress Bar */}
+          {totalCount > 0 && (
+            <div className="mt-4 space-y-2">
+              <Progress value={completionRate} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Progress</span>
+                <span>{Math.round(completionRate)}%</span>
+              </div>
+            </div>
+          )}
         </SheetHeader>
 
         <div className="space-y-4">
@@ -69,70 +92,89 @@ export function TaskDetailSheet({
               </p>
             </div>
           ) : (
-            tasks.map((task) => (
-              <div
-                key={task.id}
-                className={cn(
-                  "group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:shadow-md",
-                  task.isCompleted && "bg-muted/30 border-muted-foreground/20",
-                )}
-              >
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/20 group-hover:bg-primary transition-colors" />
-
-                <div className="flex items-start gap-4 pl-2">
-                  <Checkbox
-                    checked={task.isCompleted}
-                    onCheckedChange={(checked) => onTaskToggle(task.id, checked === true)}
-                    className="mt-1"
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className={cn(
+                    "group relative overflow-hidden rounded-xl border bg-card p-4 transition-all duration-200 hover:shadow-md",
+                    task.isCompleted && "bg-muted/40 border-muted-foreground/20",
+                  )}
+                >
+                  {/* Left accent bar */}
+                  <div
+                    className={cn(
+                      "absolute left-0 top-0 bottom-0 w-1.5 transition-colors",
+                      task.isCompleted
+                        ? "bg-muted-foreground/30"
+                        : "bg-primary/60 group-hover:bg-primary",
+                    )}
                   />
 
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 pl-4">
+                    <Checkbox
+                      checked={task.isCompleted}
+                      onCheckedChange={(checked) => onTaskToggle(task.id, checked === true)}
+                      className="mt-0.5"
+                    />
+
+                    <div className="flex-1 space-y-2">
                       <p
                         className={cn(
-                          "font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+                          "font-medium leading-relaxed",
                           task.isCompleted && "line-through text-muted-foreground",
                         )}
                       >
                         {task.taskDescription}
                       </p>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {task.difficultyLevel && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Difficulty Badge */}
+                        {task.difficultyLevel && (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-xs font-medium border",
+                              DIFFICULTY_COLORS[task.difficultyLevel] || "bg-secondary",
+                            )}
+                          >
+                            {task.difficultyLevel}
+                          </Badge>
+                        )}
+
+                        {/* Focus Area Badge */}
                         <Badge
-                          variant="secondary"
+                          variant="outline"
                           className={cn(
-                            "text-xs font-normal",
-                            DIFFICULTY_COLORS[task.difficultyLevel] || "bg-secondary",
+                            "text-xs font-medium",
+                            FOCUS_AREA_COLORS[task.focusArea] || "bg-secondary",
                           )}
                         >
-                          {task.difficultyLevel}
+                          {task.focusArea}
                         </Badge>
+
+                        {/* Time */}
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
+                          <Clock className="h-3 w-3" />
+                          {new Date(task.startTime).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Scheduling Reason */}
+                      {task.schedulingReason && (
+                        <div className="flex items-start gap-2 mt-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-md">
+                          <Sparkles className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <p>"{task.schedulingReason}"</p>
+                        </div>
                       )}
-
-                      <Badge variant="outline" className="text-xs font-normal">
-                        {task.focusArea}
-                      </Badge>
-
-                      <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto">
-                        <Clock className="h-3 w-3" />
-                        {new Date(task.startTime).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
                     </div>
-
-                    {task.schedulingReason && (
-                      <p className="text-xs text-muted-foreground mt-2 italic">
-                        "{task.schedulingReason}"
-                      </p>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </SheetContent>

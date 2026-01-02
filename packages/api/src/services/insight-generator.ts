@@ -181,7 +181,7 @@ export interface GeneratedInsight {
 export async function generateInsight(userId: string): Promise<GeneratedInsight | null> {
   try {
     // Gather pattern data
-    const [dayPatterns, timePatterns, focusPatterns, burnoutRisk] = await Promise.all([
+    const [dayPatterns, , focusPatterns, burnoutRisk] = await Promise.all([
       getDayOfWeekPatterns(userId),
       getTimeOfDayPatterns(userId),
       getFocusAreaPatterns(userId),

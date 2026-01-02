@@ -55,3 +55,36 @@ export async function updateTaskStatus(taskId: number, isCompleted: boolean) {
 export async function getTasksByPlanId(planId: number) {
   return await db.select().from(planTasks).where(eq(planTasks.planId, planId));
 }
+
+/**
+ * Update a task (full update)
+ */
+export async function updatePlanTask(
+  taskId: number,
+  updates: Partial<{
+    taskDescription: string;
+    focusArea: string;
+    startTime: Date;
+    endTime: Date;
+    difficultyLevel: string;
+    schedulingReason: string;
+  }>,
+) {
+  const [task] = await db
+    .update(planTasks)
+    .set({
+      ...updates,
+    })
+    .where(eq(planTasks.id, taskId))
+    .returning();
+
+  return task;
+}
+
+/**
+ * Delete a task
+ */
+export async function deletePlanTask(taskId: number) {
+  const result = await db.delete(planTasks).where(eq(planTasks.id, taskId));
+  return result.rowCount ?? 0;
+}
