@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { View, Text } from "react-native";
 import { TaskItem } from "../tasks/task-item";
 import { DayTasksItem } from "@/hooks/usePlanData";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 interface DayTasksProps {
   dayWithTasks: DayTasksItem;
@@ -9,26 +10,25 @@ interface DayTasksProps {
 }
 
 export const DayTasks = memo(({ dayWithTasks, onToggleTaskComplete }: DayTasksProps) => {
-  // muted is kept for future use when styling task items
-  // const { muted } = useSemanticColors();
-
   if (dayWithTasks.tasks.length === 0) {
     return null;
   }
 
   return (
-    <View className="mb-4">
-      <View className="bg-muted/20 py-1 px-3 mb-1">
-        <Text className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+    <Animated.View entering={FadeInUp.duration(400)} className="mb-6">
+      <View className="flex-row items-center gap-4 mb-4 px-2">
+        <View className="h-[1px] flex-1 bg-border/40" />
+        <Text className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
           {dayWithTasks.day}
         </Text>
+        <View className="h-[1px] flex-1 bg-border/40" />
       </View>
-      <View>
+      <View className="gap-3">
         {dayWithTasks.tasks.map((task) => (
           <TaskItem key={task.id} task={task} onToggleComplete={onToggleTaskComplete} />
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 });
 
