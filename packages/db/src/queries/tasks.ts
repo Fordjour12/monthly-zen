@@ -6,7 +6,7 @@
  */
 
 import { db } from "../index";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, sql } from "drizzle-orm";
 import { planTasks, monthlyPlans } from "../schema";
 
 // ============================================
@@ -53,7 +53,7 @@ export async function getTasksWithFilters(filters: TaskFilters) {
     if (planIds.length === 0) return [];
   }
 
-  // Build the base query
+  // Build the base query with computed week/day info
   let query = db
     .select({
       id: planTasks.id,
@@ -66,6 +66,10 @@ export async function getTasksWithFilters(filters: TaskFilters) {
       completedAt: planTasks.completedAt,
       startTime: planTasks.startTime,
       endTime: planTasks.endTime,
+      createdAt: planTasks.createdAt,
+      updatedAt: planTasks.updatedAt,
+      weekNumber: sql<number>`EXTRACT(WEEK FROM ${planTasks.startTime})`.as("weekNumber"),
+      dayOfWeek: sql<string>`TO_CHAR(${planTasks.startTime}, 'Day')`.as("dayOfWeek"),
     })
     .from(planTasks)
     .where(inArray(planTasks.planId, planIds))

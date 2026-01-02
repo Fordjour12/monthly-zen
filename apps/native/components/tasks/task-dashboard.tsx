@@ -16,7 +16,12 @@ import { TaskFilterBar } from "./task-filter-bar";
 import { TaskListItem } from "./task-list-item";
 import { TaskEmptyState } from "./task-empty-state";
 
-export function TaskDashboard() {
+interface TaskDashboardProps {
+  onEditTask?: (task: Task) => void;
+  onCreateTask?: () => void;
+}
+
+export function TaskDashboard({ onEditTask, onCreateTask }: TaskDashboardProps) {
   const {
     tasks,
     focusAreas,
@@ -44,9 +49,9 @@ export function TaskDashboard() {
 
   const renderItem = useCallback(
     ({ item }: { item: Task }) => (
-      <TaskListItem task={item} onToggle={toggleTask} isUpdating={isUpdating} />
+      <TaskListItem task={item} onToggle={toggleTask} onEdit={onEditTask} isUpdating={isUpdating} />
     ),
-    [toggleTask, isUpdating],
+    [toggleTask, isUpdating, onEditTask],
   );
 
   const keyExtractor = useCallback((item: Task) => item.id.toString(), []);
@@ -85,6 +90,7 @@ export function TaskDashboard() {
           onUpdateFilter={updateFilter}
           onResetFilters={resetFilters}
           onToggleSort={toggleSort}
+          onAddTask={onCreateTask}
         />
 
         {/* Error Display */}

@@ -1,84 +1,98 @@
-import { View, Text, TouchableOpacity } from "react-native";
+/**
+ * Task Index Page (Native)
+ *
+ * Main task management page with dashboard, create/edit form, and filtering.
+ */
+
 import React, { useRef, useCallback, useState } from "react";
-import { Select } from "heroui-native";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { DatePicker } from "@/components/ui/DateTimePicker";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Alert } from "react-native";
+import BottomSheet from "@gorhom/bottom-sheet";
+import { TaskDashboard } from "@/components/tasks/task-dashboard";
+import { TaskFormSheet } from "@/components/tasks/task-form-sheet";
+import { useTasks, type Task, type CreateTaskInput, type UpdateTaskInput } from "@/hooks/useTasks";
+import * as Haptics from "expo-haptics";
 
-export default function Index() {
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = ["40%", "70%"];
-  const [date, setDate] = useState<Date | null>(null);
+export default function TaskIndexPage() {
+  const formSheetRef = useRef<BottomSheet>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handlePresent = useCallback(() => {
-    bottomSheetRef.current?.expand();
+  const {
+    focusAreas,
+    createTask,
+    updateTask,
+    deleteTask,
+    isCreating: isCreatePending,
+    isUpdating,
+  } = useTasks();
+
+  const handleCreateTask = useCallback(() => {
+    setEditingTask(null);
+    setIsCreating(true);
+    formSheetRef.current?.expand();
   }, []);
 
-  const handleSheetChanges = useCallback((index: number) => {
-    console.log("handleSheetChanges", index);
+  const handleEditTask = useCallback((task: Task) => {
+    setEditingTask(task);
+    setIsCreating(false);
+    formSheetRef.current?.expand();
   }, []);
+
+  const handleSubmitTask = useCallback(
+    async (data: CreateTaskInput | UpdateTaskInput) => {
+      try {
+        if (isCreating) {
+          await createTask(data as CreateTaskInput);
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          const updateData = data as UpdateTaskInput;
+          if (updateData.taskId) {
+            await updateTask(updateData.taskId, updateData);
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        }
+        formSheetRef.current?.close();
+        setEditingTask(null);
+      } catch (error) {
+        Alert.alert("Error", isCreating ? "Failed to create task" : "Failed to update task");
+      }
+    },
+    [isCreating, createTask, updateTask],
+  );
+
+  const handleDeleteTask = useCallback(
+    async (taskId: number) => {
+      Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTask(taskId);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete task");
+            }
+          },
+        },
+      ]);
+    },
+    [deleteTask],
+  );
 
   return (
-    <View className="flex-1 p-5 bg-background">
-      <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-[32px] font-bold text-foreground">Tasks</Text>
-        <TouchableOpacity className="w-11 h-11 rounded-full bg-accent items-center justify-center">
-          <Ionicons name="add-outline" size={24} color="var(--accent-foreground)" />
-        </TouchableOpacity>
-      </View>
+    <View className="flex-1 bg-background">
+      <TaskDashboard onCreateTask={handleCreateTask} onEditTask={handleEditTask} />
 
-      <Select>
-        <Select.Trigger className="bg-field-background border border-field-border rounded-xl px-4 py-3.5">
-          <Select.Value
-            placeholder="Choose an option"
-            className="text-base text-field-placeholder"
-          />
-        </Select.Trigger>
-        <Select.Portal>
-          <Select.Overlay />
-          <Select.Content className="w-full">
-            <Select.Item value="apple" label="Apple" />
-            <Select.Item value="orange" label="Orange" />
-            <Select.Item value="banana" label="Banana" />
-          </Select.Content>
-        </Select.Portal>
-      </Select>
-
-      <View className="mt-4">
-        <DatePicker value={date} onChange={setDate} label="Due Date" />
-      </View>
-
-      <TouchableOpacity
-        className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-accent items-center justify-center shadow-lg"
-        onPress={handlePresent}
-      >
-        <Ionicons name="filter-outline" size={20} color="var(--accent-foreground)" />
-      </TouchableOpacity>
-
-      <BottomSheet
-        ref={bottomSheetRef}
-        snapPoints={snapPoints}
-        onChange={handleSheetChanges}
-        handleIndicatorStyle={{ backgroundColor: "var(--border)", width: 40 }}
-      >
-        <BottomSheetView className="flex-1 p-6 gap-6">
-          <Text className="text-2xl font-bold text-foreground">Filter Tasks</Text>
-          <View className="gap-3">
-            <Text className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Status
-            </Text>
-            <TouchableOpacity className="bg-field-background border border-field-border rounded-xl py-4 px-5">
-              <Text className="text-base text-field-foreground">All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="bg-accent border border-accent rounded-xl py-4 px-5">
-              <Text className="text-base text-accent-foreground">Active</Text>
-            </TouchableOpacity>
-            <TouchableOpacity className="bg-field-background border border-field-border rounded-xl py-4 px-5">
-              <Text className="text-base text-field-foreground">Completed</Text>
-            </TouchableOpacity>
-          </View>
-        </BottomSheetView>
-      </BottomSheet>
+      {/* Task Form Sheet */}
+      <TaskFormSheet
+        sheetRef={formSheetRef}
+        task={editingTask}
+        onSubmit={handleSubmitTask}
+        focusAreas={focusAreas}
+        isSubmitting={isCreatePending || isUpdating}
+      />
     </View>
   );
 }

@@ -41,6 +41,8 @@ export interface Task {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  weekNumber?: number;
+  dayOfWeek?: string;
   reminder?: TaskReminder | null;
 }
 
