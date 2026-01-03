@@ -81,3 +81,59 @@ export interface MonthlyPlan {
   confidence?: number;
   extractionNotes?: string;
 }
+
+// Resolution Types
+export type ResolutionCategory =
+  | "health"
+  | "career"
+  | "learning"
+  | "finance"
+  | "relationships"
+  | "personal"
+  | "productivity"
+  | "other";
+
+export type ResolutionType = "monthly" | "yearly";
+
+export type ResolutionPriority = 1 | 2 | 3;
+
+export interface Resolution {
+  id: string;
+  userId: string;
+  text: string;
+  category: ResolutionCategory;
+  resolutionType: ResolutionType;
+  priority: ResolutionPriority;
+  startDate: string;
+  targetDate?: string;
+  isRecurring: boolean;
+  recurringInterval?: "monthly" | "weekly";
+  isAchieved: boolean;
+  achievedAt?: string;
+  archivedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResolutionWithProgress extends Resolution {
+  progressPercent: number;
+  linkedTaskCount: number;
+  completedTaskCount: number;
+  tasks?: ResolutionTask[];
+}
+
+export interface ResolutionTask {
+  id: number;
+  description: string;
+  isCompleted: boolean;
+  weekOf: string;
+}
+
+export interface YearlySummary {
+  year: number;
+  totalResolutions: number;
+  completed: number;
+  inProgress: number;
+  completionRate: number;
+  averageProgress: number;
+}

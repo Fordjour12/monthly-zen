@@ -8,6 +8,8 @@ import { userRouter } from "./user";
 import { calendarRouter } from "./calendar";
 import { coachingRouter } from "./coaching";
 import { habitsRouter } from "./habits";
+import { resolutionsRouter } from "./resolutions";
+import { preferencesRouter } from "./preferences";
 
 export const appRouter = {
   healthCheck: publicProcedure.handler(() => {
@@ -26,6 +28,8 @@ export const appRouter = {
   calendar: calendarRouter,
   coaching: coachingRouter,
   habits: habitsRouter,
+  resolutions: resolutionsRouter,
+  preferences: preferencesRouter,
 };
 export type AppRouter = typeof appRouter;
 export type AppRouterClient = RouterClient<typeof appRouter>;

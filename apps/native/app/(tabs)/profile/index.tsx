@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/container";
 import { useAppTheme } from "@/contexts/app-theme-context";
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, hasCompletedOnboarding } = useAuthStore();
   const { isLight, toggleTheme } = useAppTheme();
   const router = useRouter();
 
@@ -128,6 +128,19 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Continue Setup for skipped users */}
+        {!hasCompletedOnboarding && (
+          <View className="px-4 mb-6">
+            <TouchableOpacity
+              onPress={() => router.push("/onboarding/welcome")}
+              className="flex-row items-center justify-center p-4 bg-primary/10 rounded-2xl border border-primary/20"
+            >
+              <Ionicons name="sparkles" size={20} color="#3b82f6" />
+              <Text className="ml-2 text-primary font-medium">Complete Your Setup</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View className="px-4">
           <Section title="Account Settings">

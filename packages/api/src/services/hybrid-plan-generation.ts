@@ -109,7 +109,12 @@ export async function generatePlan(
 
     console.log(`[Plan Generation] Preferences saved with ID: ${preference.id}`);
 
-    const prompt = buildPrompt(input, currentDate, currentMonth);
+    // Fetch user's resolutions for the current year
+    const currentYear = currentDate.getFullYear();
+    const resolutions = await db.getResolutionsWithProgress(input.userId, currentYear);
+    console.log(`[Plan Generation] Found ${resolutions?.length || 0} resolutions for user`);
+
+    const prompt = buildPrompt(input, currentDate, currentMonth, resolutions);
     const openRouter = getOpenRouterService();
 
     console.log(`[Plan Generation] Calling AI service...`);
@@ -301,7 +306,26 @@ async function checkAndResetQuota(
   return currentQuota;
 }
 
-function buildPrompt(input: GeneratePlanInput, currentDate: Date, monthYear: string): string {
+function buildPrompt(
+  input: GeneratePlanInput,
+  currentDate: Date,
+  monthYear: string,
+  resolutions?: {
+    id: number;
+    title: string;
+    category: string;
+    targetCount: number;
+    progress: number;
+  }[],
+): string {
+  // Format resolutions for the prompt
+  const resolutionsText =
+    resolutions && resolutions.length > 0
+      ? resolutions
+          .map((r) => `- ${r.title} (${r.category}): ${r.progress}/${r.targetCount} completed)`)
+          .join("\n")
+      : "No resolutions set for this year";
+
   const fixedCommitmentsText =
     input.fixedCommitmentsJson.commitments.length > 0
       ? input.fixedCommitmentsJson.commitments
@@ -316,6 +340,9 @@ function buildPrompt(input: GeneratePlanInput, currentDate: Date, monthYear: str
 
 **User Goals:**
 ${input.goalsText}
+
+**Yearly Resolutions (Integrate these into your task planning):**
+${resolutionsText}
 
 **Preferences:**
 - Task Complexity: ${input.taskComplexity}
@@ -366,10 +393,11 @@ ${fixedCommitmentsText}
 3. For each scheduled task, verify start_time and end_time do NOT overlap with any fixed commitment
 4. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
 5. Respect the user's weekend preference (${input.weekendPreference})
-6. Focus primarily on these areas: ${input.focusAreas}
-7. Provide clear, actionable task descriptions with estimated durations
-8. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
-9. Spread tasks evenly throughout the week when possible
+6. **PRIORITIZE RESOLUTIONS**: When generating tasks, actively work toward completing the user's yearly resolutions listed above. Each resolution should have at least 1-2 supporting tasks per week
+7. Focus primarily on these areas: ${input.focusAreas}
+8. Provide clear, actionable task descriptions with estimated durations
+9. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
+10. Spread tasks evenly throughout the week when possible
 
 **Task Complexity Guide:**
 - Simple: 3-5 shorter tasks per day, 30-60 minutes each

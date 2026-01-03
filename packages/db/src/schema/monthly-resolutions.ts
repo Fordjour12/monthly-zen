@@ -1,0 +1,48 @@
+import { relations } from "drizzle-orm";
+import {
+  pgTable,
+  serial,
+  text,
+  varchar,
+  timestamp,
+  boolean,
+  integer,
+  pgEnum,
+} from "drizzle-orm/pg-core";
+import { user } from "./auth";
+
+export const resolutionTypeEnum = pgEnum("resolution_type", ["monthly", "yearly"]);
+
+export const monthlyResolutions = pgTable("monthly_resolutions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => user.id)
+    .notNull(),
+
+  // Resolution content
+  text: text("text").notNull(),
+  category: varchar("category", { length: 50 }),
+  resolutionType: resolutionTypeEnum("resolution_type").default("monthly").notNull(),
+  priority: integer("priority").default(2), // 1=high, 2=medium, 3=low
+
+  // Timeline
+  startDate: timestamp("start_date").notNull().defaultNow(),
+  targetDate: timestamp("target_date"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringInterval: varchar("recurring_interval", { length: 20 }),
+
+  // Tracking
+  isAchieved: boolean("is_achieved").default(false),
+  achievedAt: timestamp("achieved_at"),
+  archivedAt: timestamp("archived_at"), // Soft delete
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const resolutionsRelations = relations(monthlyResolutions, ({ one }) => ({
+  user: one(user, {
+    fields: [monthlyResolutions.userId],
+    references: [user.id],
+  }),
+}));

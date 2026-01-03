@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { protectedProcedure } from "../index";
-import { getLatestGoalPreference, upsertGoalPreference, updateUserProfile } from "@monthly-zen/db";
+import {
+  getLatestGoalPreference,
+  upsertGoalPreference,
+  updateUserProfile,
+  completeOnboarding,
+  getUserOnboardingStatus,
+} from "@monthly-zen/db";
 
 export const userRouter = {
   getPreferences: protectedProcedure.handler(async ({ context }) => {
@@ -46,4 +52,16 @@ export const userRouter = {
       const result = await updateUserProfile(userId, input);
       return result;
     }),
+
+  completeOnboarding: protectedProcedure.handler(async ({ context }) => {
+    const userId = context.session.user.id;
+    await completeOnboarding(userId);
+    return { success: true };
+  }),
+
+  getOnboardingStatus: protectedProcedure.handler(async ({ context }) => {
+    const userId = context.session.user.id;
+    const hasCompleted = await getUserOnboardingStatus(userId);
+    return { hasCompletedOnboarding: hasCompleted };
+  }),
 };

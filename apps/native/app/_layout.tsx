@@ -22,11 +22,18 @@ export const unstable_settings = {
 };
 
 export default function Layout() {
-  const { isLoggedIn, hasCompletedOnboarding, _hasHydrated } = useAuthStore();
+  const { isLoggedIn, hasCompletedOnboarding, _hasHydrated, syncOnboarding } = useAuthStore();
 
   useEffect(() => {
     if (_hasHydrated && !isWeb) {
       SplashScreen.hideAsync();
+    }
+  }, [_hasHydrated]);
+
+  // Sync onboarding status on app start
+  useEffect(() => {
+    if (_hasHydrated) {
+      syncOnboarding();
     }
   }, [_hasHydrated]);
 

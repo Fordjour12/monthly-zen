@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, serial, text, varchar, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  varchar,
+  integer,
+  timestamp,
+  boolean,
+  jsonb,
+} from "drizzle-orm/pg-core";
 import { monthlyPlans } from "./monthly-plans";
 
 export const planTasks = pgTable("plan_tasks", {
@@ -19,6 +28,9 @@ export const planTasks = pgTable("plan_tasks", {
 
   isCompleted: boolean("is_completed").notNull().default(false),
   completedAt: timestamp("completed_at"),
+
+  // Link to resolutions
+  resolutionIds: jsonb("resolution_ids").$type<number[]>().default([]),
 });
 
 export const tasksRelations = relations(planTasks, ({ one }) => ({

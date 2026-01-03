@@ -1,21 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, Animated } from "react-native";
+import { View, Text, ActivityIndicator, Animated, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
 import { Ionicons } from "@expo/vector-icons";
 
-const STEPS = [
-  "Analyzing your goals...",
-  "Creating balanced plan...",
-  "Optimizing schedule...",
-  "Your first plan is ready!",
-];
+const STEPS = ["Analyzing your goals...", "Creating balanced plan...", "Optimizing schedule..."];
 
 export default function GeneratingScreen() {
   const router = useRouter();
   const { completeOnboarding } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -27,13 +23,9 @@ export default function GeneratingScreen() {
       });
     }, 1500);
 
-    const timeout = setTimeout(
-      () => {
-        completeOnboarding();
-        router.replace("/(tabs)");
-      },
-      STEPS.length * 1500 + 1000,
-    );
+    const timeout = setTimeout(() => {
+      setIsGenerating(false);
+    }, STEPS.length * 1500);
 
     return () => {
       clearInterval(interval);
@@ -41,7 +33,12 @@ export default function GeneratingScreen() {
     };
   }, []);
 
-  const isComplete = currentStep === STEPS.length - 1;
+  const handleContinue = async () => {
+    await completeOnboarding();
+    router.replace("/(tabs)");
+  };
+
+  const isComplete = !isGenerating;
 
   return (
     <Container>
@@ -55,14 +52,25 @@ export default function GeneratingScreen() {
         </View>
 
         <Text className="text-2xl font-bold text-foreground text-center mb-4">
-          {isComplete ? "Success!" : "Generating Your Plan"}
+          {isComplete ? "Your first plan is ready!" : "Generating Your Plan"}
         </Text>
 
-        <Text className="text-xl text-muted-foreground text-center font-medium">
-          {STEPS[currentStep]}
+        <Text className="text-xl text-muted-foreground text-center font-medium mb-8">
+          {isComplete ? "Let's start your journey to better productivity." : STEPS[currentStep]}
         </Text>
 
-        {!isComplete && (
+        {!isGenerating && (
+          <View className="w-full gap-4">
+            <TouchableOpacity
+              onPress={handleContinue}
+              className="h-16 rounded-2xl items-center justify-center bg-primary shadow-lg shadow-primary/30"
+            >
+              <Text className="text-white text-xl font-bold">Start Using Monthly Zen</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {isGenerating && (
           <View className="w-full bg-muted/30 h-2 rounded-full mt-12 overflow-hidden">
             <Animated.View
               className="bg-primary h-full"

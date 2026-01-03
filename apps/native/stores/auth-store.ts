@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import * as SecureStore from "expo-secure-store";
 import { authClient } from "@/lib/auth-client";
+import { client } from "@/utils/orpc";
 
 interface User {
   id: string;
@@ -19,12 +20,14 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   hasCompletedOnboarding: boolean;
+  onboardingSyncedToServer: boolean;
 
   signIn: (credentials: { email: string; password: string }) => Promise<void>;
   signUp: (credentials: { name: string; email: string; password: string }) => Promise<void>;
   signOut: () => Promise<void>;
-  completeOnboarding: () => void;
+  completeOnboarding: () => Promise<void>;
   setHasHydrated: (value: boolean) => void;
+  syncOnboarding: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -36,6 +39,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       hasCompletedOnboarding: false,
+      onboardingSyncedToServer: false,
 
       signIn: async (credentials) => {
         set({ isLoading: true, error: null });
@@ -94,8 +98,30 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      completeOnboarding: () => {
+      completeOnboarding: async () => {
+        // Step 1: Update local state immediately (fast)
         set({ hasCompletedOnboarding: true });
+
+        // Step 2: Sync to server in background
+        try {
+          await client.user.completeOnboarding();
+          set({ onboardingSyncedToServer: true });
+        } catch {
+          // Retry later on app foreground
+          set({ onboardingSyncedToServer: false });
+        }
+      },
+
+      syncOnboarding: async () => {
+        const { hasCompletedOnboarding } = useAuthStore.getState();
+        if (hasCompletedOnboarding) {
+          try {
+            await client.user.completeOnboarding();
+            set({ onboardingSyncedToServer: true });
+          } catch {
+            set({ onboardingSyncedToServer: false });
+          }
+        }
       },
 
       setHasHydrated: (value: boolean) => {
