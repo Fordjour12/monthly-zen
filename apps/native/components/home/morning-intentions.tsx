@@ -14,7 +14,7 @@ export function MorningIntentions() {
     <Card className="mx-4 mb-4 p-4 bg-primary/5 border-primary/20">
       <View className="flex-row items-center gap-2 mb-3">
         <Ionicons name="sunny" size={20} color="currentColor" className="text-primary" />
-        <Text className="font-semibold text-foreground">Today's Focus</Text>
+        <Text className="font-semibold text-foreground font-sans">Today's Focus</Text>
       </View>
 
       <Text className="text-xl font-bold text-foreground mb-2">{intention.title}</Text>

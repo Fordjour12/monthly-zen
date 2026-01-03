@@ -7,10 +7,12 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { useAuthStore } from "@/stores/auth-store";
 import { Container } from "@/components/ui/container";
 import { orpc } from "@/utils/orpc";
@@ -21,7 +23,6 @@ export default function ProfileDynamicScreen() {
   const { user } = useAuthStore();
   const { isLight } = useAppTheme();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const isEditProfile = id === "edit-profile";
   const isEditPreferences = id === "edit-preferences";
@@ -55,6 +56,9 @@ export default function ProfileDynamicScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
+          headerStyle: {
+            backgroundColor: isLight ? "#fff" : "#000",
+          },
           title: isEditProfile
             ? "Edit Profile"
             : isEditPreferences
@@ -70,30 +74,100 @@ export default function ProfileDynamicScreen() {
       <ScrollView className="flex-1 p-4" contentContainerClassName="pb-10">
         {isEditProfile ? (
           <View>
-            <Text className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2 ml-1">
-              Display Name
-            </Text>
-            <View className="bg-surface rounded-2xl border border-border px-4 py-3 mb-6">
-              <TextInput
-                className="text-foreground text-lg"
-                value={name}
-                onChangeText={setName}
-                placeholder="Your name"
-                placeholderTextColor="#a3a3a3"
-              />
+            {/* Header Preview Section */}
+            <View className="items-center mb-8 mt-4">
+              <View className="relative">
+                <View className="w-28 h-28 rounded-full border-4 border-surface shadow-xl overflow-hidden bg-muted">
+                  {user?.image ? (
+                    <Image
+                      source={{ uri: user.image }}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Image
+                      source={require("@/assets/images/default-avatar.png")}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  )}
+                </View>
+                <View className="absolute bottom-1 right-1 bg-primary w-8 h-8 rounded-full items-center justify-center border-2 border-surface">
+                  <Ionicons name="camera" size={16} color="white" />
+                </View>
+              </View>
+              <Text className="text-2xl font-bold text-foreground mt-4">
+                {name || user?.name || "No Name"}
+              </Text>
+              <Text className="text-sm text-muted-foreground mt-1">{user?.email}</Text>
             </View>
 
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={updateProfileMutation.isPending}
-              className="bg-primary h-14 rounded-2xl items-center justify-center shadow-sm"
-            >
-              {updateProfileMutation.isPending ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white text-lg font-bold">Save Changes</Text>
-              )}
-            </TouchableOpacity>
+            <View className="space-y-6">
+              {/* Editable Name Section */}
+              <View>
+                <Text className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-2 ml-1">
+                  Display Name
+                </Text>
+                <View className="bg-surface rounded-2xl border border-border px-4 py-4 mb-4">
+                  <TextInput
+                    className="text-foreground text-lg font-medium"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Your name"
+                    placeholderTextColor="#a3a3a3"
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+
+              {/* Read-only Sections */}
+              <View className="bg-surface/50 rounded-2xl border border-border p-4 space-y-4">
+                <View>
+                  <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    Email Address
+                  </Text>
+                  <Text className="text-foreground text-base opacity-70">{user?.email}</Text>
+                </View>
+
+                <View className="h-px bg-border w-full" />
+
+                <View>
+                  <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    Joined Date
+                  </Text>
+                  <Text className="text-foreground text-base opacity-70">
+                    {user?.createdAt
+                      ? format(new Date(user.createdAt), "MMMM d, yyyy")
+                      : "Recently"}
+                  </Text>
+                </View>
+
+                <View className="h-px bg-border w-full" />
+
+                <View>
+                  <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    User ID
+                  </Text>
+                  <Text className="text-foreground text-[12px] opacity-50 font-mono">
+                    {user?.id}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="mt-8">
+                <TouchableOpacity
+                  onPress={handleSave}
+                  disabled={updateProfileMutation.isPending}
+                  className="bg-primary h-16 rounded-2xl items-center justify-center shadow-lg active:opacity-90 transition-all"
+                >
+                  {updateProfileMutation.isPending ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="text-white text-lg font-bold">Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         ) : isEditPreferences ? (
           <View className="items-center justify-center mt-20">

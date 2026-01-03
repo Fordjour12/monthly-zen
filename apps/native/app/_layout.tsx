@@ -22,7 +22,7 @@ export const unstable_settings = {
 };
 
 export default function Layout() {
-  const { isLoggedIn, _hasHydrated } = useAuthStore();
+  const { isLoggedIn, hasCompletedOnboarding, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     if (_hasHydrated && !isWeb) {
@@ -41,10 +41,20 @@ export default function Layout() {
           <AppThemeProvider>
             <HeroUINativeProvider>
               <Stack>
-                <Stack.Protected guard={isLoggedIn}>
+                {/* Auth Protected Routes */}
+                <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: "modal" }} />
                 </Stack.Protected>
+
+                {/* Onboarding Routes*/}
+                <Stack.Protected guard={isLoggedIn && !hasCompletedOnboarding}>
+                  <Stack.Screen name="onboarding/welcome" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding/goals" options={{ headerShown: false }} />
+                  <Stack.Screen name="onboarding/generating" options={{ headerShown: false }} />
+                </Stack.Protected>
+
+                {/* Public Routes */}
                 <Stack.Protected guard={!isLoggedIn}>
                   <Stack.Screen name="sign-in" options={{ headerShown: false }} />
                   <Stack.Screen name="sign-up" options={{ headerShown: false }} />

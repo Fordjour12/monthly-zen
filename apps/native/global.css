@@ -4,6 +4,17 @@
 
 @source './node_modules/heroui-native/lib';
 
+@theme {
+  --font-sans: "Raleway-Regular";
+  --font-sans-thin: "Raleway-Thin";
+  --font-sans-light: "Raleway-Light";
+  --font-sans-medium: "Raleway-Medium";
+  --font-sans-semibold: "Raleway-SemiBold";
+  --font-sans-bold: "Raleway-Bold";
+  --font-sans-extrabold: "Raleway-ExtraBold";
+  --font-sans-black: "Raleway-Black";
+}
+
 @layer theme {
   :root {
     @variant light {
@@ -69,7 +80,6 @@
     }
 
     @theme inline {
-      --font-sans: "Figtree Variable", sans-serif;
       --color-background: var(--background);
       --color-foreground: var(--foreground);
       --color-surface: var(--surface);

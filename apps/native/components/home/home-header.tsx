@@ -23,7 +23,7 @@ export function HomeHeader() {
     <View className="px-4 pt-8 pb-2">
       <View className="flex-row items-center justify-between mb-6">
         <View className="flex-row items-center gap-1 align-middle">
-          <Text className="text-3xl font-bold text-foreground">{dayOfWeek}</Text>
+          <Text className="text-3xl font-bold text-foreground font-sans-black">{dayOfWeek}</Text>
           <View className="size-5 rounded-full bg-accent mt-1" />
         </View>
         <View className="items-end">
@@ -34,10 +34,12 @@ export function HomeHeader() {
         </View>
       </View>
 
-      <Text className="text-2xl font-bold text-foreground">
+      <Text className="text-2xl font-sans-extrabold text-foreground">
         {greeting}, {user?.name?.split(" ")[0] || "there"}! 👋
       </Text>
-      <Text className="text-base text-muted-foreground mt-1">You have 4 tasks today</Text>
+      <Text className="text-base text-muted-foreground mt-1 font-sans-black ">
+        You have 4 tasks today
+      </Text>
     </View>
   );
 }

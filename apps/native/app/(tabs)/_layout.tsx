@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { useThemeColor } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -39,16 +38,6 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <HugeiconsIcon icon={Home12Icon} size={size} color={color} strokeWidth={1.5} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Discover",
-          headerShown: false,
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Ionicons name="search" size={size} color={color} />
           ),
         }}
       />

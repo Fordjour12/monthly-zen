@@ -18,10 +18,12 @@ interface AuthState {
   _hasHydrated: boolean;
   isLoading: boolean;
   error: string | null;
+  hasCompletedOnboarding: boolean;
 
   signIn: (credentials: { email: string; password: string }) => Promise<void>;
   signUp: (credentials: { name: string; email: string; password: string }) => Promise<void>;
   signOut: () => Promise<void>;
+  completeOnboarding: () => void;
   setHasHydrated: (value: boolean) => void;
 }
 
@@ -33,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       _hasHydrated: false,
       isLoading: false,
       error: null,
+      hasCompletedOnboarding: false,
 
       signIn: async (credentials) => {
         set({ isLoading: true, error: null });
@@ -85,10 +88,14 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           await authClient.signOut();
-          set({ isLoggedIn: false, user: null, isLoading: false });
+          set({ isLoggedIn: false, user: null, isLoading: false, hasCompletedOnboarding: false });
         } catch {
           set({ error: "Failed to sign out", isLoading: false });
         }
+      },
+
+      completeOnboarding: () => {
+        set({ hasCompletedOnboarding: true });
       },
 
       setHasHydrated: (value: boolean) => {
