@@ -34,7 +34,29 @@ export default (ctx: ConfigContext): ExpoConfig => {
     slug: "monthly-zen",
     icon: "./assets/images/icon.png",
     plugins: [
-      "expo-font",
+      [
+        "expo-font",
+        {
+          fonts: [
+            "./assets/fonts/Raleway/Raleway-Thin.ttf",
+            "./assets/fonts/Raleway/Raleway-ThinItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-Light.ttf",
+            "./assets/fonts/Raleway/Raleway-LightItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-Regular.ttf",
+            "./assets/fonts/Raleway/Raleway-Italic.ttf",
+            "./assets/fonts/Raleway/Raleway-Medium.ttf",
+            "./assets/fonts/Raleway/Raleway-MediumItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-SemiBold.ttf",
+            "./assets/fonts/Raleway/Raleway-SemiBoldItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-Bold.ttf",
+            "./assets/fonts/Raleway/Raleway-BoldItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-ExtraBold.ttf",
+            "./assets/fonts/Raleway/Raleway-ExtraBoldItalic.ttf",
+            "./assets/fonts/Raleway/Raleway-Black.ttf",
+            "./assets/fonts/Raleway/Raleway-BlackItalic.ttf",
+          ],
+        },
+      ],
       [
         "expo-dev-client",
         {

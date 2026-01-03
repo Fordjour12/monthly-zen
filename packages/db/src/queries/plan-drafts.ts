@@ -1,6 +1,6 @@
 import { db } from "../index";
 import { eq, and, lt, desc } from "drizzle-orm";
-import { planDrafts } from "../schema";
+import { monthlyPlans } from "../schema";
 
 export function generateDraftKey(userId: string): string {
   const timestamp = Date.now();
@@ -11,21 +11,24 @@ export function generateDraftKey(userId: string): string {
 export async function createDraft(
   userId: string,
   planData: any,
-  goalPreferenceId: number,
+  preferenceId: number,
   monthYear: string,
+  aiPrompt: string,
   ttlHours: number = 24,
 ): Promise<{ draftKey: string }> {
   const draftKey = generateDraftKey(userId);
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + ttlHours);
 
-  await db.insert(planDrafts).values({
+  await db.insert(monthlyPlans).values({
     userId,
-    draftKey,
-    planData,
-    goalPreferenceId,
+    preferenceId,
     monthYear,
+    aiPrompt,
+    aiResponseRaw: planData,
+    draftKey,
     expiresAt,
+    status: "DRAFT",
   });
 
   return { draftKey };
@@ -34,39 +37,62 @@ export async function createDraft(
 export async function getDraft(userId: string, draftKey: string): Promise<any | null> {
   const [draft] = await db
     .select()
-    .from(planDrafts)
-    .where(and(eq(planDrafts.userId, userId), eq(planDrafts.draftKey, draftKey)));
+    .from(monthlyPlans)
+    .where(
+      and(
+        eq(monthlyPlans.userId, userId),
+        eq(monthlyPlans.draftKey, draftKey),
+        eq(monthlyPlans.status, "DRAFT"),
+      ),
+    );
 
-  if (!draft || new Date() > draft.expiresAt) {
+  if (!draft || (draft.expiresAt && new Date() > draft.expiresAt)) {
     return null;
   }
 
-  return draft;
+  // Map back to expected structure for compatibility
+  return {
+    ...draft,
+    planData: draft.aiResponseRaw,
+    goalPreferenceId: draft.preferenceId,
+  };
 }
 
 export async function deleteDraft(userId: string, draftKey: string): Promise<void> {
   await db
-    .delete(planDrafts)
-    .where(and(eq(planDrafts.userId, userId), eq(planDrafts.draftKey, draftKey)));
+    .delete(monthlyPlans)
+    .where(
+      and(
+        eq(monthlyPlans.userId, userId),
+        eq(monthlyPlans.draftKey, draftKey),
+        eq(monthlyPlans.status, "DRAFT"),
+      ),
+    );
 }
 
 export async function getLatestDraft(userId: string): Promise<any | null> {
   const [draft] = await db
     .select()
-    .from(planDrafts)
-    .where(eq(planDrafts.userId, userId))
-    .orderBy(desc(planDrafts.createdAt))
+    .from(monthlyPlans)
+    .where(and(eq(monthlyPlans.userId, userId), eq(monthlyPlans.status, "DRAFT")))
+    .orderBy(desc(monthlyPlans.generatedAt))
     .limit(1);
 
-  if (!draft || new Date() > draft.expiresAt) {
+  if (!draft || (draft.expiresAt && new Date() > draft.expiresAt)) {
     return null;
   }
 
-  return draft;
+  return {
+    ...draft,
+    planData: draft.aiResponseRaw,
+    goalPreferenceId: draft.preferenceId,
+  };
 }
 
 export async function cleanupExpiredDrafts(): Promise<number> {
-  const result = await db.delete(planDrafts).where(lt(planDrafts.expiresAt, new Date()));
+  const result = await db
+    .delete(monthlyPlans)
+    .where(and(lt(monthlyPlans.expiresAt, new Date()), eq(monthlyPlans.status, "DRAFT")));
 
   return result.rowCount || 0;
 }

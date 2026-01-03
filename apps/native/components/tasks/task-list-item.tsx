@@ -1,7 +1,7 @@
 /**
  * Task List Item Component (Native)
  *
- * Individual task row with checkbox, badges, and swipe actions.
+ * Individual task row with checkbox, badges, and tap to edit.
  */
 
 import React, { memo, useCallback } from "react";
@@ -14,11 +14,12 @@ import type { Task } from "@/hooks/useTasks";
 interface TaskListItemProps {
   task: Task;
   onToggle: (taskId: number, isCompleted: boolean) => void;
+  onEdit?: (task: Task) => void;
   isUpdating?: boolean;
 }
 
 function getDifficultyColor(level: string) {
-  switch (level.toLowerCase()) {
+  switch (level?.toLowerCase()) {
     case "simple":
       return { bg: "bg-green-500/10", text: "text-green-500" };
     case "moderate":
@@ -30,9 +31,28 @@ function getDifficultyColor(level: string) {
   }
 }
 
+function formatSchedule(
+  startTime: string,
+  endTime: string,
+  weekNumber?: number,
+  dayOfWeek?: string,
+) {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+
+  const timeStr = `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+  if (weekNumber && dayOfWeek) {
+    return `W${weekNumber} • ${dayOfWeek.trim()} • ${timeStr}`;
+  }
+
+  return timeStr;
+}
+
 export const TaskListItem = memo(function TaskListItem({
   task,
   onToggle,
+  onEdit,
   isUpdating,
 }: TaskListItemProps) {
   const { primary, muted } = useSemanticColors();
@@ -47,11 +67,26 @@ export const TaskListItem = memo(function TaskListItem({
     onToggle(task.id, !task.isCompleted);
   }, [task.id, task.isCompleted, onToggle, isUpdating]);
 
+  const handlePress = useCallback(async () => {
+    // Haptic feedback
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (onEdit) {
+      onEdit(task);
+    }
+  }, [task, onEdit]);
+
   return (
-    <View
+    <TouchableOpacity
+      onPress={handlePress}
+      disabled={isUpdating}
       className={`flex-row items-start p-4 bg-card border-b border-border ${
         task.isCompleted ? "opacity-60" : ""
       }`}
+      accessibilityLabel={`Task: ${task.taskDescription}. ${
+        task.isCompleted ? "Completed" : "Not completed"
+      }. Tap to edit.`}
+      accessibilityRole="button"
     >
       {/* Checkbox */}
       <TouchableOpacity
@@ -90,13 +125,13 @@ export const TaskListItem = memo(function TaskListItem({
           {/* Difficulty Badge */}
           <View className={`${difficultyColors.bg} px-2 py-0.5 rounded-full`}>
             <Text className={`text-xs font-medium ${difficultyColors.text}`}>
-              {task.difficultyLevel}
+              {task.difficultyLevel || "normal"}
             </Text>
           </View>
 
           {/* Schedule Info */}
           <Text className="text-xs text-muted-foreground">
-            W{task.weekNumber} • {task.dayOfWeek}
+            {formatSchedule(task.startTime, task.endTime, task.weekNumber, task.dayOfWeek)}
           </Text>
         </View>
 
@@ -107,6 +142,9 @@ export const TaskListItem = memo(function TaskListItem({
           </Text>
         )}
       </View>
-    </View>
+
+      {/* Edit Indicator */}
+      <Ionicons name="chevron-forward" size={20} color={muted} className="ml-2" />
+    </TouchableOpacity>
   );
 });

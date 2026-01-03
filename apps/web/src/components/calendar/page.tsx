@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format, addMonths, subMonths } from "date-fns";
 import { AppSidebar } from "./components/app-sidebar";
-import { TaskCalendarGrid } from "./task-calendar-grid";
+import { TaskCalendarGrid, type ViewMode } from "./task-calendar-grid";
 import { TaskDetailSheet } from "./task-detail-sheet";
 import {
   Breadcrumb,
@@ -14,68 +14,64 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
-interface CalendarTask {
-  id: number;
-  taskDescription: string;
-  focusArea: string;
-  startTime: Date;
-  endTime: Date;
-  difficultyLevel: "simple" | "moderate" | "advanced";
-  isCompleted: boolean;
-}
+import { ChevronLeft, ChevronRight, Flame, List, Calendar as CalendarIcon } from "lucide-react";
+import { orpc } from "@/utils/orpc";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function CalendarPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("normal");
+  const queryClient = useQueryClient();
 
-  const [tasks, setTasks] = useState<CalendarTask[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Tasks Query
+  const {
+    data: tasksResult,
+    isLoading,
+    error,
+  } = useQuery(
+    orpc.calendar.getTasks.queryOptions({
+      input: { month: format(selectedMonth, "yyyy-MM") },
+    }),
+  );
 
-  const fetchTasks = async (month: Date) => {
-    setIsLoading(true);
-    setError(null);
+  // Habit Stats Query
+  const { data: habitStatsResult } = useQuery(
+    orpc.calendar.getHabitStats.queryOptions({
+      input: { month: format(selectedMonth, "yyyy-MM") },
+    }),
+  );
 
-    try {
-      const response = await fetch(
-        "/api/calendar/tasks?" +
-          new URLSearchParams({
-            month: format(month, "yyyy-MM"),
-          }),
-      );
+  const tasks = tasksResult?.success ? tasksResult.data : [];
+  const habitStats = habitStatsResult?.success ? habitStatsResult.data : [];
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch tasks");
-      }
+  // Task Update Mutation
+  const updateTaskMutation = useMutation(
+    orpc.calendar.updateTaskStatus.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["calendar", "getTasks"] });
+        toast.success("Task updated");
+      },
+      onError: (err) => {
+        toast.error(err.message || "Failed to update task");
+      },
+    }),
+  );
 
-      const result = await response.json();
-      const tasksWithDates = result.data.map((task: any) => ({
-        ...task,
-        startTime: new Date(task.startTime),
-        endTime: new Date(task.endTime),
-      }));
-
-      setTasks(tasksWithDates);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      console.error("Error fetching tasks:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTasks(selectedMonth);
-  }, [selectedMonth]);
-
-  const filteredTasks = tasks.filter((task) => {
-    if (selectedFocusAreas.length === 0) return true;
-    return selectedFocusAreas.includes(task.focusArea);
-  });
+  const filteredTasks = tasks
+    .map((task) => ({
+      ...task,
+      startTime: new Date(task.startTime),
+      endTime: new Date(task.endTime),
+      completedAt: task.completedAt ? new Date(task.completedAt) : null,
+    }))
+    .filter((task) => {
+      if (selectedFocusAreas.length === 0) return true;
+      return selectedFocusAreas.includes(task.focusArea);
+    });
 
   const handleMonthChange = (newMonth: Date) => {
     setSelectedMonth(newMonth);
@@ -93,8 +89,9 @@ export default function CalendarPage() {
   };
 
   const handleTodayClick = () => {
-    setSelectedMonth(new Date());
-    setSelectedDate(new Date());
+    const today = new Date();
+    setSelectedMonth(today);
+    setSelectedDate(today);
   };
 
   const handleFocusAreaToggle = (area: string) => {
@@ -103,13 +100,21 @@ export default function CalendarPage() {
     );
   };
 
+  const handleTaskToggle = (taskId: number, isCompleted: boolean) => {
+    updateTaskMutation.mutate({ taskId, isCompleted });
+  };
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Error loading calendar</h2>
-          <p className="text-foreground mb-4">{error}</p>
-          <Button onClick={() => fetchTasks(selectedMonth)}>Retry</Button>
+          <p className="text-foreground mb-4">{(error as Error).message}</p>
+          <Button
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["calendar", "getTasks"] })}
+          >
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -123,7 +128,7 @@ export default function CalendarPage() {
         onTodayClick={handleTodayClick}
       />
       <SidebarInset>
-        <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4 z-10">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
 
@@ -139,20 +144,80 @@ export default function CalendarPage() {
           <Breadcrumb className="flex-1">
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>{format(selectedMonth, "MMMM yyyy")}</BreadcrumbPage>
+                <BreadcrumbPage className="font-semibold text-lg">
+                  {viewMode === "week" ? "Week View" : format(selectedMonth, "MMMM yyyy")}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
 
-          {isLoading && <div className="text-sm text-foreground">Loading...</div>}
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "normal" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("normal")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Month View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "week" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("week")}
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Week View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === "heatmap" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("heatmap")}
+                  >
+                    <Flame className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Heatmap View</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          {isLoading && (
+            <div className="text-sm text-muted-foreground animate-pulse">Syncing...</div>
+          )}
         </header>
 
-        <div className="flex flex-1 p-4">
+        <div className="flex flex-1 p-4 overflow-hidden">
           <TaskCalendarGrid
             tasks={filteredTasks}
             selectedMonth={selectedMonth}
             onMonthChange={handleMonthChange}
             onDateSelect={setSelectedDate}
+            filteredFocusAreas={selectedFocusAreas}
+            viewMode={viewMode}
+            habitStats={habitStats}
           />
         </div>
       </SidebarInset>
@@ -165,7 +230,7 @@ export default function CalendarPage() {
           tasks={filteredTasks.filter(
             (task) => format(task.startTime, "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd"),
           )}
-          onTaskUpdate={() => fetchTasks(selectedMonth)}
+          onTaskToggle={handleTaskToggle}
         />
       )}
     </SidebarProvider>

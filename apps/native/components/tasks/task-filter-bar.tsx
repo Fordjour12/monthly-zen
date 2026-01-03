@@ -16,6 +16,7 @@ interface TaskFilterBarProps {
   onUpdateFilter: <K extends keyof TaskFilters>(key: K, value: TaskFilters[K]) => void;
   onResetFilters: () => void;
   onToggleSort: () => void;
+  onAddTask?: () => void;
 }
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
@@ -31,8 +32,13 @@ const difficultyOptions: { value: DifficultyLevel | "all"; label: string }[] = [
   { value: "advanced", label: "Advanced" },
 ];
 
-export function TaskFilterBar({ filters, onUpdateFilter, onToggleSort }: TaskFilterBarProps) {
-  const { primary, muted, foreground, background } = useSemanticColors();
+export function TaskFilterBar({
+  filters,
+  onUpdateFilter,
+  onToggleSort,
+  onAddTask,
+}: TaskFilterBarProps) {
+  const { muted, foreground, primary } = useSemanticColors();
 
   return (
     <View className="bg-card border-b border-border">
@@ -121,6 +127,17 @@ export function TaskFilterBar({ filters, onUpdateFilter, onToggleSort }: TaskFil
             {filters.sortOrder === "asc" ? "Asc" : "Desc"}
           </Text>
         </TouchableOpacity>
+
+        {/* Add Task Button */}
+        {onAddTask && (
+          <TouchableOpacity
+            onPress={onAddTask}
+            className="flex-row items-center px-3 py-1.5 rounded-full bg-primary"
+          >
+            <Ionicons name="add" size={16} color="white" />
+            <Text className="text-xs text-white font-medium ml-1">Add</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );

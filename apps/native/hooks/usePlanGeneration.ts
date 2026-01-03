@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { orpc } from "@/utils/orpc";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { authClient } from "@/lib/auth-client";
+import { useMutation } from "@tanstack/react-query";
 
 export interface TaskData {
   task_description: string;
@@ -58,14 +57,9 @@ export interface GenerateResult {
 }
 
 export function usePlanGeneration() {
-  // Local state for draft management
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Query for latest draft
-  const latestDraftData = useQuery(orpc.plan.getLatestDraft.queryOptions());
-
-  // Mutation for generating plan
   const generateMutation = useMutation(
     orpc.plan.generate.mutationOptions({
       context: {
@@ -79,10 +73,7 @@ export function usePlanGeneration() {
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });
         setError(null);
-        console.log("[usePlanGeneration] Plan generated and auto-staged");
-
-        // Refetch latest draft to ensure cache is updated
-        latestDraftData.refetch();
+        console.log("[usePlanGeneration] Plan generated");
       },
       onError: (err) => {
         const message = err instanceof Error ? err.message : "Generation failed";
@@ -91,16 +82,12 @@ export function usePlanGeneration() {
     }),
   );
 
-  // Mutation for confirming/saving plan
   const confirmMutation = useMutation(
     orpc.plan.confirm.mutationOptions({
       onSuccess: (response) => {
         console.log("[usePlanGeneration] Plan saved permanently, ID:", response.data.planId);
         setDraft(null);
         setError(null);
-
-        // Refetch latest draft to clear it
-        latestDraftData.refetch();
       },
       onError: (err) => {
         const message = err instanceof Error ? err.message : "Save failed";
@@ -109,16 +96,12 @@ export function usePlanGeneration() {
     }),
   );
 
-  // Mutation for deleting draft
   const deleteDraftMutation = useMutation(
     orpc.plan.deleteDraft.mutationOptions({
       onSuccess: () => {
         console.log("[usePlanGeneration] Draft discarded");
         setDraft(null);
         setError(null);
-
-        // Refetch latest draft to clear it
-        latestDraftData.refetch();
       },
       onError: (err) => {
         console.error("[usePlanGeneration] Failed to discard draft:", err);
@@ -126,36 +109,17 @@ export function usePlanGeneration() {
     }),
   );
 
-  // Initialize draft from query data if not already set
-  const checkForExistingDraft = useCallback(() => {
-    if (latestDraftData?.data?.data && !draft) {
-      setDraft({
-        draftKey: latestDraftData.data.data.draftKey,
-        planData: latestDraftData.data.data.planData as PlanData,
-        createdAt: latestDraftData.data.data.createdAt,
-        expiresAt: latestDraftData.data.data.expiresAt,
-      });
-      console.log("[usePlanGeneration] Recovered draft from previous session");
-    }
-  }, [latestDraftData?.data?.data, draft]);
-
-  // Sync draft with latest query data
-  const planData = draft?.planData || latestDraftData?.data?.data?.planData || null;
-  const hasDraft = !!draft || !!latestDraftData?.data?.data;
+  const planData = draft?.planData || null;
 
   const generate = useCallback(
     async (input: GenerateInput): Promise<GenerateResult | null> => {
-      try {
-        const response = await generateMutation.mutateAsync(input);
-        return {
-          draftKey: response.data.draftKey,
-          planData: response.data.planData as PlanData,
-          preferenceId: response.data.preferenceId,
-          generatedAt: response.data.generatedAt,
-        };
-      } catch (err) {
-        throw err;
-      }
+      const response = await generateMutation.mutateAsync(input);
+      return {
+        draftKey: response.data.draftKey,
+        planData: response.data.planData as PlanData,
+        preferenceId: response.data.preferenceId,
+        generatedAt: response.data.generatedAt,
+      };
     },
     [generateMutation],
   );
@@ -166,12 +130,8 @@ export function usePlanGeneration() {
       return null;
     }
 
-    try {
-      const response = await confirmMutation.mutateAsync({ draftKey: draft.draftKey });
-      return response.data.planId;
-    } catch (err) {
-      throw err;
-    }
+    const response = await confirmMutation.mutateAsync({ draftKey: draft.draftKey });
+    return response.data.planId;
   }, [draft, confirmMutation]);
 
   const discard = useCallback(async () => {
@@ -186,11 +146,9 @@ export function usePlanGeneration() {
     isGenerating: generateMutation.isPending,
     isSaving: confirmMutation.isPending,
     error,
-    hasDraft,
     generate,
     save,
     discard,
-    checkForExistingDraft,
     clearError: () => setError(null),
   };
 }

@@ -8,133 +8,204 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as PlanRouteImport } from './routes/plan'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as TasksRouteImport } from "./routes/tasks";
+import { Route as SettingsRouteImport } from "./routes/settings";
+import { Route as PlansRouteImport } from "./routes/plans";
+import { Route as PlanRouteImport } from "./routes/plan";
+import { Route as LoginRouteImport } from "./routes/login";
+import { Route as DashboardRouteImport } from "./routes/dashboard";
+import { Route as CalendarRouteImport } from "./routes/calendar";
+import { Route as IndexRouteImport } from "./routes/index";
 
 const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
+  id: "/tasks",
+  path: "/tasks",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const SettingsRoute = SettingsRouteImport.update({
+  id: "/settings",
+  path: "/settings",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const PlansRoute = PlansRouteImport.update({
+  id: "/plans",
+  path: "/plans",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const PlanRoute = PlanRouteImport.update({
-  id: '/plan',
-  path: '/plan',
+  id: "/plan",
+  path: "/plan",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+  id: "/dashboard",
+  path: "/dashboard",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
+const CalendarRoute = CalendarRouteImport.update({
+  id: "/calendar",
+  path: "/calendar",
+  getParentRoute: () => rootRouteImport,
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/plan': typeof PlanRoute
-  '/tasks': typeof TasksRoute
+  "/": typeof IndexRoute;
+  "/calendar": typeof CalendarRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/plan": typeof PlanRoute;
+  "/plans": typeof PlansRoute;
+  "/settings": typeof SettingsRoute;
+  "/tasks": typeof TasksRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/plan': typeof PlanRoute
-  '/tasks': typeof TasksRoute
+  "/": typeof IndexRoute;
+  "/calendar": typeof CalendarRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/plan": typeof PlanRoute;
+  "/plans": typeof PlansRoute;
+  "/settings": typeof SettingsRoute;
+  "/tasks": typeof TasksRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/plan': typeof PlanRoute
-  '/tasks': typeof TasksRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/calendar": typeof CalendarRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/plan": typeof PlanRoute;
+  "/plans": typeof PlansRoute;
+  "/settings": typeof SettingsRoute;
+  "/tasks": typeof TasksRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/plan' | '/tasks'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/plan' | '/tasks'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/plan' | '/tasks'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths:
+    | "/"
+    | "/calendar"
+    | "/dashboard"
+    | "/login"
+    | "/plan"
+    | "/plans"
+    | "/settings"
+    | "/tasks";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/calendar" | "/dashboard" | "/login" | "/plan" | "/plans" | "/settings" | "/tasks";
+  id:
+    | "__root__"
+    | "/"
+    | "/calendar"
+    | "/dashboard"
+    | "/login"
+    | "/plan"
+    | "/plans"
+    | "/settings"
+    | "/tasks";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
-  LoginRoute: typeof LoginRoute
-  PlanRoute: typeof PlanRoute
-  TasksRoute: typeof TasksRoute
+  IndexRoute: typeof IndexRoute;
+  CalendarRoute: typeof CalendarRoute;
+  DashboardRoute: typeof DashboardRoute;
+  LoginRoute: typeof LoginRoute;
+  PlanRoute: typeof PlanRoute;
+  PlansRoute: typeof PlansRoute;
+  SettingsRoute: typeof SettingsRoute;
+  TasksRoute: typeof TasksRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plan': {
-      id: '/plan'
-      path: '/plan'
-      fullPath: '/plan'
-      preLoaderRoute: typeof PlanRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/tasks": {
+      id: "/tasks";
+      path: "/tasks";
+      fullPath: "/tasks";
+      preLoaderRoute: typeof TasksRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/settings": {
+      id: "/settings";
+      path: "/settings";
+      fullPath: "/settings";
+      preLoaderRoute: typeof SettingsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/plans": {
+      id: "/plans";
+      path: "/plans";
+      fullPath: "/plans";
+      preLoaderRoute: typeof PlansRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/plan": {
+      id: "/plan";
+      path: "/plan";
+      fullPath: "/plan";
+      preLoaderRoute: typeof PlanRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/login": {
+      id: "/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/dashboard": {
+      id: "/dashboard";
+      path: "/dashboard";
+      fullPath: "/dashboard";
+      preLoaderRoute: typeof DashboardRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/calendar": {
+      id: "/calendar";
+      path: "/calendar";
+      fullPath: "/calendar";
+      preLoaderRoute: typeof CalendarRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   PlanRoute: PlanRoute,
+  PlansRoute: PlansRoute,
+  SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+import type { createStart } from "@tanstack/react-start";
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }
