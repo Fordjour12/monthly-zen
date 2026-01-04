@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../index";
 import * as db from "@monthly-zen/db";
-import type { CoachTone } from "@monthly-zen/db";
 
 const updatePreferencesSchema = z.object({
   coachName: z.string().min(1).max(50).optional(),
@@ -12,14 +11,14 @@ const updatePreferencesSchema = z.object({
 });
 
 export const preferencesRouter = {
-  get: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  get: protectedProcedure.handler(async ({ context }) => {
+    const userId = context.session.user.id;
     const preferences = await db.getUserPreferences(userId);
     return { success: true, data: preferences };
   }),
 
-  update: protectedProcedure.input(updatePreferencesSchema).handler(async ({ input, ctx }) => {
-    const userId = ctx.session.user.id;
+  update: protectedProcedure.input(updatePreferencesSchema).handler(async ({ input, context }) => {
+    const userId = context.session.user.id;
     const preferences = await db.createOrUpdatePreferences(userId, input);
     return { success: true, data: preferences };
   }),
