@@ -45,8 +45,6 @@ export async function getTasksWithFilters(filters: TaskFilters) {
       completedAt: planTasks.completedAt,
       startTime: planTasks.startTime,
       endTime: planTasks.endTime,
-      createdAt: planTasks.createdAt,
-      updatedAt: planTasks.updatedAt,
       weekNumber: sql<number>`EXTRACT(WEEK FROM ${planTasks.startTime})`.as("weekNumber"),
       dayOfWeek: sql<string>`TO_CHAR(${planTasks.startTime}, 'Day')`.as("dayOfWeek"),
     })

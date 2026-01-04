@@ -1,5 +1,5 @@
 import { db } from "../index";
-import { eq, desc, and, isNull, gte, lte, sql, count } from "drizzle-orm";
+import { eq, desc, and, isNull, gte, lte, sql } from "drizzle-orm";
 import { monthlyResolutions, planTasks } from "../schema";
 
 export interface CreateResolutionInput {
@@ -76,16 +76,16 @@ export async function getYearlyResolutions(userId: string, year: number) {
 export async function calculateResolutionProgress(resolutionId: number): Promise<number> {
   // Count total linked tasks using sql for JSONB contains
   const [totalResult] = await db
-    .select({ total: count() })
+    .select({ total: sql<number>`count(*)` })
     .from(planTasks)
     .where(sql`${planTasks.resolutionIds} @> ${JSON.stringify([resolutionId])}`);
 
-  const total = Number(totalResult?.count) || 0;
+  const total = Number(totalResult?.total) || 0;
 
   if (total === 0) return 0;
 
   const [completedResult] = await db
-    .select({ completed: count() })
+    .select({ completed: sql<number>`count(*)` })
     .from(planTasks)
     .where(
       and(

@@ -351,72 +351,6 @@ export async function getUserHabitLogs(userId: string, startDate: string, endDat
 // STATISTICS HELPERS
 // ============================================
 
-interface HabitStatistics {
-  currentStreak: number;
-  longestStreak: number;
-  completionRate: number;
-  totalCompletions: number;
-  totalDays: number;
-}
-
-/**
- * Calculate statistics for a habit
- */
-async function calculateHabitStats(habitId: number): Promise<HabitStatistics> {
-  const habit = await getHabitById(habitId);
-  if (!habit) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      completionRate: 0,
-      totalCompletions: 0,
-      totalDays: 0,
-    };
-  }
-
-  const targetDays = habit.targetDays || [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-  ];
-
-  // Get all logs for this habit
-  const allLogs = await db
-    .select({ date: habitLogs.date })
-    .from(habitLogs)
-    .where(eq(habitLogs.habitId, habitId))
-    .orderBy(asc(habitLogs.date));
-
-  const completionDates = new Set(allLogs.map((log) => log.date));
-  const totalCompletions = completionDates.size;
-
-  // Calculate streak
-  const { currentStreak, longestStreak } = calculateStreaks(
-    completionDates,
-    targetDays,
-    getTodayDate(),
-  );
-
-  // Calculate completion rate (last 30 days)
-  const thirtyDaysAgo = getDateString(30);
-  const recentLogs = allLogs.filter((log) => log.date >= thirtyDaysAgo);
-  const recentCompletions = new Set(recentLogs.map((log) => log.date)).size;
-  const totalDays = 30; // Last 30 days
-  const completionRate = Math.round((recentCompletions / totalDays) * 100);
-
-  return {
-    currentStreak,
-    longestStreak,
-    completionRate,
-    totalCompletions,
-    totalDays,
-  };
-}
-
 /**
  * Calculate current and longest streaks from completion dates
  */
@@ -509,12 +443,6 @@ export async function getUserHabitStats(userId: string): Promise<HabitStats> {
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
-
-function getDate(daysFromNow: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + daysFromNow);
-  return getDateStringFromDate(date);
-}
 
 function getDateString(daysFromNow: number): string {
   const date = new Date();

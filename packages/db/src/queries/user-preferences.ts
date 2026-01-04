@@ -70,26 +70,37 @@ export async function createOrUpdatePreferences(
     fixedCommitmentsJson: unknown;
   }>,
 ) {
-  const existing = await getUserPreferences(userId);
-
-  if (existing) {
-    return updateUserPreferences(userId, data);
-  }
-
+  // Use upsert to avoid read-then-write pattern
   const [preferences] = await db
     .insert(userGoalsAndPreferences)
     .values({
       userId,
       goalsText: data.goalsText || "",
-      taskComplexity: data.taskComplexity || "Balanced",
+      taskComplexity: (data.taskComplexity as "Simple" | "Balanced" | "Ambitious") || "Balanced",
       focusAreas: data.focusAreas || "personal",
-      weekendPreference: data.weekendPreference || "Mixed",
-      fixedCommitmentsJson: data.fixedCommitmentsJson || { commitments: [] },
+      weekendPreference: (data.weekendPreference as "Work" | "Rest" | "Mixed") || "Mixed",
+      fixedCommitmentsJson: (data.fixedCommitmentsJson as any) || { commitments: [] },
       coachName: data.coachName || "Coach",
-      coachTone: data.coachTone || "encouraging",
+      coachTone: (data.coachTone as CoachTone) || "encouraging",
       workingHoursStart: data.workingHoursStart || "09:00",
       workingHoursEnd: data.workingHoursEnd || "17:00",
       defaultFocusArea: data.defaultFocusArea,
+    })
+    .onConflictDoUpdate({
+      target: userGoalsAndPreferences.userId,
+      set: {
+        coachName: data.coachName || "Coach",
+        coachTone: (data.coachTone as CoachTone) || "encouraging",
+        workingHoursStart: data.workingHoursStart || "09:00",
+        workingHoursEnd: data.workingHoursEnd || "17:00",
+        defaultFocusArea: data.defaultFocusArea,
+        goalsText: data.goalsText || "",
+        taskComplexity: (data.taskComplexity as "Simple" | "Balanced" | "Ambitious") || "Balanced",
+        focusAreas: data.focusAreas || "personal",
+        weekendPreference: (data.weekendPreference as "Work" | "Rest" | "Mixed") || "Mixed",
+        fixedCommitmentsJson: (data.fixedCommitmentsJson as any) || { commitments: [] },
+        updatedAt: new Date(),
+      },
     })
     .returning({
       id: userGoalsAndPreferences.id,
