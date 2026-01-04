@@ -159,33 +159,51 @@ export async function unlinkTaskFromResolution(taskId: number, resolutionId: num
 }
 
 export async function getResolutionsWithTasks(userId: string) {
-  const resolutions = await getResolutionsByUser(userId);
+  // Fetch all resolutions and linked tasks in a single query with aggregation
+  const result = await db
+    .select({
+      resolution: monthlyResolutions,
+      linkedTasks: sql<
+        Array<{
+          id: number;
+          description: string;
+          isCompleted: boolean;
+          startTime: Date | null;
+        }>
+      >`COALESCE(
+        json_agg(
+          json_build_object(
+            'id', ${planTasks.id},
+            'description', ${planTasks.taskDescription},
+            'isCompleted', ${planTasks.isCompleted},
+            'startTime', ${planTasks.startTime}
+          )
+        ) FILTER (WHERE ${planTasks.id} IS NOT NULL),
+        '[]'::json
+      )`,
+    })
+    .from(monthlyResolutions)
+    .leftJoin(
+      planTasks,
+      sql`${planTasks.resolutionIds} @> ${JSON.stringify([monthlyResolutions.id])}`,
+    )
+    .where(eq(monthlyResolutions.userId, userId))
+    .groupBy(monthlyResolutions.id);
 
-  // For each resolution, get linked tasks
-  const resolutionsWithTasks = await Promise.all(
-    resolutions.map(async (resolution) => {
-      const progress = await calculateResolutionProgress(resolution.id);
+  // Calculate progress for each resolution
+  const resolutionsWithTasks = result.map((row) => {
+    const tasks = row.linkedTasks || [];
+    const completedCount = tasks.filter((t) => t.isCompleted).length;
+    const progress = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
-      // Get linked tasks
-      const tasks = await db
-        .select({
-          id: planTasks.id,
-          description: planTasks.taskDescription,
-          isCompleted: planTasks.isCompleted,
-          startTime: planTasks.startTime,
-        })
-        .from(planTasks)
-        .where(sql`${planTasks.resolutionIds} @> ${JSON.stringify([resolution.id])}`);
-
-      return {
-        ...resolution,
-        progressPercent: progress,
-        linkedTaskCount: tasks.length,
-        completedTaskCount: tasks.filter((t) => t.isCompleted).length,
-        tasks,
-      };
-    }),
-  );
+    return {
+      ...row.resolution,
+      progressPercent: progress,
+      linkedTaskCount: tasks.length,
+      completedTaskCount: completedCount,
+      tasks,
+    };
+  });
 
   return resolutionsWithTasks;
 }

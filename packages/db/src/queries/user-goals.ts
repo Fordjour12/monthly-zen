@@ -74,13 +74,32 @@ export async function upsertGoalPreference(
   userId: string,
   input: Omit<CreateGoalPreferenceInput, "userId">,
 ) {
-  const existing = await getLatestGoalPreference(userId);
+  // Use upsert to avoid read-then-write pattern
+  const [preference] = await db
+    .insert(userGoalsAndPreferences)
+    .values({
+      userId,
+      goalsText: input.goalsText,
+      taskComplexity: input.taskComplexity,
+      focusAreas: input.focusAreas,
+      weekendPreference: input.weekendPreference,
+      fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+      inputSavedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: userGoalsAndPreferences.userId,
+      set: {
+        goalsText: input.goalsText,
+        taskComplexity: input.taskComplexity,
+        focusAreas: input.focusAreas,
+        weekendPreference: input.weekendPreference,
+        fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+        inputSavedAt: new Date(),
+      },
+    })
+    .returning();
 
-  if (existing) {
-    return updateGoalPreference(userId, input);
-  }
-
-  return createGoalPreference({ userId, ...input });
+  return preference;
 }
 
 export async function updateUserProfile(userId: string, input: { name?: string; image?: string }) {

@@ -270,27 +270,20 @@ export async function completeGoal(goalId: number) {
 // ============================================
 
 export async function getInsightsStats(userId: string) {
-  const totalResult = await db
-    .select({ count: sql<number>`count(*)` })
+  const result = await db
+    .select({
+      total: sql<number>`count(*)`,
+      archived: sql<number>`count(*) FILTER (WHERE ${coachingInsights.isArchived} = true)`,
+      actioned: sql<number>`count(*) FILTER (WHERE ${coachingInsights.actionTaken} IS NOT NULL)`,
+    })
     .from(coachingInsights)
     .where(eq(coachingInsights.userId, userId));
 
-  const archivedResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(coachingInsights)
-    .where(and(eq(coachingInsights.userId, userId), eq(coachingInsights.isArchived, true)));
-
-  const actionedResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(coachingInsights)
-    .where(
-      and(eq(coachingInsights.userId, userId), sql`${coachingInsights.actionTaken} IS NOT NULL`),
-    );
-
+  const stats = result[0];
   return {
-    totalInsights: totalResult[0]?.count || 0,
-    archivedInsights: archivedResult[0]?.count || 0,
-    actionedInsights: actionedResult[0]?.count || 0,
+    totalInsights: Number(stats?.total) || 0,
+    archivedInsights: Number(stats?.archived) || 0,
+    actionedInsights: Number(stats?.actioned) || 0,
   };
 }
 

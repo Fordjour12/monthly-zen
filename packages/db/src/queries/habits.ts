@@ -104,35 +104,78 @@ export async function getHabitsWithStatus(userId: string, targetDate?: string) {
     return [];
   }
 
-  // Get today's logs for all habits
-  const todayLogs = await db.select().from(habitLogs).where(eq(habitLogs.date, today));
+  // Fetch all logs for all habits in a single query (eliminate N+1)
+  const habitIds = userHabits.map((h) => h.id);
+  const thirtyDaysAgo = getDateString(30);
 
+  const allLogs = await db
+    .select({
+      habitId: habitLogs.habitId,
+      date: habitLogs.date,
+    })
+    .from(habitLogs)
+    .where(and(inArray(habitLogs.habitId, habitIds), gte(habitLogs.date, thirtyDaysAgo)))
+    .orderBy(asc(habitLogs.date));
+
+  // Get today's logs for completion status
+  const todayLogs = allLogs.filter((log) => log.date === today);
   const completedHabitIds = new Set(todayLogs.map((log) => log.habitId));
 
+  // Group logs by habit for streak calculation
+  const logsByHabit = new Map<number, string[]>();
+  for (const log of allLogs) {
+    const existing = logsByHabit.get(log.habitId) || [];
+    existing.push(log.date);
+    logsByHabit.set(log.habitId, existing);
+  }
+
   // Calculate statistics for each habit
-  const habitsWithStatus: HabitWithStatus[] = await Promise.all(
-    userHabits.map(async (habit) => {
-      const targetDays = habit.targetDays || [
-        "monday",
-        "tuesday",
-        "wednesday",
-        "thursday",
-        "friday",
-        "saturday",
-        "sunday",
-      ];
-      const stats = await calculateHabitStats(habit.id);
-      return {
-        ...habit,
-        targetDays,
-        isCompletedToday: completedHabitIds.has(habit.id),
-        currentStreak: stats.currentStreak,
-        completionRate: stats.completionRate,
-      };
-    }),
-  );
+  const habitsWithStatus: HabitWithStatus[] = userHabits.map((habit) => {
+    const targetDays = habit.targetDays || [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+
+    const habitLogs = logsByHabit.get(habit.id) || [];
+    const stats = calculateStatsFromLogs(habitLogs, targetDays, today);
+
+    return {
+      ...habit,
+      targetDays,
+      isCompletedToday: completedHabitIds.has(habit.id),
+      currentStreak: stats.currentStreak,
+      completionRate: stats.completionRate,
+    };
+  });
 
   return habitsWithStatus;
+}
+
+/**
+ * Calculate stats from a list of log dates (single source of truth for streak calculation)
+ */
+function calculateStatsFromLogs(
+  logDates: string[],
+  targetDays: WeekDay[],
+  today: string,
+): { currentStreak: number; longestStreak: number; completionRate: number } {
+  const completionDates = new Set(logDates);
+  const totalCompletions = completionDates.size;
+
+  // Calculate streak
+  const { currentStreak, longestStreak } = calculateStreaks(completionDates, targetDays, today);
+
+  // Calculate completion rate (last 30 days)
+  const recentCompletions = logDates.filter((d) => d >= getDateString(30)).length;
+  const totalDays = 30;
+  const completionRate = Math.round((recentCompletions / totalDays) * 100);
+
+  return { currentStreak, longestStreak, completionRate };
 }
 
 /**
@@ -352,7 +395,11 @@ async function calculateHabitStats(habitId: number): Promise<HabitStatistics> {
   const totalCompletions = completionDates.size;
 
   // Calculate streak
-  const { currentStreak, longestStreak } = calculateStreaks(completionDates, targetDays);
+  const { currentStreak, longestStreak } = calculateStreaks(
+    completionDates,
+    targetDays,
+    getTodayDate(),
+  );
 
   // Calculate completion rate (last 30 days)
   const thirtyDaysAgo = getDateString(30);
@@ -376,6 +423,7 @@ async function calculateHabitStats(habitId: number): Promise<HabitStatistics> {
 function calculateStreaks(
   completionDates: Set<string>,
   targetDays: WeekDay[],
+  today: string,
 ): { currentStreak: number; longestStreak: number } {
   if (completionDates.size === 0) {
     return { currentStreak: 0, longestStreak: 0 };
@@ -421,8 +469,10 @@ function calculateStreaks(
     }
 
     // Check if this is today or yesterday (for current streak)
-    const yesterday = getDate(-1);
-    if (dateStr === getTodayDate() || dateStr === yesterday) {
+    const yesterdayDate = new Date(today);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = getDateStringFromDate(yesterdayDate);
+    if (dateStr === today || dateStr === yesterday) {
       currentStreak = tempStreak;
     }
 

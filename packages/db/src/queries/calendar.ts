@@ -61,24 +61,17 @@ export async function getTasksByDay(userId: string, date: Date) {
 
 export async function getUniqueFocusAreas(userId: string) {
   const result = await db
-    .selectDistinct({
+    .select({
       focusArea: planTasks.focusArea,
+      count: sql<number>`count(*)::int`,
     })
     .from(planTasks)
     .innerJoin(monthlyPlans, eq(planTasks.planId, monthlyPlans.id))
-    .where(eq(monthlyPlans.userId, userId));
+    .where(eq(monthlyPlans.userId, userId))
+    .groupBy(planTasks.focusArea);
 
-  // Get counts per focus area
-  const focusAreas = await Promise.all(
-    result.map(async ({ focusArea }) => {
-      const countResult = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(planTasks)
-        .innerJoin(monthlyPlans, eq(planTasks.planId, monthlyPlans.id))
-        .where(and(eq(monthlyPlans.userId, userId), eq(planTasks.focusArea, focusArea)));
-      const count = countResult[0]?.count ?? 0;
-      return { name: focusArea, count };
-    }),
-  );
-  return focusAreas;
+  return result.map((row) => ({
+    name: row.focusArea,
+    count: row.count,
+  }));
 }

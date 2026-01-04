@@ -32,28 +32,7 @@ export interface TaskFilters {
  * Get tasks with advanced filtering capabilities
  */
 export async function getTasksWithFilters(filters: TaskFilters) {
-  // First, get plan IDs for this user
-  const userPlans = await db
-    .select({ id: monthlyPlans.id, monthYear: monthlyPlans.monthYear })
-    .from(monthlyPlans)
-    .where(eq(monthlyPlans.userId, filters.userId));
-
-  if (userPlans.length === 0) {
-    return [];
-  }
-
-  // Filter plans by month if specified
-  let planIds = userPlans.map((p) => p.id);
-  if (filters.monthYear) {
-    const filteredPlans = userPlans.filter((p) => {
-      const planMonth = new Date(p.monthYear).toISOString().slice(0, 7);
-      return planMonth === filters.monthYear;
-    });
-    planIds = filteredPlans.map((p) => p.id);
-    if (planIds.length === 0) return [];
-  }
-
-  // Build the base query with computed week/day info
+  // Build the base query with all filters pushed to database
   let query = db
     .select({
       id: planTasks.id,
@@ -72,62 +51,72 @@ export async function getTasksWithFilters(filters: TaskFilters) {
       dayOfWeek: sql<string>`TO_CHAR(${planTasks.startTime}, 'Day')`.as("dayOfWeek"),
     })
     .from(planTasks)
-    .where(inArray(planTasks.planId, planIds))
+    .innerJoin(monthlyPlans, eq(planTasks.planId, monthlyPlans.id))
+    .where(eq(monthlyPlans.userId, filters.userId))
     .$dynamic();
 
-  // Execute and filter in memory for complex conditions
-  let tasks = await query;
+  // Apply monthYear filter if specified
+  if (filters.monthYear) {
+    query = query.where(sql`TO_CHAR(${monthlyPlans.monthYear}, 'YYYY-MM') = ${filters.monthYear}`);
+  }
 
   // Apply status filter
   if (filters.status === "completed") {
-    tasks = tasks.filter((t) => t.isCompleted);
+    query = query.where(eq(planTasks.isCompleted, true));
   } else if (filters.status === "pending") {
-    tasks = tasks.filter((t) => !t.isCompleted);
+    query = query.where(eq(planTasks.isCompleted, false));
   }
 
-  // Apply focus area filter
+  // Apply focus area filter (case-insensitive)
   if (filters.focusArea) {
-    tasks = tasks.filter((t) => t.focusArea.toLowerCase() === filters.focusArea!.toLowerCase());
+    query = query.where(sql`LOWER(${planTasks.focusArea}) = ${filters.focusArea.toLowerCase()}`);
   }
 
   // Apply difficulty filter
   if (filters.difficultyLevel) {
-    tasks = tasks.filter(
-      (t) => t.difficultyLevel?.toLowerCase() === filters.difficultyLevel!.toLowerCase(),
-    );
+    query = query.where(eq(planTasks.difficultyLevel, filters.difficultyLevel));
   }
 
-  // Apply search filter
+  // Apply search filter using ILIKE for pattern matching
   if (filters.searchQuery) {
-    const searchLower = filters.searchQuery.toLowerCase();
-    tasks = tasks.filter(
-      (t) =>
-        t.taskDescription.toLowerCase().includes(searchLower) ||
-        t.focusArea.toLowerCase().includes(searchLower) ||
-        (t.schedulingReason && t.schedulingReason.toLowerCase().includes(searchLower)),
+    const searchPattern = `%${filters.searchQuery.toLowerCase()}%`;
+    query = query.where(
+      sql`(
+        LOWER(${planTasks.taskDescription}) LIKE ${searchPattern} OR
+        LOWER(${planTasks.focusArea}) LIKE ${searchPattern} OR
+        LOWER(COALESCE(${planTasks.schedulingReason}, '')) LIKE ${searchPattern}
+      )`,
     );
   }
 
-  // Apply sorting
-  const sortOrder = filters.sortOrder === "desc" ? -1 : 1;
+  // Apply sorting in database
+  if (filters.sortBy === "difficulty") {
+    query =
+      filters.sortOrder === "desc"
+        ? query.orderBy(sql`CASE ${planTasks.difficultyLevel}
+        WHEN 'advanced' THEN 3
+        WHEN 'moderate' THEN 2
+        WHEN 'simple' THEN 1
+        ELSE 0 END DESC`)
+        : query.orderBy(sql`CASE ${planTasks.difficultyLevel}
+        WHEN 'advanced' THEN 3
+        WHEN 'moderate' THEN 2
+        WHEN 'simple' THEN 1
+        ELSE 0 END ASC`);
+  } else if (filters.sortBy === "focusArea") {
+    query =
+      filters.sortOrder === "desc"
+        ? query.orderBy(sql`${planTasks.focusArea} DESC`)
+        : query.orderBy(sql`${planTasks.focusArea} ASC`);
+  } else {
+    // Default: sort by date
+    query =
+      filters.sortOrder === "desc"
+        ? query.orderBy(sql`${planTasks.startTime} DESC`)
+        : query.orderBy(sql`${planTasks.startTime} ASC`);
+  }
 
-  tasks.sort((a, b) => {
-    switch (filters.sortBy) {
-      case "difficulty": {
-        const diffOrder = { simple: 1, moderate: 2, advanced: 3 };
-        const aVal = diffOrder[(a.difficultyLevel as keyof typeof diffOrder) || "simple"] || 0;
-        const bVal = diffOrder[(b.difficultyLevel as keyof typeof diffOrder) || "simple"] || 0;
-        return (aVal - bVal) * sortOrder;
-      }
-      case "focusArea":
-        return a.focusArea.localeCompare(b.focusArea) * sortOrder;
-      case "date":
-      default:
-        return (new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) * sortOrder;
-    }
-  });
-
-  return tasks;
+  return await query;
 }
 
 /**
