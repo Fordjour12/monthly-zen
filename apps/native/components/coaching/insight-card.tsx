@@ -1,6 +1,19 @@
-import { View, Text, Pressable } from "react-native";
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Card } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  AiMagicIcon,
+  CheckmarkCircle01Icon,
+  Cancel01Icon,
+  Clock01Icon,
+  SparklesIcon,
+  AlertCircleIcon,
+  Analytics01Icon,
+  Compass01Icon,
+  WorkErrorIcon,
+} from "@hugeicons/core-free-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 interface InsightCardProps {
   insight: {
@@ -15,95 +28,117 @@ interface InsightCardProps {
   };
   onDismiss?: (action?: string) => void;
   onApply?: () => void;
+  index: number;
 }
 
-export function InsightCard({ insight, onDismiss, onApply }: InsightCardProps) {
-  const getCategoryColor = (category: string | null) => {
-    switch (category) {
+export function InsightCard({ insight, onDismiss, onApply, index }: InsightCardProps) {
+  const getCategoryInfo = (category: string | null) => {
+    switch (category?.toLowerCase()) {
       case "burnout":
-        return "#ef4444"; // red
+        return { color: "#ef4444", icon: WorkErrorIcon, label: "Burnout Risk" };
       case "productivity":
-        return "#3b82f6"; // blue
+        return { color: "#3b82f6", icon: Analytics01Icon, label: "Productivity" };
       case "scheduling":
-        return "#8b5cf6"; // purple
+        return { color: "#8b5cf6", icon: Compass01Icon, label: "Scheduling" };
       case "alignment":
-        return "#22c55e"; // green
+        return { color: "#22c55e", icon: SparklesIcon, label: "Alignment" };
       default:
-        return "#6b7280"; // gray
+        return { color: "#6b7280", icon: AiMagicIcon, label: "General" };
     }
   };
 
-  const getPriorityIcon = (priority: string | null) => {
-    switch (priority) {
-      case "high":
-        return "alert-circle";
-      case "medium":
-        return "warning";
-      default:
-        return "information-circle";
-    }
-  };
-
-  const categoryColor = getCategoryColor(insight.category);
+  const info = getCategoryInfo(insight.category);
 
   return (
-    <Card className="mx-4 mb-4 p-4 rounded-none">
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center gap-2">
-          <View
-            className="w-8 h-8 rounded-full items-center justify-center"
-            style={{ backgroundColor: `${categoryColor}20` }}
-          >
-            <Ionicons
-              name={getPriorityIcon(insight.priority) as any}
-              size={16}
-              color={categoryColor}
-            />
+    <Animated.View entering={FadeInDown.delay(index * 100).duration(600)}>
+      <Card className="mb-6 border-none bg-surface/50 rounded-[32px] overflow-hidden">
+        <View className="p-6">
+          {/* Header */}
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center gap-x-3">
+              <View
+                className="w-10 h-10 rounded-xl items-center justify-center"
+                style={{ backgroundColor: `${info.color}15` }}
+              >
+                <HugeiconsIcon icon={info.icon} size={20} color={info.color} />
+              </View>
+              <View>
+                <Text className="text-lg font-sans-bold text-foreground">{insight.title}</Text>
+                <View className="flex-row items-center gap-x-1.5">
+                  <View
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: info.color }}
+                  />
+                  <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                    {info.label} • {insight.confidence}% MATCH
+                  </Text>
+                </View>
+              </View>
+            </View>
+            {insight.priority === "high" && (
+              <View className="bg-danger/10 px-2 py-0.5 rounded-lg flex-row items-center gap-x-1">
+                <HugeiconsIcon icon={AlertCircleIcon} size={10} color="var(--danger)" />
+                <Text className="text-[9px] font-sans-bold text-danger uppercase">Priority</Text>
+              </View>
+            )}
           </View>
-          <View>
-            <Text className="font-semibold text-foreground">{insight.title}</Text>
-            <Text className="text-xs text-muted-foreground">
-              {insight.category} • {insight.confidence} confidence
-            </Text>
+
+          <Text className="text-base font-sans text-muted-foreground leading-6 mb-5">
+            {insight.description}
+          </Text>
+
+          {insight.suggestedAction && (
+            <View className="bg-accent/5 border border-accent/10 rounded-2xl p-4 mb-6">
+              <View className="flex-row items-center gap-x-2 mb-2">
+                <HugeiconsIcon icon={AiMagicIcon} size={14} color="var(--accent)" />
+                <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-widest">
+                  AI Strategy
+                </Text>
+              </View>
+              <Text className="text-sm font-sans-semibold text-foreground leading-5">
+                {insight.suggestedAction}
+              </Text>
+            </View>
+          )}
+
+          {insight.reasoning && (
+            <View className="flex-row items-center gap-x-2 mb-6 opacity-60">
+              <HugeiconsIcon icon={Compass01Icon} size={12} color="var(--muted-foreground)" />
+              <Text className="text-[11px] font-sans text-muted-foreground italic">
+                {insight.reasoning}
+              </Text>
+            </View>
+          )}
+
+          {/* Actions */}
+          <View className="flex-row gap-x-3">
+            <TouchableOpacity
+              onPress={onApply}
+              activeOpacity={0.8}
+              className="flex-1 h-12 rounded-2xl bg-foreground items-center justify-center flex-row gap-x-2 shadow-lg shadow-black/10"
+            >
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="var(--background)" />
+              <Text className="text-background font-sans-bold">Apply</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => onDismiss?.("dismissed")}
+              activeOpacity={0.7}
+              className="w-12 h-12 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+            >
+              <HugeiconsIcon icon={Cancel01Icon} size={18} color="var(--muted-foreground)" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => onDismiss?.("snoozed")}
+              activeOpacity={0.7}
+              className="w-12 h-12 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+            >
+              <HugeiconsIcon icon={Clock01Icon} size={18} color="var(--muted-foreground)" />
+            </TouchableOpacity>
           </View>
         </View>
-      </View>
-
-      <Text className="text-sm text-foreground mb-2">{insight.description}</Text>
-
-      {insight.suggestedAction && (
-        <View className="bg-primary/10 rounded-lg p-3 mb-3">
-          <Text className="text-xs font-medium text-primary mb-1">Suggested Action</Text>
-          <Text className="text-sm text-foreground">{insight.suggestedAction}</Text>
-        </View>
-      )}
-
-      {insight.reasoning && (
-        <Text className="text-xs text-muted-foreground mb-3">Based on: {insight.reasoning}</Text>
-      )}
-
-      <View className="flex-row gap-2 mt-2">
-        {onApply && (
-          <Pressable
-            className="flex-1 py-2.5 px-4 rounded-lg bg-primary items-center justify-center"
-            onPress={onApply}
-          >
-            <Text className="text-white font-medium">Apply</Text>
-          </Pressable>
-        )}
-        <Pressable
-          className="py-2.5 px-4 rounded-lg border border-divider items-center justify-center"
-          onPress={() => onDismiss?.("dismissed")}
-        >
-          <Text className="text-foreground font-medium">Dismiss</Text>
-        </Pressable>
-        <Pressable
-          className="py-2.5 px-4 rounded-lg border border-divider items-center justify-center"
-          onPress={() => onDismiss?.("snoozed")}
-        >
-          <Text className="text-muted-foreground font-medium">Later</Text>
-        </Pressable>
-      </View>
-    </Card>
+      </Card>
+    </Animated.View>
   );
 }
