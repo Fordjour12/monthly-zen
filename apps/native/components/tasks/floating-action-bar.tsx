@@ -1,8 +1,20 @@
 import React from "react";
-import { View, StyleSheet, Platform } from "react-native";
-import { Button } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import {
+  View,
+  StyleSheet,
+  Platform,
+  TouchableOpacity,
+  ActivityIndicator,
+  Text,
+} from "react-native";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  CheckmarkCircle01Icon,
+  Delete02Icon,
+  CleanIcon,
+  SparklesIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 
 interface FloatingActionBarProps {
@@ -18,65 +30,40 @@ export function FloatingActionBar({
   onDiscard,
   isSaving,
 }: FloatingActionBarProps) {
-  const { foreground } = useSemanticColors();
-
   if (!isVisible) return null;
 
   return (
     <Animated.View
-      entering={FadeInUp.springify()}
+      entering={FadeInUp.springify().damping(15)}
       exiting={FadeOutDown.springify()}
-      className="absolute bottom-6 left-4 right-4 flex-row gap-3 shadow-xl z-50"
-      style={styles.container}
+      className="absolute bottom-10 left-6 right-6 flex-row gap-x-4 z-50"
     >
-      <View className="flex-1">
-        <Button
-          onPress={onDiscard}
-          variant="ghost"
-          className="w-full flex-row items-center justify-center h-12 rounded-2xl bg-danger backdrop-blur-md"
-        >
-          <Ionicons name="trash-outline" size={20} color="#ef4444" style={{ marginRight: 8 }} />
-          <Button.Label className="text-destructive font-semibold">Discard</Button.Label>
-        </Button>
-      </View>
+      <TouchableOpacity
+        onPress={onDiscard}
+        activeOpacity={0.9}
+        className="flex-1 h-14 rounded-[22px] bg-danger/10 border border-danger/20 backdrop-blur-xl flex-row items-center justify-center gap-x-2"
+      >
+        <HugeiconsIcon icon={Cancel01Icon} size={20} color="var(--danger)" />
+        <Text className="text-danger font-sans-bold uppercase tracking-widest text-[10px]">
+          Discard
+        </Text>
+      </TouchableOpacity>
 
-      <View className="flex-1">
-        <Button
-          onPress={onSave}
-          isDisabled={isSaving}
-          className="w-full flex-row items-center justify-center h-12 rounded-2xl shadow-lg bg-accent"
-        >
-          {isSaving ? (
-            <Ionicons name="sync" size={20} color={foreground} className="animate-spin" />
-          ) : (
-            <>
-              <Ionicons
-                name="save-outline"
-                size={20}
-                color={foreground}
-                style={{ marginRight: 8 }}
-              />
-              <Button.Label className="text-foreground font-semibold">Save Plan</Button.Label>
-            </>
-          )}
-        </Button>
-      </View>
+      <TouchableOpacity
+        onPress={onSave}
+        disabled={isSaving}
+        activeOpacity={0.9}
+        className="flex-[2] h-14 rounded-[22px] bg-foreground shadow-xl shadow-black/20 flex-row items-center justify-center gap-x-3"
+      >
+        {isSaving ? (
+          <ActivityIndicator color="var(--background)" size="small" />
+        ) : (
+          <>
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={22} color="var(--background)" />
+            <Text className="text-background font-sans-bold text-base">Confirm Blueprint</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-});

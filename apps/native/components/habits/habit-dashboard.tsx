@@ -1,18 +1,19 @@
-/**
- * Habit Dashboard Component (Native)
- *
- * Main dashboard for habit tracking with FlashList for performance
- */
-
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View, Text, RefreshControl, ActivityIndicator, TouchableOpacity } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  PlusSignIcon,
+  Analytics01Icon,
+  SparklesIcon,
+  Compass01Icon,
+} from "@hugeicons/core-free-icons";
 import { useHabits, type Habit } from "@/hooks/useHabits";
 import { HabitStats } from "./habit-stats";
 import { HabitCard } from "./habit-card";
 import { HabitEmptyState } from "./habit-empty-state";
+import { Container } from "@/components/ui/container";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 interface HabitDashboardProps {
   onCreateHabit?: () => void;
@@ -23,9 +24,6 @@ export function HabitDashboard({ onCreateHabit, onEditHabit }: HabitDashboardPro
   const { habits, stats, isLoading, isFetching, isToggling, error, toggleHabit, refetch } =
     useHabits();
 
-  const { primary } = useSemanticColors();
-  const [, setEditingHabit] = useState<Habit | null>(null);
-
   const handleToggle = useCallback(
     async (habitId: number) => {
       await toggleHabit(habitId);
@@ -33,44 +31,30 @@ export function HabitDashboard({ onCreateHabit, onEditHabit }: HabitDashboardPro
     [toggleHabit],
   );
 
-  const handleEdit = useCallback(
-    (habit: Habit) => {
-      if (onEditHabit) {
-        onEditHabit(habit);
-      } else {
-        setEditingHabit(habit);
-      }
-    },
-    [onEditHabit],
-  );
-
-  const handleDelete = useCallback(async (habitId: number) => {
-    // TODO: Add confirmation dialog
-    // For now, just log it
-    console.log("Delete habit:", habitId);
-  }, []);
-
-  // Header component (stats)
   const headerComponent = useMemo(
     () => (
-      <View className="pb-2">
-        {/* Header Title */}
-        <View className="px-4 pt-7 flex-row items-center gap-3">
-          <View
-            className="w-10 h-10 rounded-lg items-center justify-center"
-            style={{ backgroundColor: `${primary}15` }}
+      <View className="pt-10">
+        {/* Header Section */}
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          className="px-6 flex-row items-center justify-between mb-2"
+        >
+          <View>
+            <Text className="text-sm font-sans-bold text-muted-foreground uppercase tracking-[3px] mb-1">
+              Rituals
+            </Text>
+            <Text className="text-3xl font-sans-bold text-foreground">Habit Tracker</Text>
+          </View>
+          <TouchableOpacity
+            onPress={onCreateHabit}
+            className="w-12 h-12 rounded-2xl bg-accent items-center justify-center shadow-lg shadow-accent/20"
           >
-            <Ionicons name="leaf" size={22} color={primary} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-2xl font-bold text-foreground">Habits</Text>
-            <Text className="text-sm text-muted">Build consistency one day at a time</Text>
-          </View>
-          {isFetching && !isLoading && <ActivityIndicator size="small" color={primary} />}
-        </View>
+            <HugeiconsIcon icon={PlusSignIcon} size={24} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
 
-        {/* Stats Card */}
-        <View className="px-4 mt-4">
+        {/* Stats Summary */}
+        <View className="px-6">
           <HabitStats
             totalHabits={stats.totalHabits}
             completedToday={stats.completedToday}
@@ -80,85 +64,64 @@ export function HabitDashboard({ onCreateHabit, onEditHabit }: HabitDashboardPro
           />
         </View>
 
-        {/* Section Title */}
-        {!isLoading && habits.length > 0 && (
-          <View className="px-4 py-4 flex-row items-center justify-between">
-            <Text className="text-xs text-muted uppercase tracking-widest font-bold">
-              Your Habits
-            </Text>
-            <Text className="text-xs text-muted">
-              {habits.length} habit{habits.length !== 1 ? "s" : ""}
-            </Text>
+        {error && (
+          <View className="mx-6 mt-6 p-4 bg-danger/10 border border-danger/20 rounded-2xl">
+            <Text className="text-sm text-danger font-sans-semibold">{error}</Text>
           </View>
         )}
 
-        {/* Error Display */}
-        {error && (
-          <View className="mx-4 my-2 p-3 bg-danger/10 border border-danger rounded-lg">
-            <Text className="text-sm text-danger font-medium">{error}</Text>
+        {/* Section Label */}
+        {!isLoading && habits.length > 0 && (
+          <View className="px-6 py-6 flex-row items-center justify-between">
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+              Active Rituals
+            </Text>
+            <View className="bg-surface border border-border/50 px-2 py-0.5 rounded-lg">
+              <Text className="text-[10px] font-sans-bold text-foreground uppercase">
+                {habits.length} {habits.length === 1 ? "Habit" : "Habits"}
+              </Text>
+            </View>
           </View>
         )}
       </View>
     ),
-    [primary, isFetching, isLoading, stats, habits.length, error],
+    [stats, isLoading, habits.length, error, onCreateHabit],
   );
 
-  // Empty component
-  const emptyComponent = useMemo(
-    () => <HabitEmptyState onCreateHabit={onCreateHabit || (() => {})} />,
-    [onCreateHabit],
-  );
-
-  // Footer spacer
-  const footerComponent = useMemo(() => <View className="h-20" />, []);
-
-  // Render item
   const renderItem = useCallback(
-    ({ item }: { item: Habit }) => (
-      <View className="px-4">
+    ({ item, index }: { item: Habit; index: number }) => (
+      <View className="px-6">
         <HabitCard
           habit={item}
+          index={index}
           onToggle={handleToggle}
           isUpdating={isToggling}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={onEditHabit}
         />
       </View>
     ),
-    [handleToggle, isToggling, handleEdit, handleDelete],
+    [handleToggle, isToggling, onEditHabit],
   );
 
-  const keyExtractor = useCallback((item: Habit) => item.id.toString(), []);
-
   return (
-    <View className="flex-1 bg-background">
+    <Container className="bg-background">
       <FlashList
         data={habits}
         renderItem={renderItem}
-        keyExtractor={keyExtractor}
+        keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={headerComponent}
-        ListEmptyComponent={emptyComponent}
-        ListFooterComponent={footerComponent}
+        ListEmptyComponent={<HabitEmptyState onCreateHabit={onCreateHabit || (() => {})} />}
+        ListFooterComponent={<View className="h-32" />}
+        showsVerticalScrollIndicator={false}
+        estimatedItemSize={100}
         refreshControl={
           <RefreshControl
             refreshing={isFetching && !isLoading}
             onRefresh={refetch}
-            tintColor={primary}
+            tintColor="var(--accent)"
           />
         }
-        estimatedItemSize={80}
-        contentContainerStyle={{ paddingBottom: 100 }}
       />
-
-      {/* Add Habit FAB */}
-      {onCreateHabit && (
-        <TouchableOpacity
-          onPress={onCreateHabit}
-          className="absolute bottom-6 right-6 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
-        >
-          <Ionicons name="add" size={28} color="white" />
-        </TouchableOpacity>
-      )}
-    </View>
+    </Container>
   );
 }

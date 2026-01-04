@@ -1,13 +1,13 @@
-/**
- * Task Stats Component (Native)
- *
- * Displays summary statistics for tasks in a horizontal card layout.
- */
-
 import React from "react";
 import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  ActivityIcon,
+  CheckmarkCircle01Icon,
+  Clock01Icon,
+  Analytics01Icon,
+} from "@hugeicons/core-free-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 interface TaskStatsProps {
   total: number;
@@ -24,55 +24,46 @@ export function TaskStats({
   completionRate,
   isLoading,
 }: TaskStatsProps) {
-  const { primary, muted } = useSemanticColors();
-
-  const stats = [
-    {
-      label: "Total",
-      value: total,
-      icon: "list" as const,
-      color: "text-foreground",
-    },
-    {
-      label: "Done",
-      value: completed,
-      icon: "checkmark-circle" as const,
-      color: "text-accent",
-    },
-    {
-      label: "Left",
-      value: pending,
-      icon: "ellipse-outline" as const,
-      color: "text-muted-foreground",
-    },
-    {
-      label: "Rate",
-      value: `${completionRate}%`,
-      icon: "trending-up" as const,
-      color:
-        completionRate >= 70
-          ? "text-green-500"
-          : completionRate >= 40
-            ? "text-yellow-500"
-            : "text-muted-foreground",
-    },
-  ];
-
   return (
-    <View className="flex-row gap-2 px-4 py-2">
-      {stats.map((stat) => (
-        <View key={stat.label} className="flex-1 bg-surface p-3 rounded-lg items-center">
-          <Ionicons
-            name={stat.icon}
-            size={18}
-            color={stat.icon === "checkmark-circle" ? primary : muted}
-          />
-          <Text className={`text-lg font-bold mt-1 ${stat.color} ${isLoading ? "opacity-50" : ""}`}>
-            {isLoading ? "—" : stat.value}
-          </Text>
-          <Text className="text-xs text-muted-foreground">{stat.label}</Text>
-        </View>
-      ))}
+    <Animated.View
+      entering={FadeInDown.delay(100).duration(600)}
+      className="flex-row px-4 gap-x-3 my-6"
+    >
+      <StatCard
+        icon={Analytics01Icon}
+        label="Completion"
+        value={`${Math.round(completionRate)}%`}
+        color="text-accent"
+        bg="bg-accent/10"
+      />
+      <StatCard
+        icon={CheckmarkCircle01Icon}
+        label="Success"
+        value={completed}
+        color="text-success"
+        bg="bg-success/10"
+      />
+      <StatCard
+        icon={Clock01Icon}
+        label="Open"
+        value={pending}
+        color="text-blue-500"
+        bg="bg-blue-500/10"
+      />
+    </Animated.View>
+  );
+}
+
+function StatCard({ icon, label, value, color, bg }: any) {
+  return (
+    <View className="flex-1 bg-surface border border-border/50 rounded-[24px] p-4 shadow-sm items-center">
+      <View className={`w-8 h-8 rounded-xl ${bg} items-center justify-center mb-3`}>
+        <HugeiconsIcon icon={icon} size={16} color="currentColor" className={color} />
+      </View>
+      <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-1">
+        {label}
+      </Text>
+      <Text className="text-lg font-sans-bold text-foreground">{value}</Text>
     </View>
   );
 }

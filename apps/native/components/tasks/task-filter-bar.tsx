@@ -1,14 +1,9 @@
-/**
- * Task Filter Bar Component (Native)
- *
- * Horizontal scrollable filter controls for the task dashboard.
- */
-
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Search01Icon, Cancel01Icon, Sorting01Icon, FilterIcon } from "@hugeicons/core-free-icons";
 import type { TaskFilters, TaskStatus, DifficultyLevel } from "@/hooks/useTasks";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 interface TaskFilterBarProps {
   filters: TaskFilters;
@@ -21,123 +16,73 @@ interface TaskFilterBarProps {
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "completed", label: "Done" },
+  { value: "pending", label: "Open" },
+  { value: "completed", label: "Fixed" },
 ];
 
-const difficultyOptions: { value: DifficultyLevel | "all"; label: string }[] = [
-  { value: "all", label: "All Levels" },
-  { value: "simple", label: "Simple" },
-  { value: "moderate", label: "Moderate" },
-  { value: "advanced", label: "Advanced" },
-];
-
-export function TaskFilterBar({
-  filters,
-  onUpdateFilter,
-  onToggleSort,
-  onAddTask,
-}: TaskFilterBarProps) {
-  const { muted, foreground, primary } = useSemanticColors();
-
+export function TaskFilterBar({ filters, onUpdateFilter, onToggleSort }: TaskFilterBarProps) {
   return (
-    <View className="bg-card border-b border-border">
-      {/* Search Bar */}
-      <View className="px-4 py-2">
-        <View className="flex-row items-center bg-surface rounded-lg px-3 py-2">
-          <Ionicons name="search" size={16} color={muted} />
-          <TextInput
-            placeholder="Search tasks..."
-            placeholderTextColor={muted}
-            value={filters.search || ""}
-            onChangeText={(text) => onUpdateFilter("search", text || undefined)}
-            className="flex-1 ml-2 text-foreground text-sm"
-            style={{ color: foreground }}
-          />
-          {filters.search && (
-            <TouchableOpacity onPress={() => onUpdateFilter("search", undefined)}>
-              <Ionicons name="close-circle" size={18} color={muted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Status Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 8 }}
-      >
-        {statusOptions.map((option) => {
-          const isActive = filters.status === option.value;
-          return (
-            <TouchableOpacity
-              key={option.value}
-              onPress={() => onUpdateFilter("status", option.value)}
-              className={`px-4 py-1.5 mr-2 rounded-full ${isActive ? "bg-accent" : "bg-surface"}`}
-            >
-              <Text
-                className={`text-sm font-medium ${
-                  isActive ? "text-accent-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Separator */}
-        <View className="w-px bg-border mx-2 my-1" />
-
-        {/* Difficulty Chips */}
-        {difficultyOptions.map((option) => {
-          const isActive =
-            option.value === "all"
-              ? !filters.difficultyLevel
-              : filters.difficultyLevel === option.value;
-          return (
-            <TouchableOpacity
-              key={option.value}
-              onPress={() =>
-                onUpdateFilter("difficultyLevel", option.value === "all" ? undefined : option.value)
-              }
-              className={`px-3 py-1.5 mr-2 rounded-full border ${
-                isActive ? "border-accent bg-accent/10" : "border-border bg-surface"
-              }`}
-            >
-              <Text
-                className={`text-xs font-medium ${
-                  isActive ? "text-accent" : "text-muted-foreground"
-                }`}
-              >
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Sort Toggle */}
-        <TouchableOpacity
-          onPress={onToggleSort}
-          className="flex-row items-center px-3 py-1.5 rounded-full bg-surface border border-border"
-        >
-          <Ionicons name="swap-vertical" size={14} color={muted} />
-          <Text className="text-xs text-muted-foreground ml-1">
-            {filters.sortOrder === "asc" ? "Asc" : "Desc"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Add Task Button */}
-        {onAddTask && (
-          <TouchableOpacity
-            onPress={onAddTask}
-            className="flex-row items-center px-3 py-1.5 rounded-full bg-primary"
-          >
-            <Ionicons name="add" size={16} color="white" />
-            <Text className="text-xs text-white font-medium ml-1">Add</Text>
+    <View className="gap-y-4">
+      {/* Search Input */}
+      <View className="flex-row items-center bg-surface border border-border/50 rounded-2xl px-4 py-1">
+        <HugeiconsIcon icon={Search01Icon} size={20} color="var(--muted-foreground)" />
+        <TextInput
+          placeholder="Filter system feed..."
+          placeholderTextColor="var(--muted-foreground)"
+          value={filters.search || ""}
+          onChangeText={(text) => onUpdateFilter("search", text || undefined)}
+          className="flex-1 p-3 font-sans text-foreground"
+        />
+        {filters.search && (
+          <TouchableOpacity onPress={() => onUpdateFilter("search", undefined)}>
+            <HugeiconsIcon icon={Cancel01Icon} size={18} color="var(--muted-foreground)" />
           </TouchableOpacity>
         )}
+      </View>
+
+      {/* Horizontal Controls */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
+        <View className="flex-row gap-x-2">
+          {/* Status Selectors */}
+          {statusOptions.map((opt) => {
+            const active = filters.status === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => onUpdateFilter("status", opt.value)}
+                className={`px-6 py-3 rounded-2xl border ${
+                  active ? "bg-foreground border-foreground" : "bg-surface border-border/50"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-sans-bold uppercase tracking-widest ${
+                    active ? "text-background" : "text-muted-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          <View className="w-[1px] h-6 bg-border/30 self-center mx-1" />
+
+          {/* Sort Switch */}
+          <TouchableOpacity
+            onPress={onToggleSort}
+            className="px-4 py-3 rounded-2xl bg-surface border border-border/50 flex-row items-center gap-x-2"
+          >
+            <HugeiconsIcon
+              icon={Sorting01Icon}
+              size={14}
+              color="var(--muted-foreground)"
+              style={{ transform: [{ scaleY: filters.sortOrder === "desc" ? -1 : 1 }] }}
+            />
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+              {filters.sortOrder === "asc" ? "Asc" : "Desc"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );

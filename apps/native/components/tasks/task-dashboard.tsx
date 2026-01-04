@@ -1,20 +1,22 @@
-/**
- * Task Dashboard Component (Native)
- *
- * Main dashboard container using FlashList for performance
- * with pull-to-refresh and filtering capabilities.
- */
-
 import React, { useCallback, useMemo } from "react";
-import { View, Text, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, RefreshControl, ActivityIndicator, TouchableOpacity } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Tag01Icon,
+  PlusSignIcon,
+  Search01Icon,
+  FilterIcon,
+  Sorting01Icon,
+  SparklesIcon,
+} from "@hugeicons/core-free-icons";
 import { useTasks, type Task } from "@/hooks/useTasks";
 import { TaskStats } from "./task-stats";
 import { TaskFilterBar } from "./task-filter-bar";
 import { TaskListItem } from "./task-list-item";
 import { TaskEmptyState } from "./task-empty-state";
+import { Container } from "@/components/ui/container";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
 
 interface TaskDashboardProps {
   onEditTask?: (task: Task) => void;
@@ -38,8 +40,6 @@ export function TaskDashboard({ onEditTask, onCreateTask }: TaskDashboardProps) 
     refetch,
   } = useTasks();
 
-  const { primary } = useSemanticColors();
-
   const hasFilters = !!(
     filters.focusArea ||
     filters.difficultyLevel ||
@@ -54,27 +54,29 @@ export function TaskDashboard({ onEditTask, onCreateTask }: TaskDashboardProps) 
     [toggleTask, isUpdating, onEditTask],
   );
 
-  const keyExtractor = useCallback((item: Task) => item.id.toString(), []);
-
-  // Header component (stats + filters)
   const headerComponent = useMemo(
     () => (
-      <View>
-        {/* Header Title */}
-        <View className="px-4 pt-7 flex-row items-center gap-3">
-          <View className="w-10 h-10 bg-accent/10 rounded-lg items-center justify-center">
-            <Ionicons name="checkmark-circle" size={22} color={primary} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-2xl font-bold text-foreground">Tasks</Text>
-            <Text className="text-sm text-muted-foreground">
-              Track and manage your monthly tasks
+      <View className="pt-10">
+        {/* Header Title Section */}
+        <Animated.View
+          entering={FadeInUp.duration(600)}
+          className="px-6 flex-row items-center justify-between mb-2"
+        >
+          <View>
+            <Text className="text-sm font-sans-bold text-muted-foreground uppercase tracking-[3px] mb-1">
+              Operation
             </Text>
+            <Text className="text-3xl font-sans-bold text-foreground">Master Tasks</Text>
           </View>
-          {isFetching && !isLoading && <ActivityIndicator size="small" color={primary} />}
-        </View>
+          <TouchableOpacity
+            onPress={onCreateTask}
+            className="w-12 h-12 rounded-2xl bg-accent items-center justify-center shadow-lg shadow-accent/20"
+          >
+            <HugeiconsIcon icon={PlusSignIcon} size={24} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
 
-        {/* Stats Cards */}
+        {/* Dynamic Activity Summary */}
         <TaskStats
           total={stats.total}
           completed={stats.completed}
@@ -83,85 +85,91 @@ export function TaskDashboard({ onEditTask, onCreateTask }: TaskDashboardProps) 
           isLoading={isLoading}
         />
 
-        {/* Filter Bar */}
-        <TaskFilterBar
-          filters={filters}
-          focusAreas={focusAreas}
-          onUpdateFilter={updateFilter}
-          onResetFilters={resetFilters}
-          onToggleSort={toggleSort}
-          onAddTask={onCreateTask}
-        />
+        {/* Refined Filter Section */}
+        <View className="px-4 mb-6">
+          <TaskFilterBar
+            filters={filters}
+            focusAreas={focusAreas}
+            onUpdateFilter={updateFilter}
+            onResetFilters={resetFilters}
+            onToggleSort={toggleSort}
+            onAddTask={onCreateTask}
+          />
+        </View>
 
-        {/* Error Display */}
         {error && (
-          <View className="mx-4 my-2 p-3 bg-danger/10 border border-danger rounded-lg">
-            <Text className="text-sm text-danger font-medium">{error}</Text>
-          </View>
+          <Animated.View
+            entering={FadeInDown}
+            className="mx-6 mb-6 p-4 bg-danger/10 rounded-2xl border border-danger/20"
+          >
+            <Text className="text-sm text-danger font-sans-semibold">{error}</Text>
+          </Animated.View>
         )}
 
-        {/* Section Title */}
+        {/* Section Label */}
         {!isLoading && tasks.length > 0 && (
-          <View className="px-4 py-2 flex-row items-center justify-between bg-muted/30">
-            <Text className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
-              {hasFilters ? "Filtered Tasks" : "All Tasks"}
+          <View className="px-6 mb-4 flex-row items-center justify-between">
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+              {hasFilters ? "Active Filter" : "System Feed"}
             </Text>
-            <Text className="text-xs text-muted-foreground">
-              {tasks.length} task{tasks.length !== 1 ? "s" : ""}
-            </Text>
+            <View className="bg-surface border border-border/50 px-2 py-0.5 rounded-lg">
+              <Text className="text-[10px] font-sans-bold text-foreground uppercase">
+                {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+              </Text>
+            </View>
           </View>
         )}
       </View>
     ),
     [
-      primary,
-      isFetching,
-      isLoading,
       stats,
+      isLoading,
+      isFetching,
+      error,
+      tasks.length,
+      hasFilters,
+      onCreateTask,
       filters,
       focusAreas,
       updateFilter,
       resetFilters,
       toggleSort,
-      error,
-      tasks.length,
-      hasFilters,
     ],
   );
 
-  // Empty component
   const emptyComponent = useMemo(() => {
     if (isLoading) {
       return (
-        <View className="flex-1 items-center justify-center py-16">
-          <ActivityIndicator size="large" color={primary} />
-          <Text className="text-muted-foreground mt-4">Loading tasks...</Text>
+        <View className="flex-1 items-center justify-center py-24">
+          <ActivityIndicator size="large" color="var(--accent)" />
+          <Text className="text-muted-foreground font-sans-medium mt-4">Syncing tasks...</Text>
         </View>
       );
     }
     return <TaskEmptyState hasFilters={hasFilters} onResetFilters={resetFilters} />;
-  }, [isLoading, hasFilters, resetFilters, primary]);
+  }, [isLoading, hasFilters, resetFilters]);
 
-  // Footer spacer
-  const footerComponent = useMemo(() => <View className="h-20" />, []);
+  const footerComponent = useMemo(() => <View className="h-32" />, []);
 
   return (
-    <View className="flex-1 bg-background">
+    <Container className="bg-background">
       <FlashList
         data={tasks}
         renderItem={renderItem}
-        keyExtractor={keyExtractor}
+        keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={headerComponent}
         ListEmptyComponent={emptyComponent}
         ListFooterComponent={footerComponent}
+        showsVerticalScrollIndicator={false}
+        estimatedItemSize={100}
         refreshControl={
           <RefreshControl
             refreshing={isFetching && !isLoading}
             onRefresh={refetch}
-            tintColor={primary}
+            tintColor="var(--accent)"
           />
         }
       />
-    </View>
+    </Container>
   );
 }

@@ -1,16 +1,30 @@
-/**
- * Task Form Sheet Component (Native)
- *
- * Bottom sheet form for creating and editing tasks.
- */
-
-import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Cancel01Icon,
+  CheckmarkCircle01Icon,
+  Tag01Icon,
+  FlashIcon,
+  Clock01Icon,
+  SparklesIcon,
+  AiMagicIcon,
+  Compass01Icon,
+  Calendar03Icon,
+  Target01Icon,
+} from "@hugeicons/core-free-icons";
 import { DatePicker } from "@/components/ui/DateTimePicker";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "@/hooks/useTasks";
+import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
+import { useSemanticColors } from "@/utils/theme";
 
 interface TaskFormSheetProps {
   sheetRef: React.RefObject<BottomSheet>;
@@ -21,20 +35,9 @@ interface TaskFormSheetProps {
 }
 
 const difficultyOptions = [
-  { value: "simple", label: "Simple", color: "#22C55E" },
-  { value: "moderate", label: "Moderate", color: "#EAB308" },
-  { value: "advanced", label: "Advanced", color: "#EF4444" },
-];
-
-const defaultFocusAreas = [
-  "Health",
-  "Work",
-  "Learning",
-  "Relationships",
-  "Productivity",
-  "Creativity",
-  "Finance",
-  "Other",
+  { value: "simple", label: "Simple", color: "#22C55E", description: "Low energy requirement" },
+  { value: "moderate", label: "Balanced", color: "#3B82F6", description: "Standard productivity" },
+  { value: "advanced", label: "Ambitious", color: "#F59E0B", description: "High focus intensity" },
 ];
 
 export function TaskFormSheet({
@@ -44,9 +47,7 @@ export function TaskFormSheet({
   focusAreas,
   isSubmitting = false,
 }: TaskFormSheetProps) {
-  const { muted, foreground, primary, border, background, surface } = useSemanticColors();
   const snapPoints = useMemo(() => ["85%", "95%"], []);
-
   const isEditing = !!task;
 
   const [taskDescription, setTaskDescription] = useState(task?.taskDescription || "");
@@ -55,12 +56,26 @@ export function TaskFormSheet({
     (task?.difficultyLevel as "simple" | "moderate" | "advanced") || "moderate",
   );
   const [schedulingReason, setSchedulingReason] = useState(task?.schedulingReason || "");
-  const [startDate, setStartDate] = useState<Date | null>(
-    task?.startTime ? new Date(task.startTime) : new Date(),
-  );
-  const [endDate, setEndDate] = useState<Date | null>(
-    task?.endTime ? new Date(task.endTime) : new Date(Date.now() + 60 * 60 * 1000),
-  );
+  const [startDate, setStartDate] = useState<Date | null>(new Date());
+  const [endDate, setEndDate] = useState<Date | null>(new Date(Date.now() + 60 * 60 * 1000));
+
+  useEffect(() => {
+    if (task) {
+      setTaskDescription(task.taskDescription || "");
+      setFocusArea(task.focusArea || focusAreas[0] || "Other");
+      setDifficultyLevel((task.difficultyLevel as any) || "moderate");
+      setSchedulingReason(task.schedulingReason || "");
+      if (task.startTime) setStartDate(new Date(task.startTime));
+      if (task.endTime) setEndDate(new Date(task.endTime));
+    } else {
+      setTaskDescription("");
+      setFocusArea(focusAreas[0] || "Other");
+      setDifficultyLevel("moderate");
+      setSchedulingReason("");
+      setStartDate(new Date());
+      setEndDate(new Date(Date.now() + 60 * 60 * 1000));
+    }
+  }, [task, focusAreas]);
 
   const handleSubmit = useCallback(async () => {
     if (!taskDescription.trim() || !startDate || !endDate) return;
@@ -97,72 +112,84 @@ export function TaskFormSheet({
     onSubmit,
   ]);
 
-  const handleSheetChanges = useCallback((index: number) => {
-    if (index === -1) {
-      // Sheet is closed, could reset form here if needed
-    }
-  }, []);
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
+  );
+
+  const colors = useSemanticColors();
 
   return (
     <BottomSheet
       ref={sheetRef}
       index={-1}
       snapPoints={snapPoints}
-      onChange={handleSheetChanges}
-      handleIndicatorStyle={{ backgroundColor: border, width: 40 }}
-      backgroundStyle={{ backgroundColor: surface }}
+      backdropComponent={renderBackdrop}
+      handleIndicatorStyle={{ backgroundColor: "var(--border)", width: 40 }}
+      backgroundStyle={{ backgroundColor: colors.background, borderRadius: 40 }}
       enablePanDownToClose
     >
       <BottomSheetView className="flex-1 px-6 pb-8">
         {/* Header */}
-        <View className="flex-row items-center justify-between py-4 border-b border-border">
-          <Text className="text-xl font-bold text-foreground">
-            {isEditing ? "Edit Task" : "New Task"}
-          </Text>
+        <View className="flex-row items-center justify-between py-6 border-b border-border/30">
+          <View>
+            <Text className="text-2xl font-sans-bold text-foreground">
+              {isEditing ? "Modify Unit" : "Deploy Task"}
+            </Text>
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mt-1">
+              System Configuration
+            </Text>
+          </View>
           <TouchableOpacity
             onPress={() => sheetRef.current?.close()}
-            className="p-2 rounded-full bg-muted/30"
+            className="w-10 h-10 rounded-full bg-surface border border-border/50 items-center justify-center"
           >
-            <Ionicons name="close" size={20} color={muted} />
+            <HugeiconsIcon icon={Cancel01Icon} size={20} color="var(--muted-foreground)" />
           </TouchableOpacity>
         </View>
 
-        <ScrollView className="flex-1 py-4" showsVerticalScrollIndicator={false}>
-          {/* Task Description */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">
-              Task Description
-            </Text>
-            <TextInput
-              value={taskDescription}
-              onChangeText={setTaskDescription}
-              placeholder="What do you want to accomplish?"
-              placeholderTextColor={muted}
-              multiline
-              numberOfLines={3}
-              className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground"
-              style={{ textAlignVertical: "top" }}
-            />
-          </View>
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: 24, paddingBottom: 120 }}
+        >
+          {/* Unit Description */}
+          <Section icon={AiMagicIcon} title="Interaction Description">
+            <View className="bg-surface/50 border border-border/50 rounded-[24px] p-4">
+              <TextInput
+                value={taskDescription}
+                onChangeText={setTaskDescription}
+                placeholder="What is the objective?"
+                placeholderTextColor="var(--muted-foreground)"
+                multiline
+                numberOfLines={3}
+                className="font-sans text-lg text-foreground leading-6"
+                style={{ textAlignVertical: "top" }}
+              />
+            </View>
+          </Section>
 
-          {/* Focus Area */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">Focus Area</Text>
+          {/* Allocation Cluster */}
+          <Section icon={Target01Icon} title="Allocation Cluster">
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row flex-wrap gap-2">
-                {(focusAreas.length > 0 ? focusAreas : defaultFocusAreas).map((area) => {
+              <View className="flex-row gap-x-2">
+                {focusAreas.map((area) => {
                   const isSelected = focusArea === area;
                   return (
                     <TouchableOpacity
                       key={area}
                       onPress={() => setFocusArea(area)}
-                      className={`px-4 py-2 rounded-full border ${
-                        isSelected ? "bg-accent border-accent" : "bg-surface border-border"
+                      className={`px-6 py-3 rounded-2xl border ${
+                        isSelected
+                          ? "bg-foreground border-foreground"
+                          : "bg-surface border-border/50"
                       }`}
                     >
                       <Text
-                        className={`text-sm font-medium ${
-                          isSelected ? "text-accent-foreground" : "text-muted-foreground"
+                        className={`text-[10px] font-sans-bold uppercase tracking-widest ${
+                          isSelected ? "text-background" : "text-muted-foreground"
                         }`}
                       >
                         {area}
@@ -172,112 +199,146 @@ export function TaskFormSheet({
                 })}
               </View>
             </ScrollView>
-          </View>
+          </Section>
 
-          {/* Difficulty */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">Difficulty</Text>
-            <View className="flex-row gap-2">
-              {difficultyOptions.map((option) => {
-                const isSelected = difficultyLevel === option.value;
+          {/* Intensity Level */}
+          <Section icon={FlashIcon} title="Intensity Level">
+            <View className="bg-surface/30 p-2 rounded-[24px] border border-border/30 gap-y-1">
+              {difficultyOptions.map((opt) => {
+                const active = difficultyLevel === opt.value;
                 return (
                   <TouchableOpacity
-                    key={option.value}
-                    onPress={() =>
-                      setDifficultyLevel(option.value as "simple" | "moderate" | "advanced")
-                    }
-                    className={`flex-1 py-3 rounded-xl border items-center ${
-                      isSelected ? "bg-surface border-border" : "bg-surface border-border"
+                    key={opt.value}
+                    onPress={() => setDifficultyLevel(opt.value as any)}
+                    className={`p-4 rounded-[20px] flex-row items-center justify-between ${
+                      active ? "bg-foreground" : "bg-transparent"
                     }`}
-                    style={{ borderColor: isSelected ? option.color : border }}
                   >
-                    <Text
-                      className={`text-sm font-medium ${
-                        isSelected ? "font-bold" : "text-muted-foreground"
-                      }`}
-                      style={{ color: isSelected ? option.color : muted }}
-                    >
-                      {option.label}
-                    </Text>
+                    <View>
+                      <Text
+                        className={`font-sans-bold text-base ${active ? "text-background" : "text-foreground"}`}
+                      >
+                        {opt.label}
+                      </Text>
+                      <Text
+                        className={`font-sans text-[11px] mt-0.5 ${active ? "text-background/70" : "text-muted-foreground"}`}
+                      >
+                        {opt.description}
+                      </Text>
+                    </View>
+                    {active && (
+                      <HugeiconsIcon icon={SparklesIcon} size={18} color="var(--background)" />
+                    )}
                   </TouchableOpacity>
                 );
               })}
             </View>
-          </View>
+          </Section>
 
-          {/* Date/Time */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">Start Time</Text>
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <DatePicker value={startDate} onChange={setStartDate} label="Date" mode="date" />
+          {/* Temporal Alignment */}
+          <Section icon={Calendar03Icon} title="Temporal Alignment">
+            <View className="gap-y-6">
+              <View>
+                <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-2 ml-1">
+                  Launch Time
+                </Text>
+                <View className="flex-row gap-x-3">
+                  <View className="flex-1">
+                    <DatePicker
+                      value={startDate}
+                      onChange={setStartDate}
+                      mode="date"
+                      label="Date"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <DatePicker
+                      value={startDate}
+                      onChange={(d) => d && setStartDate(d)}
+                      mode="time"
+                      label="Time"
+                    />
+                  </View>
+                </View>
               </View>
-              <View className="flex-1">
-                <DatePicker
-                  value={startDate}
-                  onChange={(date) => date && setStartDate(date)}
-                  label="Time"
-                  mode="time"
-                />
+
+              <View>
+                <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-2 ml-1">
+                  Conclusion
+                </Text>
+                <View className="flex-row gap-x-3">
+                  <View className="flex-1">
+                    <DatePicker value={endDate} onChange={setEndDate} mode="date" label="Date" />
+                  </View>
+                  <View className="flex-1">
+                    <DatePicker
+                      value={endDate}
+                      onChange={(d) => d && setEndDate(d)}
+                      mode="time"
+                      label="Time"
+                    />
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
+          </Section>
 
-          {/* End Time */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">End Time</Text>
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <DatePicker value={endDate} onChange={setEndDate} label="Date" mode="date" />
-              </View>
-              <View className="flex-1">
-                <DatePicker
-                  value={endDate}
-                  onChange={(date) => date && setEndDate(date)}
-                  label="Time"
-                  mode="time"
-                />
-              </View>
+          {/* Logic Reasoning */}
+          <Section icon={Compass01Icon} title="Logic Reasoning">
+            <View className="bg-surface/30 border border-border/50 rounded-[24px] p-4">
+              <TextInput
+                value={schedulingReason}
+                onChangeText={setSchedulingReason}
+                placeholder="Why is this scheduled now?"
+                placeholderTextColor="var(--muted-foreground)"
+                multiline
+                numberOfLines={2}
+                className="font-sans text-sm text-foreground italic"
+                style={{ textAlignVertical: "top" }}
+              />
             </View>
-          </View>
-
-          {/* Scheduling Reason */}
-          <View className="mb-4">
-            <Text className="text-sm font-semibold text-muted-foreground mb-2">
-              Scheduling Reason (Optional)
-            </Text>
-            <TextInput
-              value={schedulingReason}
-              onChangeText={setSchedulingReason}
-              placeholder="Why this time works for you..."
-              placeholderTextColor={muted}
-              multiline
-              numberOfLines={2}
-              className="bg-surface border border-border rounded-xl px-4 py-3 text-foreground"
-              style={{ textAlignVertical: "top" }}
-            />
-          </View>
+          </Section>
         </ScrollView>
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={!taskDescription.trim() || !startDate || !endDate || isSubmitting}
-          className={`py-4 rounded-xl items-center ${
-            !taskDescription.trim() || !startDate || !endDate ? "bg-muted/30" : "bg-accent"
-          }`}
-        >
-          <Text
-            className={`text-base font-semibold ${
-              !taskDescription.trim() || !startDate || !endDate
-                ? "text-muted-foreground"
-                : "text-accent-foreground"
+        {/* Global Action */}
+        <View className="absolute bottom-10 left-6 right-6">
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!taskDescription.trim() || isSubmitting}
+            activeOpacity={0.8}
+            className={`h-16 rounded-[24px] flex-row items-center justify-center gap-x-3 shadow-xl ${
+              !taskDescription.trim() || isSubmitting
+                ? "bg-muted opacity-50"
+                : "bg-foreground shadow-black/20"
             }`}
           >
-            {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Task"}
-          </Text>
-        </TouchableOpacity>
+            {isSubmitting ? (
+              <ActivityIndicator color="var(--background)" />
+            ) : (
+              <>
+                <Text className="text-background font-sans-bold text-lg">
+                  {isEditing ? "Sync Changes" : "Deploy Operation"}
+                </Text>
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} color="var(--background)" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </BottomSheetView>
     </BottomSheet>
+  );
+}
+
+function Section({ icon, title, children }: any) {
+  return (
+    <View className="mb-8">
+      <View className="flex-row items-center gap-x-2 mb-4 px-1">
+        <View className="w-8 h-8 rounded-xl bg-surface items-center justify-center border border-border/50">
+          <HugeiconsIcon icon={icon} size={16} color="var(--muted-foreground)" />
+        </View>
+        <Text className="text-base font-sans-bold text-foreground">{title}</Text>
+      </View>
+      {children}
+    </View>
   );
 }

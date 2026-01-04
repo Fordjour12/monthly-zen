@@ -1,15 +1,19 @@
-/**
- * Task List Item Component (Native)
- *
- * Individual task row with checkbox, badges, and tap to edit.
- */
-
 import React, { memo, useCallback } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  CheckmarkCircle01Icon,
+  CircleIcon,
+  ArrowRight01Icon,
+  Clock01Icon,
+  Tag01Icon,
+  FlashIcon,
+  StarIcon,
+} from "@hugeicons/core-free-icons";
 import { useSemanticColors } from "@/utils/theme";
 import * as Haptics from "expo-haptics";
 import type { Task } from "@/hooks/useTasks";
+import Animated, { FadeInRight } from "react-native-reanimated";
 
 interface TaskListItemProps {
   task: Task;
@@ -18,35 +22,30 @@ interface TaskListItemProps {
   isUpdating?: boolean;
 }
 
-function getDifficultyColor(level: string) {
+function getDifficultyIcon(level: string) {
   switch (level?.toLowerCase()) {
-    case "simple":
-      return { bg: "bg-green-500/10", text: "text-green-500" };
-    case "moderate":
-      return { bg: "bg-yellow-500/10", text: "text-yellow-500" };
     case "advanced":
-      return { bg: "bg-red-500/10", text: "text-red-500" };
+    case "hard":
+    case "ambitious":
+      return { icon: StarIcon, color: "#f59e0b", bg: "bg-amber-500/10", label: "Hard" };
+    case "moderate":
+    case "balanced":
+      return { icon: FlashIcon, color: "#3b82f6", bg: "bg-blue-500/10", label: "Balanced" };
+    case "simple":
+      return { icon: FlashIcon, color: "#22c55e", bg: "bg-emerald-500/10", label: "Simple" };
     default:
-      return { bg: "bg-muted/10", text: "text-muted-foreground" };
+      return { icon: FlashIcon, color: "#6b7280", bg: "bg-muted/10", label: level || "Normal" };
   }
 }
 
-function formatSchedule(
-  startTime: string,
-  endTime: string,
-  weekNumber?: number,
-  dayOfWeek?: string,
-) {
-  const start = new Date(startTime);
-  const end = new Date(endTime);
-
-  const timeStr = `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-
-  if (weekNumber && dayOfWeek) {
-    return `W${weekNumber} • ${dayOfWeek.trim()} • ${timeStr}`;
+function formatSchedule(startTime: string, endTime: string, weekNumber?: number) {
+  try {
+    const start = new Date(startTime);
+    const timeStr = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return weekNumber ? `Week ${weekNumber} • ${timeStr}` : timeStr;
+  } catch (e) {
+    return "";
   }
-
-  return timeStr;
 }
 
 export const TaskListItem = memo(function TaskListItem({
@@ -55,96 +54,77 @@ export const TaskListItem = memo(function TaskListItem({
   onEdit,
   isUpdating,
 }: TaskListItemProps) {
-  const { primary, muted } = useSemanticColors();
-  const difficultyColors = getDifficultyColor(task.difficultyLevel);
+  const diff = getDifficultyIcon(task.difficultyLevel || "");
 
   const handleToggle = useCallback(async () => {
     if (isUpdating) return;
-
-    // Haptic feedback
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onToggle(task.id, !task.isCompleted);
   }, [task.id, task.isCompleted, onToggle, isUpdating]);
 
   const handlePress = useCallback(async () => {
-    // Haptic feedback
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    if (onEdit) {
-      onEdit(task);
-    }
+    Haptics.selectionAsync();
+    onEdit?.(task);
   }, [task, onEdit]);
 
   return (
-    <TouchableOpacity
-      onPress={handlePress}
-      disabled={isUpdating}
-      className={`flex-row items-start p-4 bg-card border-b border-border ${
-        task.isCompleted ? "opacity-60" : ""
-      }`}
-      accessibilityLabel={`Task: ${task.taskDescription}. ${
-        task.isCompleted ? "Completed" : "Not completed"
-      }. Tap to edit.`}
-      accessibilityRole="button"
-    >
-      {/* Checkbox */}
+    <Animated.View entering={FadeInRight.duration(500)}>
       <TouchableOpacity
-        onPress={handleToggle}
+        onPress={handlePress}
         disabled={isUpdating}
-        className="mr-3 p-1"
-        accessibilityLabel={`Mark ${task.taskDescription} as ${
-          task.isCompleted ? "incomplete" : "complete"
+        activeOpacity={0.8}
+        className={`mx-4 mb-4 p-5 rounded-[28px] border flex-row items-center gap-x-4 ${
+          task.isCompleted
+            ? "bg-surface/30 border-border/30 opacity-60"
+            : "bg-surface border-border/60 shadow-sm"
         }`}
       >
-        <Ionicons
-          name={task.isCompleted ? "checkbox" : "square-outline"}
-          size={24}
-          color={task.isCompleted ? primary : muted}
-        />
-      </TouchableOpacity>
-
-      {/* Content */}
-      <View className="flex-1">
-        <Text
-          className={`text-base font-medium ${
-            task.isCompleted ? "text-muted-foreground line-through" : "text-foreground"
-          }`}
-          numberOfLines={2}
+        {/* Status Indicator */}
+        <TouchableOpacity
+          onPress={handleToggle}
+          disabled={isUpdating}
+          className="w-8 h-8 items-center justify-center"
         >
-          {task.taskDescription}
-        </Text>
+          {task.isCompleted ? (
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={24} color="var(--success)" />
+          ) : (
+            <HugeiconsIcon icon={CircleIcon} size={24} color="var(--border)" />
+          )}
+        </TouchableOpacity>
 
-        {/* Meta Info */}
-        <View className="flex-row items-center flex-wrap gap-2 mt-2">
-          {/* Focus Area Badge */}
-          <View className="bg-muted/30 px-2 py-0.5 rounded-full">
-            <Text className="text-xs text-muted-foreground font-medium">{task.focusArea}</Text>
-          </View>
-
-          {/* Difficulty Badge */}
-          <View className={`${difficultyColors.bg} px-2 py-0.5 rounded-full`}>
-            <Text className={`text-xs font-medium ${difficultyColors.text}`}>
-              {task.difficultyLevel || "normal"}
-            </Text>
-          </View>
-
-          {/* Schedule Info */}
-          <Text className="text-xs text-muted-foreground">
-            {formatSchedule(task.startTime, task.endTime, task.weekNumber, task.dayOfWeek)}
+        {/* Content */}
+        <View className="flex-1">
+          <Text
+            className={`text-base font-sans-semibold ${
+              task.isCompleted ? "text-muted-foreground line-through" : "text-foreground"
+            }`}
+            numberOfLines={1}
+          >
+            {task.taskDescription}
           </Text>
+
+          <View className="flex-row items-center gap-x-3 mt-1.5">
+            <View className="flex-row items-center gap-x-1">
+              <View className="w-1.5 h-1.5 rounded-full bg-accent" />
+              <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-widest">
+                {task.focusArea}
+              </Text>
+            </View>
+
+            <View className="flex-row items-center gap-x-1">
+              <HugeiconsIcon icon={Clock01Icon} size={10} color="var(--muted-foreground)" />
+              <Text className="text-[10px] font-sans-medium text-muted-foreground uppercase">
+                {formatSchedule(task.startTime, task.endTime, task.weekNumber)}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Scheduling Reason */}
-        {task.schedulingReason && (
-          <Text className="text-xs text-muted-foreground mt-2" numberOfLines={2}>
-            {task.schedulingReason}
-          </Text>
-        )}
-      </View>
-
-      {/* Edit Indicator */}
-      <Ionicons name="chevron-forward" size={20} color={muted} className="ml-2" />
-    </TouchableOpacity>
+        {/* Difficulty Info */}
+        <View className={`${diff.bg} p-2 rounded-xl`}>
+          <HugeiconsIcon icon={diff.icon} size={14} color={diff.color} />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 });

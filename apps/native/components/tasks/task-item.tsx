@@ -1,67 +1,85 @@
 import React, { memo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  CheckmarkCircle01Icon,
+  CircleIcon,
+  AlertCircleIcon,
+  HelpCircleIcon,
+  Circle01Icon,
+} from "@hugeicons/core-free-icons";
 import { TaskItem as TaskItemType } from "@/hooks/usePlanData";
+import Animated, { FadeInRight } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 interface TaskItemProps {
   task: TaskItemType;
   onToggleComplete: (id: string, isCompleted: boolean) => void;
+  index: number;
 }
 
 const PriorityBadge = ({ priority }: { priority: TaskItemType["priority"] }) => {
-  let bgClass = "bg-muted/10";
-  let textClass = "text-muted-foreground";
+  let color = "var(--muted-foreground)";
+  let label = priority || "Normal";
 
-  if (priority === "High") {
-    bgClass = "bg-red-500/10";
-    textClass = "text-red-500";
-  } else if (priority === "Medium") {
-    bgClass = "bg-yellow-500/10";
-    textClass = "text-yellow-500";
-  } else if (priority === "Low") {
-    bgClass = "bg-green-500/10";
-    textClass = "text-green-500";
-  }
+  if (priority === "High") color = "var(--danger)";
+  else if (priority === "Medium") color = "var(--warning)";
+  else if (priority === "Low") color = "var(--success)";
 
   return (
-    <View className={`px-2 py-0.5 rounded-full ${bgClass}`}>
-      <Text className={`text-xs font-medium ${textClass}`}>{priority}</Text>
+    <View className="flex-row items-center gap-x-1.5">
+      <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+      <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+        {label}
+      </Text>
     </View>
   );
 };
 
-export const TaskItem = memo(({ task, onToggleComplete }: TaskItemProps) => {
-  const { primary, muted } = useSemanticColors();
+export const TaskItem = memo(({ task, onToggleComplete, index }: TaskItemProps) => {
+  const handleToggle = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onToggleComplete(task.id, !task.isCompleted);
+  };
 
   return (
-    <View className="flex-row items-center p-3 bg-card border-b border-border">
-      <TouchableOpacity
-        onPress={() => onToggleComplete(task.id, !task.isCompleted)}
-        className="mr-3 p-1"
-        accessibilityLabel={`Mark ${task.title} as ${task.isCompleted ? "incomplete" : "complete"}`}
+    <Animated.View entering={FadeInRight.delay(index * 50).duration(500)}>
+      <View
+        className={`flex-row items-center p-4 mb-2 rounded-2xl border ${
+          task.isCompleted
+            ? "bg-surface/30 border-border/30 opacity-60"
+            : "bg-surface border-border/50"
+        }`}
       >
-        <Ionicons
-          name={task.isCompleted ? "checkbox" : "square-outline"}
-          size={24}
-          color={task.isCompleted ? primary : muted}
-        />
-      </TouchableOpacity>
-
-      <View className="flex-1">
-        <Text
-          className={`text-base font-medium ${
-            task.isCompleted ? "text-muted-foreground line-through" : "text-foreground"
-          }`}
+        <TouchableOpacity
+          onPress={handleToggle}
+          className="mr-3 w-8 h-8 items-center justify-center"
         >
-          {task.title}
-        </Text>
-        <View className="flex-row items-center mt-1 space-x-2">
-          <PriorityBadge priority={task.priority} />
-          <Text className="text-xs text-muted-foreground">• {task.focusArea}</Text>
+          {task.isCompleted ? (
+            <HugeiconsIcon icon={CheckmarkCircle01Icon} size={22} color="var(--success)" />
+          ) : (
+            <HugeiconsIcon icon={CircleIcon} size={22} color="var(--border)" />
+          )}
+        </TouchableOpacity>
+
+        <View className="flex-1">
+          <Text
+            className={`text-base font-sans-medium ${
+              task.isCompleted ? "text-muted-foreground line-through" : "text-foreground"
+            }`}
+            numberOfLines={1}
+          >
+            {task.title}
+          </Text>
+          <View className="flex-row items-center mt-1 gap-x-3">
+            <PriorityBadge priority={task.priority} />
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+              {task.focusArea}
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 });
 

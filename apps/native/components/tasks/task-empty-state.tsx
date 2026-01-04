@@ -1,14 +1,15 @@
-/**
- * Task Empty State Component (Native)
- *
- * Displayed when no tasks match the current filters.
- */
-
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useSemanticColors } from "@/utils/theme";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Task01Icon,
+  Search01Icon,
+  SparklesIcon,
+  FilterIcon,
+  RefreshIcon,
+} from "@hugeicons/core-free-icons";
 import { router } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 interface TaskEmptyStateProps {
   hasFilters: boolean;
@@ -16,44 +17,52 @@ interface TaskEmptyStateProps {
 }
 
 export function TaskEmptyState({ hasFilters, onResetFilters }: TaskEmptyStateProps) {
-  const { primary } = useSemanticColors();
-
   return (
-    <View className="flex-1 items-center justify-center p-8">
-      <View className="w-16 h-16 bg-accent/10 rounded-2xl items-center justify-center mb-6">
-        <Ionicons name="list" size={32} color={primary} />
+    <Animated.View
+      entering={FadeInDown.duration(600)}
+      className="flex-1 items-center justify-center p-8 mt-12"
+    >
+      <View className="w-20 h-20 bg-muted/5 rounded-full items-center justify-center mb-8">
+        <HugeiconsIcon
+          icon={hasFilters ? Search01Icon : Task01Icon}
+          size={40}
+          color="var(--muted-foreground)"
+        />
       </View>
 
+      <Text className="text-2xl font-sans-bold text-foreground mb-3 text-center">
+        {hasFilters ? "No matches found" : "Void of Tasks"}
+      </Text>
+
+      <Text className="text-base font-sans text-muted-foreground text-center mb-10 leading-6 max-w-[280px]">
+        {hasFilters
+          ? "We couldn't find any tasks matching your current system filters."
+          : "Your timeline is currently empty. Start by designing your next monthly blueprint."}
+      </Text>
+
       {hasFilters ? (
-        <>
-          <Text className="text-lg font-semibold text-foreground mb-2">No tasks found</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 max-w-xs">
-            No tasks match your current filters. Try adjusting your search criteria or clearing the
-            filters.
+        <TouchableOpacity
+          onPress={onResetFilters}
+          activeOpacity={0.8}
+          className="flex-row items-center gap-x-3 px-8 py-4 bg-surface border border-border/50 rounded-2xl shadow-sm"
+        >
+          <HugeiconsIcon icon={RefreshIcon} size={18} color="var(--foreground)" />
+          <Text className="text-sm font-sans-bold text-foreground uppercase tracking-widest">
+            Reset System
           </Text>
-          <TouchableOpacity
-            onPress={onResetFilters}
-            className="flex-row items-center px-4 py-2 bg-surface border border-border rounded-lg"
-          >
-            <Ionicons name="refresh" size={16} color={primary} />
-            <Text className="text-sm text-foreground ml-2">Reset Filters</Text>
-          </TouchableOpacity>
-        </>
+        </TouchableOpacity>
       ) : (
-        <>
-          <Text className="text-lg font-semibold text-foreground mb-2">No tasks yet</Text>
-          <Text className="text-sm text-muted-foreground text-center mb-6 max-w-xs">
-            Generate your first AI-powered monthly plan to start tracking your tasks and goals.
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/planner/create")}
+          activeOpacity={0.8}
+          className="flex-row items-center gap-x-3 px-10 py-4 bg-accent rounded-2xl shadow-lg shadow-accent/20"
+        >
+          <HugeiconsIcon icon={SparklesIcon} size={18} color="white" />
+          <Text className="text-sm font-sans-bold text-white uppercase tracking-widest">
+            Generate Blueprint
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/plan")}
-            className="flex-row items-center px-4 py-2 bg-accent rounded-lg"
-          >
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text className="text-sm text-accent-foreground ml-2">Create Your First Plan</Text>
-          </TouchableOpacity>
-        </>
+        </TouchableOpacity>
       )}
-    </View>
+    </Animated.View>
   );
 }
