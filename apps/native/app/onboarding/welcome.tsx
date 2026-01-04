@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, Dimensions, Image } from "react-native";
+import { View, Text, TouchableOpacity, Dimensions, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
@@ -134,11 +134,11 @@ export default function WelcomeScreen() {
         <View>
           {/* Logo Section */}
           <AnimatedView style={logoAnimatedStyle} className="items-center mb-10">
-            <View className="w-24 h-24 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
+            <View className="size-24 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
               <View className="-rotate-12">
                 <Image
                   source={require("../../assets/images/android-icon-foreground.png")}
-                  className="w-24 h-24"
+                  className="size-24"
                 />
               </View>
             </View>
@@ -189,9 +189,9 @@ export default function WelcomeScreen() {
             </View>
           </Button>
 
-          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6} className="py-2 items-center">
+          <Pressable onPress={handleSkip} className="py-2 items-center">
             <Text className="text-muted-foreground font-sans-medium">I know what I'm doing</Text>
-          </TouchableOpacity>
+          </Pressable>
         </AnimatedView>
       </View>
     </Container>
@@ -211,7 +211,7 @@ function FeatureItem({
 
   return (
     <View className="flex-row items-center gap-x-4">
-      <View className="w-12 h-12 rounded-2xl bg-surface items-center justify-center border border-border/50">
+      <View className="size-12 rounded-2xl bg-surface items-center justify-center border border-border/50">
         <HugeiconsIcon icon={icon} size={24} color={colors.accent} strokeWidth={1.5} />
       </View>
       <View className="flex-1">
