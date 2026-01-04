@@ -1,25 +1,28 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
 import { z } from "zod";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { useSemanticColors } from "@/utils/theme";
-import { Card, TextField, Button, RadioGroup, Divider, useToast } from "heroui-native";
+import { Card, TextField, RadioGroup, useToast } from "heroui-native";
 import { Container } from "@/components/ui/container";
 import { DayPickerField } from "@/components/ui/day-picker-field";
 import { AppDateTimePicker } from "@/components/ui/DateTimePicker";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { ArrowLeft01FreeIcons } from "@hugeicons/core-free-icons";
+import {
+  ArrowLeft01Icon,
+  SparklesIcon,
+  Flag01Icon,
+  FlashIcon,
+  Target01Icon,
+  Calendar03Icon,
+  Clock01Icon,
+  PlusSignIcon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 import { usePlanGeneration } from "@/hooks/usePlanGeneration";
 import type { GenerateInput } from "@/hooks/usePlanGeneration";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 const GeneratePlanFormDataSchema = z.object({
   goalsText: z.string().min(1, "Goals are required"),
@@ -41,9 +44,9 @@ type WeekendPreference = "Work" | "Rest" | "Mixed";
 
 const taskComplexityOptions: Array<{ value: TaskComplexity; label: string; description: string }> =
   [
-    { value: "Simple", label: "Simple", description: "Fewer, manageable tasks" },
-    { value: "Balanced", label: "Balanced", description: "Mix of easy and challenging" },
-    { value: "Ambitious", label: "Ambitious", description: "Challenging but rewarding" },
+    { value: "Simple", label: "Simple", description: "Fewer, manageable focus points" },
+    { value: "Balanced", label: "Balanced", description: "Deep and light tasks mixed" },
+    { value: "Ambitious", label: "Ambitious", description: "Aggressive target goals" },
   ];
 
 const weekendPreferenceOptions: Array<{
@@ -51,27 +54,23 @@ const weekendPreferenceOptions: Array<{
   label: string;
   description: string;
 }> = [
-  { value: "Work", label: "Deep Work", description: "Focus on intensive tasks" },
-  { value: "Rest", label: "Rest & Recharge", description: "Keep weekends free" },
-  { value: "Mixed", label: "Light Tasks", description: "Easy activities only" },
+  { value: "Work", label: "Deep Work", description: "Utilize weekends for output" },
+  { value: "Rest", label: "Full Rest", description: "Keep your weekends offline" },
+  { value: "Mixed", label: "Hybrid", description: "Light maintenance only" },
 ];
 
 function FieldInfo({ field }: { field: AnyFieldApi }) {
+  if (!field.state.meta.isTouched || field.state.meta.isValid) return null;
   return (
-    <>
-      {field.state.meta.isTouched && !field.state.meta.isValid && (
-        <Text className="text-sm text-danger">
-          {field.state.meta.errors.map((err: unknown) => String(err)).join(",")}
-        </Text>
-      )}
-    </>
+    <Text className="text-xs font-sans-semibold text-danger mt-2 ml-1">
+      {field.state.meta.errors.map((err: any) => String(err)).join(", ")}
+    </Text>
   );
 }
 
 export default function CreatePlan() {
-  const { primary, danger, accent } = useSemanticColors();
-  const { template } = useLocalSearchParams<{ template?: string }>();
   const router = useRouter();
+  const { template } = useLocalSearchParams<{ template?: string }>();
   const { generate, isGenerating, error, clearError, draft } = usePlanGeneration();
   const { toast } = useToast();
 
@@ -90,34 +89,26 @@ export default function CreatePlan() {
     },
     validators: {
       onChange: GeneratePlanFormDataSchema,
-      onBlur: GeneratePlanFormDataSchema,
-      onSubmit: GeneratePlanFormDataSchema,
     },
     onSubmit: async ({ value }) => {
       clearError();
-
-      const validCommitments = value.commitments.filter(
-        (c) => c.dayOfWeek && c.startTime && c.endTime && c.description,
-      );
-
       const input: GenerateInput = {
         goalsText: value.goalsText,
         taskComplexity: value.taskComplexity,
         focusAreas: value.focusAreas,
         weekendPreference: value.weekendPreference,
         fixedCommitmentsJson: {
-          commitments: validCommitments,
+          commitments: value.commitments,
         },
       };
 
       try {
         await generate(input);
       } catch (err) {
-        console.error("Plan generation error:", err);
         toast.show({
           variant: "danger",
           label: "Generation Failed",
-          description: "Failed to generate plan. Please try again.",
+          description: "Something went wrong. Please try again.",
         });
       }
     },
@@ -128,307 +119,310 @@ export default function CreatePlan() {
       try {
         const data = JSON.parse(template);
         form.setFieldValue("goalsText", data.goalsText || "");
-        if (data.taskComplexity) {
-          form.setFieldValue("taskComplexity", data.taskComplexity);
-        }
+        if (data.taskComplexity) form.setFieldValue("taskComplexity", data.taskComplexity);
         form.setFieldValue("focusAreas", data.focusAreas || "");
-        if (data.weekendPreference) {
-          form.setFieldValue("weekendPreference", data.weekendPreference);
-        }
       } catch (e) {
-        console.error("Failed to parse template data:", e);
+        console.error("Failed to parse template:", e);
       }
     }
   }, [template]);
 
   useEffect(() => {
     if (draft) {
-      setTimeout(() => {
-        toast.show({
-          variant: "success",
-          label: "Plan Generated!",
-          description: "Your plan has been created successfully. You can now view and save it.",
-          actionLabel: "View Plan",
-          onActionPress: ({ hide }) => {
-            hide();
-            router.replace({ pathname: "/(tabs)/planner", params: { tab: "plans" } });
-          },
-        });
-      }, 500);
+      toast.show({
+        variant: "success",
+        label: "Draft Ready!",
+        description: "Your system has been generated.",
+        actionLabel: "View",
+        onActionPress: ({ hide }) => {
+          hide();
+          router.replace("/(tabs)/planner");
+        },
+      });
     }
-  }, [draft, router, toast]);
+  }, [draft]);
 
   const addCommitment = () => {
-    const currentCommitments = form.getFieldValue("commitments");
+    const current = form.getFieldValue("commitments");
     form.setFieldValue("commitments", [
-      ...(currentCommitments || []),
-      { dayOfWeek: "", startTime: "", endTime: "", description: "" },
+      ...current,
+      { dayOfWeek: "Monday", startTime: "09:00", endTime: "10:00", description: "" },
     ]);
   };
 
   return (
-    <Container>
-      <View className="pt-10 pb-4">
-        <Pressable onPress={() => router.back()} className="flex-row items-center gap-2">
-          <HugeiconsIcon icon={ArrowLeft01FreeIcons} size={24} color={accent} />
-          <Text className="text-xl font-bold text-foreground">Create New Plan</Text>
-        </Pressable>
-        {error && (
-          <View className="mt-4 bg-danger/10 border border-danger/30 rounded-lg p-3 flex-row items-start gap-2">
-            <Ionicons name="alert-circle" size={20} color={danger} />
-            <Text className="text-danger flex-1 text-sm">{error}</Text>
-          </View>
-        )}
+    <Container className="bg-background">
+      {/* Header */}
+      <View className="px-6 pt-10 pb-4 flex-row items-center gap-x-4">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="w-12 h-12 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color="var(--foreground)" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-sans-bold text-foreground">New Blueprint</Text>
       </View>
+
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-24"
-        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
-        <Card className="mx-2">
-          <Card.Body className="p-1.5">
-            <View className="mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Ionicons name="flag" size={20} color={primary} />
-                <Text className="text-lg font-semibold text-foreground">Goals & Objectives</Text>
-              </View>
-
-              <form.Field name="goalsText">
-                {(field) => (
-                  <TextField isInvalid={field.state.meta.errors.length > 0}>
-                    <TextField.Label>Your Goals</TextField.Label>
+        <View className="px-6 gap-y-10 mt-6">
+          {/* Section 1: Goals */}
+          <Section icon={Flag01Icon} title="Primary Objectives" delay={100}>
+            <form.Field name="goalsText">
+              {(field) => (
+                <View>
+                  <TextField variant="bordered" className="bg-surface/30">
                     <TextField.Input
-                      placeholder="e.g. Launch website, Read 2 books..."
+                      placeholder="e.g. Mastering React Native, Marathon prep..."
                       onChangeText={field.handleChange}
                       value={field.state.value}
                       multiline
                       numberOfLines={4}
-                      textAlignVertical="top"
+                      className="text-base font-sans p-4"
                     />
-                    <FieldInfo field={field} />
                   </TextField>
-                )}
-              </form.Field>
-            </View>
+                  <FieldInfo field={field} />
+                </View>
+              )}
+            </form.Field>
+          </Section>
 
-            <Divider orientation="horizontal" className="my-2" thickness={2} variant="thick" />
+          {/* Section 2: Complexity */}
+          <Section icon={FlashIcon} title="Dynamic Intensity" delay={200}>
+            <form.Field name="taskComplexity">
+              {(field) => (
+                <View className="bg-surface/30 p-2 rounded-[24px] border border-border/30">
+                  {taskComplexityOptions.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => field.setValue(opt.value)}
+                      activeOpacity={0.7}
+                      className={`p-4 rounded-[20px] flex-row items-center justify-between mb-1 ${
+                        field.state.value === opt.value ? "bg-foreground" : "bg-transparent"
+                      }`}
+                    >
+                      <View>
+                        <Text
+                          className={`font-sans-bold text-base ${field.state.value === opt.value ? "text-background" : "text-foreground"}`}
+                        >
+                          {opt.label}
+                        </Text>
+                        <Text
+                          className={`font-sans text-xs mt-0.5 ${field.state.value === opt.value ? "text-background/70" : "text-muted-foreground"}`}
+                        >
+                          {opt.description}
+                        </Text>
+                      </View>
+                      {field.state.value === opt.value && (
+                        <HugeiconsIcon icon={SparklesIcon} size={20} color="var(--background)" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </form.Field>
+          </Section>
 
-            <View className="mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Ionicons name="flash" size={20} color={primary} />
-                <Text className="text-lg font-semibold text-foreground">Task Complexity</Text>
-              </View>
-
-              <form.Field name="taskComplexity">
-                {(field) => (
-                  <RadioGroup
-                    value={field.state.value}
-                    onValueChange={(val) =>
-                      field.setValue(val as "Simple" | "Balanced" | "Ambitious")
-                    }
-                  >
-                    {taskComplexityOptions.map((option) => (
-                      <RadioGroup.Item key={option.value} value={option.value}>
-                        <View className="mb-1">
-                          <RadioGroup.Label>{option.label}</RadioGroup.Label>
-                          <RadioGroup.Description className="text-muted-foreground">
-                            {option.description}
-                          </RadioGroup.Description>
-                        </View>
-                        <RadioGroup.Indicator />
-                      </RadioGroup.Item>
-                    ))}
-                  </RadioGroup>
-                )}
-              </form.Field>
-            </View>
-
-            <Divider orientation="horizontal" className="my-2" thickness={2} variant="thick" />
-
-            <View className="mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Ionicons name="location" size={20} color={primary} />
-                <Text className="text-lg font-semibold text-foreground">Focus Areas</Text>
-              </View>
-
-              <form.Field name="focusAreas">
-                {(field) => (
-                  <TextField isInvalid={field.state.meta.errors.length > 0}>
-                    <TextField.Label>Areas to Focus On</TextField.Label>
+          {/* Section 3: Focus Areas */}
+          <Section icon={Target01Icon} title="Focus Clusters" delay={300}>
+            <form.Field name="focusAreas">
+              {(field) => (
+                <View>
+                  <TextField variant="bordered" className="bg-surface/30">
                     <TextField.Input
-                      placeholder="e.g. Health, Career, Finance"
+                      placeholder="e.g. Engineering, Health, Focus"
                       onChangeText={field.handleChange}
                       value={field.state.value}
+                      className="text-base font-sans px-4 py-3"
                     />
-                    <FieldInfo field={field} />
                   </TextField>
-                )}
-              </form.Field>
-            </View>
-
-            <Divider orientation="horizontal" className="my-2" thickness={2} variant="thick" />
-
-            <View className="mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Ionicons name="calendar-number" size={20} color={primary} />
-                <Text className="text-lg font-semibold text-foreground">Weekend Preference</Text>
-              </View>
-
-              <form.Field name="weekendPreference">
-                {(field) => (
-                  <RadioGroup
-                    value={field.state.value}
-                    onValueChange={(val) => field.setValue(val as "Work" | "Rest" | "Mixed")}
-                  >
-                    {weekendPreferenceOptions.map((option) => (
-                      <RadioGroup.Item key={option.value} value={option.value}>
-                        <View className="mb-1">
-                          <RadioGroup.Label>{option.label}</RadioGroup.Label>
-                          <RadioGroup.Description className="text-muted-foreground">
-                            {option.description}
-                          </RadioGroup.Description>
-                        </View>
-                        <RadioGroup.Indicator />
-                      </RadioGroup.Item>
-                    ))}
-                  </RadioGroup>
-                )}
-              </form.Field>
-            </View>
-
-            <Divider orientation="horizontal" className="my-2" thickness={2} variant="thick" />
-
-            <View className="mb-4">
-              <View className="flex-row items-center justify-between mb-1">
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="time" size={20} color={primary} />
-                  <Text className="text-lg font-semibold text-foreground">Fixed Commitments</Text>
+                  <FieldInfo field={field} />
                 </View>
-                <Button size="sm" variant="ghost" onPress={addCommitment}>
-                  <Button.Label className="text-accent">Add</Button.Label>
-                  <Ionicons name="add" size={16} color={primary} />
-                </Button>
-              </View>
-
-              <form.Field name="commitments">
-                {(field) => (
-                  <>
-                    {field.state.value.length === 0 && (
-                      <Text className="text-muted-foreground text-center py-4 italic">
-                        No fixed commitments added.
-                      </Text>
-                    )}
-
-                    {field.state.value.map((_item, index) => (
-                      <CommitmentItem key={index} index={index} danger={danger} form={form} />
-                    ))}
-                  </>
-                )}
-              </form.Field>
-            </View>
-
-            <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
-              children={([canSubmit, isSubmitting]) => (
-                <Button
-                  onPress={() => form.handleSubmit()}
-                  variant="primary"
-                  className="mt-6 h-12"
-                  isDisabled={!canSubmit || isSubmitting || isGenerating}
-                >
-                  {isGenerating || isSubmitting ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <>
-                      <Text className="text-white font-bold text-lg">Generate Plan</Text>
-                      <Ionicons name="sparkles" size={20} color="white" />
-                    </>
-                  )}
-                </Button>
               )}
-            />
-          </Card.Body>
-        </Card>
+            </form.Field>
+          </Section>
+
+          {/* Section 4: Weekends */}
+          <Section icon={Calendar03Icon} title="Weekend Protocol" delay={400}>
+            <form.Field name="weekendPreference">
+              {(field) => (
+                <View className="flex-row gap-x-3">
+                  {weekendPreferenceOptions.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => field.setValue(opt.value)}
+                      className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
+                        field.state.value === opt.value
+                          ? "bg-accent border-accent"
+                          : "bg-surface border-border/30"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-sans-bold uppercase tracking-widest ${
+                          field.state.value === opt.value ? "text-white" : "text-muted-foreground"
+                        }`}
+                      >
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </form.Field>
+          </Section>
+
+          {/* Section 5: Commitments */}
+          <Section
+            icon={Clock01Icon}
+            title="Structural Constraints"
+            delay={500}
+            action={
+              <TouchableOpacity onPress={addCommitment} className="p-2 bg-accent/10 rounded-xl">
+                <HugeiconsIcon icon={PlusSignIcon} size={18} color="var(--accent)" />
+              </TouchableOpacity>
+            }
+          >
+            <form.Field name="commitments">
+              {(field) => (
+                <View className="gap-y-4">
+                  {field.state.value.map((_, index) => (
+                    <CommitmentRow key={index} index={index} form={form} />
+                  ))}
+                  {field.state.value.length === 0 && (
+                    <Text className="text-center font-sans text-muted-foreground italic py-6">
+                      No fixed commitments added.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </form.Field>
+          </Section>
+        </View>
       </ScrollView>
+
+      {/* Floating Action Button */}
+      <View className="absolute bottom-10 left-6 right-6">
+        <form.Subscribe
+          selector={(s) => [s.canSubmit, s.isSubmitting]}
+          children={([canSubmit, isSubmitting]) => (
+            <TouchableOpacity
+              onPress={() => form.handleSubmit()}
+              disabled={!canSubmit || isSubmitting || isGenerating}
+              activeOpacity={0.8}
+              className={`h-16 rounded-[24px] flex-row items-center justify-center gap-x-3 shadow-xl ${
+                !canSubmit || isSubmitting || isGenerating
+                  ? "bg-muted opacity-50 shadow-none"
+                  : "bg-foreground shadow-black/20"
+              }`}
+            >
+              {isGenerating || isSubmitting ? (
+                <ActivityIndicator color="var(--background)" />
+              ) : (
+                <>
+                  <Text className="text-background font-sans-bold text-lg">
+                    Build Monthly System
+                  </Text>
+                  <HugeiconsIcon icon={SparklesIcon} size={20} color="var(--background)" />
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+      </View>
     </Container>
   );
 }
 
-function CommitmentItem({ index, danger, form }: { index: number; danger?: string; form: any }) {
-  const parseTimeString = (timeStr: string): Date | null => {
-    if (!timeStr) return null;
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
-  };
-
-  const formatTimeToString = (date: Date | null): string => {
-    if (!date) return "";
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
+function Section({ icon, title, children, delay, action }: any) {
   return (
-    <View className="p-3 border border-border rounded-lg bg-card/50 space-y-3 relative mb-2">
-      <form.Field name={`commitments.${index}.description`}>
-        {(field: AnyFieldApi) => (
-          <>
-            <TouchableOpacity
-              onPress={() => {
-                const currentCommitments = field.form.getFieldValue("commitments");
-                if (currentCommitments) {
-                  const newCommitments = [...currentCommitments];
-                  newCommitments.splice(index, 1);
-                  field.form.setFieldValue("commitments", newCommitments);
-                }
-              }}
-              className="absolute top-2 right-2 z-10 p-1"
-            >
-              <Ionicons name="close" size={20} color={danger || "#ef4444"} />
-            </TouchableOpacity>
-            <TextField>
-              <TextField.Label>Description</TextField.Label>
+    <Animated.View entering={FadeInDown.delay(delay).duration(600)}>
+      <View className="flex-row items-center justify-between mb-4 px-1">
+        <View className="flex-row items-center gap-x-3">
+          <View className="w-8 h-8 rounded-lg bg-surface items-center justify-center border border-border/30">
+            <HugeiconsIcon icon={icon} size={16} color="var(--muted-foreground)" />
+          </View>
+          <Text className="text-base font-sans-bold text-foreground">{title}</Text>
+        </View>
+        {action}
+      </View>
+      {children}
+    </Animated.View>
+  );
+}
+
+function CommitmentRow({ index, form }: any) {
+  return (
+    <View className="p-4 bg-surface rounded-[24px] border border-border/30 gap-y-4">
+      <View className="flex-row items-center justify-between">
+        <form.Field name={`commitments.${index}.description`}>
+          {(field: any) => (
+            <TextField variant="ghost" className="flex-1 mr-4 h-10">
               <TextField.Input
-                placeholder="e.g. Weekly Meeting"
-                onChangeText={field.handleChange}
+                placeholder="Commitment name..."
                 value={field.state.value}
+                onChangeText={field.handleChange}
+                className="text-base font-sans-semibold"
               />
             </TextField>
-          </>
-        )}
-      </form.Field>
+          )}
+        </form.Field>
+        <TouchableOpacity
+          onPress={() => {
+            const current = form.getFieldValue("commitments");
+            const next = [...current];
+            next.splice(index, 1);
+            form.setFieldValue("commitments", next);
+          }}
+          className="w-8 h-8 rounded-full bg-danger/10 items-center justify-center"
+        >
+          <HugeiconsIcon icon={Cancel01Icon} size={16} color="var(--danger)" />
+        </TouchableOpacity>
+      </View>
 
-      <View className="flex-row gap-2">
+      <View className="flex-row gap-x-2">
         <form.Field name={`commitments.${index}.dayOfWeek`}>
-          {(field: AnyFieldApi) => (
-            <DayPickerField value={field.state.value} onChange={(val) => field.setValue(val)} />
+          {(field: any) => (
+            <View className="flex-1">
+              <DayPickerField value={field.state.value} onChange={field.handleChange} />
+            </View>
           )}
         </form.Field>
-
         <form.Field name={`commitments.${index}.startTime`}>
-          {(field: AnyFieldApi) => (
-            <AppDateTimePicker
-              label="Start"
-              mode="time"
-              value={field.state.value ? parseTimeString(field.state.value) : null}
-              onChange={(date: Date | null) => field.setValue(formatTimeToString(date))}
-            />
+          {(field: any) => (
+            <TimeInput value={field.state.value} onChange={field.handleChange} label="Start" />
           )}
         </form.Field>
-
         <form.Field name={`commitments.${index}.endTime`}>
-          {(field: AnyFieldApi) => (
-            <AppDateTimePicker
-              label="End"
-              mode="time"
-              value={field.state.value ? parseTimeString(field.state.value) : null}
-              onChange={(date: Date | null) => field.setValue(formatTimeToString(date))}
-            />
+          {(field: any) => (
+            <TimeInput value={field.state.value} onChange={field.handleChange} label="End" />
           )}
         </form.Field>
       </View>
     </View>
+  );
+}
+
+function TimeInput({ value, onChange, label }: any) {
+  const parseTime = (s: string) => {
+    if (!s) return new Date();
+    const [h, m] = s.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+  const formatTime = (d: Date) => {
+    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <AppDateTimePicker
+      label={label}
+      mode="time"
+      value={parseTime(value)}
+      onChange={(d: any) => onChange(formatTime(d))}
+    />
   );
 }

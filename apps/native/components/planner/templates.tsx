@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
-import { Card, Button, Divider, Tabs, Skeleton } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Card, Button, Divider, Skeleton } from "heroui-native";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Search01Icon,
+  Cancel01Icon,
+  ArrowRight01Icon,
+  RocketIcon,
+  Sun01Icon,
+  Wallet01Icon,
+  LanguageSkillIcon,
+  Book02Icon,
+  PaintBrush01Icon,
+  SparklesIcon,
+  Add01Icon,
+} from "@hugeicons/core-free-icons";
 import { useSemanticColors } from "@/utils/theme";
 import { useRouter } from "expo-router";
+import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -18,56 +32,68 @@ const TEMPLATES = [
   {
     id: "1",
     title: "Deep Work Sprint",
-    description: "Maximize your output with 4 hours of uninterrupted deep work daily.",
+    description: "Maximize output with 4 hours of uninterrupted deep work daily.",
     category: "productivity",
     complexity: "Ambitious",
-    focusAreas: "Productivity, Skill Building",
-    icon: "rocket",
+    focusAreas: "Efficiency",
+    icon: RocketIcon,
+    color: "bg-purple-500/10",
+    iconColor: "#a855f7",
   },
   {
     id: "2",
-    title: "Morning Routine Mastery",
+    title: "Morning Routine",
     description: "Build a rock-solid morning ritual including meditation and stretching.",
     category: "wellness",
     complexity: "Simple",
-    focusAreas: "Wellness, Discipline",
-    icon: "sunny",
+    focusAreas: "Wellness",
+    icon: Sun01Icon,
+    color: "bg-orange-500/10",
+    iconColor: "#f97316",
   },
   {
     id: "3",
-    title: "Financial Zen 101",
+    title: "Financial Zen",
     description: "Master your budget with daily tracking and weekly audits.",
     category: "finance",
     complexity: "Balanced",
-    focusAreas: "Savings, Awareness",
-    icon: "cash",
+    focusAreas: "Finance",
+    icon: Wallet01Icon,
+    color: "bg-emerald-500/10",
+    iconColor: "#10b981",
   },
   {
     id: "4",
-    title: "Language Learning Lab",
+    title: "Language Lab",
     description: "Consistent 30-minute daily practice using immersion techniques.",
-    category: "productivity",
+    category: "learning",
     complexity: "Balanced",
-    focusAreas: "Skill Acquisition",
-    icon: "language",
+    focusAreas: "Learning",
+    icon: LanguageSkillIcon,
+    color: "bg-blue-500/10",
+    iconColor: "#3b82f6",
   },
   {
     id: "5",
-    title: "Book Club Monthly",
-    description: "Read and discuss one book per month with structured reading schedule.",
+    title: "Book Club",
+    description: "Read and discuss one book per month with structured schedule.",
     category: "learning",
     complexity: "Simple",
-    focusAreas: "Reading, Knowledge",
-    icon: "book",
+    focusAreas: "Reading",
+    icon: Book02Icon,
+    color: "bg-amber-500/10",
+    iconColor: "#f59e0b",
   },
   {
     id: "6",
-    title: "Art Practice Challenge",
+    title: "Art Challenge",
     description: "Daily sketch prompts and weekly project completion.",
     category: "creativity",
     complexity: "Balanced",
-    focusAreas: "Creativity, Discipline",
-    icon: "brush",
+    focusAreas: "Creativity",
+    icon: PaintBrush01Icon,
+    color: "bg-pink-500/10",
+    iconColor: "#ec4899",
   },
 ];
 
@@ -78,56 +104,61 @@ interface TemplateData {
   category: string;
   complexity: string;
   focusAreas: string;
-  icon: string;
+  icon: any;
+  color: string;
+  iconColor: string;
 }
 
 const TemplateCard = ({
   template,
-  primary,
   onApply,
+  index,
 }: {
   template: TemplateData;
-  primary: string;
   onApply: (template: TemplateData) => void;
+  index: number;
 }) => (
-  <Card className="mb-4 overflow-hidden border border-border bg-card">
-    <View className="p-4">
-      <View className="flex-row justify-between items-start mb-2">
-        <View className="flex-row items-center gap-2">
-          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-            <Ionicons name={template.icon as any} size={20} color={primary} />
+  <Animated.View entering={FadeInDown.delay(index * 100).duration(600)}>
+    <TouchableOpacity activeOpacity={0.9} onPress={() => onApply(template)} className="mb-6">
+      <Card className="p-6 border-none bg-surface/50 rounded-[32px]">
+        <View className="flex-row justify-between items-start mb-4">
+          <View className="flex-row items-center gap-x-3">
+            <View className={`w-12 h-12 rounded-2xl ${template.color} items-center justify-center`}>
+              <HugeiconsIcon icon={template.icon} size={24} color={template.iconColor} />
+            </View>
+            <View>
+              <Text className="text-lg font-sans-bold text-foreground">{template.title}</Text>
+              <View className="flex-row items-center gap-x-1.5">
+                <View className="w-1.5 h-1.5 rounded-full bg-accent" />
+                <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-widest">
+                  {template.complexity}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View>
-            <Text className="text-lg font-bold text-foreground">{template.title}</Text>
-            <Text className="text-xs text-muted-foreground uppercase font-semibold">
-              {template.complexity}
+        </View>
+
+        <Text className="text-base font-sans text-muted-foreground mb-6 leading-6">
+          {template.description}
+        </Text>
+
+        <View className="flex-row justify-between items-center pt-5 border-t border-border/30">
+          <View className="flex-row items-center gap-x-2">
+            <HugeiconsIcon icon={SparklesIcon} size={14} color="var(--muted-foreground)" />
+            <Text className="text-xs font-sans-medium text-muted-foreground capitalize">
+              {template.focusAreas}
             </Text>
           </View>
+          <View className="w-10 h-10 rounded-full bg-foreground items-center justify-center">
+            <HugeiconsIcon icon={ArrowRight01Icon} size={18} color="var(--background)" />
+          </View>
         </View>
-        <TouchableOpacity className="p-2">
-          <Ionicons name="bookmark-outline" size={20} color={primary} />
-        </TouchableOpacity>
-      </View>
-
-      <Text className="text-sm text-foreground mb-4 leading-5">{template.description}</Text>
-
-      <Divider className="mb-4" />
-
-      <View className="flex-row justify-between items-center">
-        <View className="flex-row items-center gap-1">
-          <Ionicons name="location" size={14} color={primary} />
-          <Text className="text-xs text-muted-foreground">{template.focusAreas}</Text>
-        </View>
-        <Button size="sm" className="bg-primary h-8 px-4" onPress={() => onApply(template)}>
-          <Text className="text-white text-xs font-bold">Apply</Text>
-        </Button>
-      </View>
-    </View>
-  </Card>
+      </Card>
+    </TouchableOpacity>
+  </Animated.View>
 );
 
 export default function TemplatesTab() {
-  const { primary } = useSemanticColors();
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,7 +166,7 @@ export default function TemplatesTab() {
 
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 800);
+    const timer = setTimeout(() => setIsLoading(false), 600);
     return () => clearTimeout(timer);
   }, [activeCategory, searchQuery]);
 
@@ -160,107 +191,86 @@ export default function TemplatesTab() {
     });
   };
 
-  const handleCreateNew = () => {
-    router.push("/(tabs)/planner/create");
-  };
-
   return (
-    <ScrollView className="flex-1" contentContainerClassName="pb-24">
-      <View className="px-4 pt-4 pb-2">
-        <View className="flex-row justify-between items-center mb-2">
-          <View>
-            <Text className="text-3xl font-bold text-foreground">Discover</Text>
-            <Text className="text-muted-foreground mt-1">
-              Find inspiration for your next monthly plan.
-            </Text>
-          </View>
-          <Button variant="primary" onPress={handleCreateNew}>
-            <Ionicons name="add" size={20} color="white" />
-            <Text className="text-white font-bold ml-1">Create</Text>
-          </Button>
-        </View>
-      </View>
-
-      <View className="px-4 mb-4">
-        <View className="flex-row items-center bg-card border border-border rounded-lg px-3">
-          <Ionicons name="search" size={20} color={primary} />
+    <ScrollView
+      className="flex-1"
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Search Bar */}
+      <Animated.View entering={FadeInDown.delay(100).duration(600)} className="px-6 mt-4 mb-6">
+        <View className="flex-row items-center bg-surface border border-border/50 rounded-2xl px-4 py-1">
+          <HugeiconsIcon icon={Search01Icon} size={20} color="var(--muted-foreground)" />
           <TextInput
-            className="flex-1 p-3 text-foreground"
-            placeholder="Search templates..."
-            placeholderTextColor="#6b7280"
+            className="flex-1 p-3 font-sans text-foreground"
+            placeholder="Search strategies..."
+            placeholderTextColor="var(--muted-foreground)"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery !== "" && (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close" size={20} color={primary} />
+              <HugeiconsIcon icon={Cancel01Icon} size={18} color="var(--muted-foreground)" />
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </Animated.View>
 
-      <View className="mb-4">
-        <Tabs
-          value={activeCategory}
-          onValueChange={setActiveCategory}
-          variant="line"
-          className="px-4"
+      {/* Categories Scroller */}
+      <Animated.View entering={FadeInRight.delay(200).duration(600)} className="mb-8">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 24 }}
         >
-          <Tabs.List className="border-b border-divider w-full">
-            <Tabs.ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <Tabs.Indicator className="bg-primary" />
-              {CATEGORIES.map((cat) => (
-                <Tabs.Trigger key={cat.key} value={cat.key} className="px-4 py-3">
-                  <Tabs.Label
-                    className={`${activeCategory === cat.key ? "text-primary font-bold" : "text-muted-foreground"}`}
-                  >
-                    {cat.label}
-                  </Tabs.Label>
-                </Tabs.Trigger>
-              ))}
-            </Tabs.ScrollView>
-          </Tabs.List>
-        </Tabs>
-      </View>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.key}
+              onPress={() => setActiveCategory(cat.key)}
+              className={`mr-3 px-6 py-3 rounded-2xl border ${
+                activeCategory === cat.key
+                  ? "bg-foreground border-foreground"
+                  : "bg-surface border-border/50"
+              }`}
+            >
+              <Text
+                className={`text-xs font-sans-bold uppercase tracking-widest ${
+                  activeCategory === cat.key ? "text-background" : "text-muted-foreground"
+                }`}
+              >
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Animated.View>
 
-      <View className="px-4">
+      {/* Template Grid */}
+      <View className="px-6">
         {isLoading ? (
-          <View className="space-y-4">
+          <View className="space-y-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="mb-4 p-4 border border-border bg-card">
-                <View className="flex-row items-center gap-3 mb-4">
-                  <Skeleton className="size-12 rounded-full" />
-                  <View className="flex-1 gap-2">
-                    <Skeleton className="h-4 w-2/3 rounded" />
-                    <Skeleton className="h-3 w-1/3 rounded" />
-                  </View>
-                </View>
-                <Skeleton className="h-16 w-full rounded-lg mb-4" />
-                <Divider className="mb-4" />
-                <View className="flex-row justify-between items-center">
-                  <Skeleton className="h-4 w-1/2 rounded" />
-                  <Skeleton className="h-8 w-20 rounded" />
-                </View>
-              </Card>
+              <View key={i} className="h-48 w-full bg-surface rounded-[32px] animate-pulse" />
             ))}
           </View>
         ) : (
           <>
-            {filteredTemplates.map((template) => (
+            {filteredTemplates.map((template, idx) => (
               <TemplateCard
                 key={template.id}
+                index={idx}
                 template={template}
-                primary={primary}
                 onApply={handleApply}
               />
             ))}
 
             {filteredTemplates.length === 0 && (
               <View className="items-center justify-center py-20">
-                <Ionicons name="search-outline" size={48} color={primary} />
-                <Text className="text-muted-foreground mt-4 text-lg">No templates found.</Text>
-                <Text className="text-muted-foreground text-sm">
-                  Try adjusting your search or category.
+                <View className="w-16 h-16 rounded-full bg-muted/5 items-center justify-center mb-4">
+                  <HugeiconsIcon icon={Search01Icon} size={32} color="var(--muted-foreground)" />
+                </View>
+                <Text className="text-muted-foreground font-sans-semibold">
+                  No strategies found
                 </Text>
               </View>
             )}
