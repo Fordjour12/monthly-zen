@@ -9,8 +9,8 @@ import {
   ArrowLeft01Icon,
   FireIcon,
   Analytics01Icon,
-  Trophy01Icon,
   SparklesIcon,
+  ChampionIcon,
 } from "@hugeicons/core-free-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "@tanstack/react-query";
@@ -123,7 +123,7 @@ export default function HeatMapScreen() {
         {/* Stats Grid */}
         <View className="flex-row gap-x-4 mb-8">
           <StatCard
-            icon={Trophy01Icon}
+            icon={ChampionIcon}
             label="Streak"
             value={`${stats.streak} Days`}
             color="text-orange-500"
