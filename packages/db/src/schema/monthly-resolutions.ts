@@ -1,17 +1,7 @@
 import { relations } from "drizzle-orm";
-import {
-  pgTable,
-  serial,
-  text,
-  varchar,
-  timestamp,
-  boolean,
-  integer,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-
-export const resolutionTypeEnum = pgEnum("resolution_type", ["monthly", "yearly"]);
+import { resolutionTypeEnum } from "./enums";
 
 export const monthlyResolutions = pgTable("monthly_resolutions", {
   id: serial("id").primaryKey(),

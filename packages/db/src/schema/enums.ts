@@ -8,3 +8,5 @@ export const insightTypeEnum = pgEnum("insight_type", [
   "SessionDuration",
   "Challenges",
 ]);
+
+export const resolutionTypeEnum = pgEnum("resolution_type", ["monthly", "yearly"]);

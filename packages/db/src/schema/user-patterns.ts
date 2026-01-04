@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, serial, text, timestamp, jsonb, varchar, integer } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  jsonb,
+  varchar,
+  integer,
+  index,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
 export type DayOfWeekPattern = {
@@ -53,30 +62,34 @@ export type UserPatternsJson = {
   }[];
 };
 
-export const userPatterns = pgTable("user_patterns", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .references(() => user.id)
-    .notNull(),
+export const userPatterns = pgTable(
+  "user_patterns",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id)
+      .notNull(),
 
-  // Pattern analysis period
-  analysisStartDate: timestamp("analysis_start_date").notNull(),
-  analysisEndDate: timestamp("analysis_end_date").notNull(),
+    // Pattern analysis period
+    analysisStartDate: timestamp("analysis_start_date").notNull(),
+    analysisEndDate: timestamp("analysis_end_date").notNull(),
 
-  // Core pattern data
-  patternsJson: jsonb("patterns_json").notNull().$type<UserPatternsJson>(),
+    // Core pattern data
+    patternsJson: jsonb("patterns_json").notNull().$type<UserPatternsJson>(),
 
-  // Analysis metadata
-  dataPointsAnalyzed: integer("data_points_analyzed").notNull(), // Number of tasks/days analyzed
-  confidenceLevel: varchar("confidence_level", { length: 20 }), // high, medium, low
+    // Analysis metadata
+    dataPointsAnalyzed: integer("data_points_analyzed").notNull(), // Number of tasks/days analyzed
+    confidenceLevel: varchar("confidence_level", { length: 20 }), // high, medium, low
 
-  // Versioning for cache invalidation
-  version: integer("version").default(1),
+    // Versioning for cache invalidation
+    version: integer("version").default(1),
 
-  // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+    // Timestamps
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("user_patterns_userId_idx").on(table.userId)],
+);
 
 export const userPatternsRelations = relations(userPatterns, ({ one }) => ({
   user: one(user, {
@@ -86,37 +99,41 @@ export const userPatternsRelations = relations(userPatterns, ({ one }) => ({
 }));
 
 // Coaching goals - separate from monthly plans
-export const coachingGoals = pgTable("coaching_goals", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .references(() => user.id)
-    .notNull(),
+export const coachingGoals = pgTable(
+  "coaching_goals",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id)
+      .notNull(),
 
-  // Goal content
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  category: varchar("category", { length: 50 }), // productivity, health, learning, work, personal
+    // Goal content
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    category: varchar("category", { length: 50 }), // productivity, health, learning, work, personal
 
-  // Target
-  targetMetric: varchar("target_metric", { length: 100 }), // e.g., "complete_90%_tasks"
-  currentValue: varchar("current_value", { length: 100 }),
-  targetValue: varchar("target_value", { length: 100 }).notNull(),
+    // Target
+    targetMetric: varchar("target_metric", { length: 100 }), // e.g., "complete_90%_tasks"
+    currentValue: varchar("current_value", { length: 100 }),
+    targetValue: varchar("target_value", { length: 100 }).notNull(),
 
-  // Timeline
-  startDate: timestamp("start_date").notNull(),
-  targetDate: timestamp("target_date").notNull(),
-  completedAt: timestamp("completed_at"),
+    // Timeline
+    startDate: timestamp("start_date").notNull(),
+    targetDate: timestamp("target_date").notNull(),
+    completedAt: timestamp("completed_at"),
 
-  // Progress tracking
-  progressPercent: integer("progress_percent").default(0),
-  milestones: jsonb("milestones"), // [{ date, value, achieved }]
+    // Progress tracking
+    progressPercent: integer("progress_percent").default(0),
+    milestones: jsonb("milestones"), // [{ date, value, achieved }]
 
-  // Status
-  status: varchar("status", { length: 20 }).default("active"), // active, completed, abandoned, paused
+    // Status
+    status: varchar("status", { length: 20 }).default("active"), // active, completed, abandoned, paused
 
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("coaching_goals_userId_idx").on(table.userId)],
+);
 
 export const coachingGoalsRelations = relations(coachingGoals, ({ one }) => ({
   user: one(user, {

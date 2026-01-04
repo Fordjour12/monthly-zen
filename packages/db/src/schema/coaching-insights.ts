@@ -57,11 +57,12 @@ export const coachingInsights = pgTable("coaching_insights", {
   expiresAt: timestamp("expires_at"), // When insight becomes stale
 });
 
-export const coachingInsightsRelations = relations(coachingInsights, ({ one }) => ({
+export const coachingInsightsRelations = relations(coachingInsights, ({ one, many }) => ({
   user: one(user, {
     fields: [coachingInsights.userId],
     references: [user.id],
   }),
+  sessions: many(coachingSessions),
 }));
 
 // Coaching sessions - track when user interacts with coaching
@@ -72,7 +73,7 @@ export const coachingSessions = pgTable("coaching_sessions", {
     .notNull(),
 
   sessionType: varchar("session_type", { length: 50 }).notNull(), // daily_brief, weekly_review, insight_generated
-  insightId: serial("insight_id").references(() => coachingInsights.id), // Optional link to insight
+  insightId: integer("insight_id").references(() => coachingInsights.id), // Optional link to insight
 
   // Session data
   context: jsonb("context"), // Any relevant context data
@@ -83,3 +84,14 @@ export const coachingSessions = pgTable("coaching_sessions", {
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const coachingSessionsRelations = relations(coachingSessions, ({ one }) => ({
+  user: one(user, {
+    fields: [coachingSessions.userId],
+    references: [user.id],
+  }),
+  insight: one(coachingInsights, {
+    fields: [coachingSessions.insightId],
+    references: [coachingInsights.id],
+  }),
+}));

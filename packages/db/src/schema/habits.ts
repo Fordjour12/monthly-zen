@@ -8,7 +8,9 @@ import {
   timestamp,
   boolean,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth";
 
 export const HabitFrequency = {
   DAILY: "daily" as const,
@@ -56,31 +58,37 @@ export const habitIcons = [
   "🎨", // creative
 ] as const;
 
-export const habits = pgTable("habits", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id", { length: 255 }).notNull(),
+export const habits = pgTable(
+  "habits",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
 
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
+    name: varchar("name", { length: 100 }).notNull(),
+    description: text("description"),
 
-  frequency: varchar("frequency", { length: 20 })
-    .$type<HabitFrequency>()
-    .notNull()
-    .default("daily"),
+    frequency: varchar("frequency", { length: 20 })
+      .$type<HabitFrequency>()
+      .notNull()
+      .default("daily"),
 
-  targetDays: jsonb("target_days")
-    .$type<WeekDay[]>()
-    .default(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
+    targetDays: jsonb("target_days")
+      .$type<WeekDay[]>()
+      .default(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
 
-  color: varchar("color", { length: 7 }).notNull().default(habitColors[5]),
-  icon: varchar("icon", { length: 10 }).notNull().default("🎯"),
+    color: varchar("color", { length: 7 }).notNull().default(habitColors[5]),
+    icon: varchar("icon", { length: 10 }).notNull().default("🎯"),
 
-  reminderTime: timestamp("reminder_time"), // Future feature
-  isArchived: boolean("is_archived").notNull().default(false),
+    reminderTime: timestamp("reminder_time"), // Future feature
+    isArchived: boolean("is_archived").notNull().default(false),
 
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("habits_userId_idx").on(table.userId)],
+);
 
 export const habitLogs = pgTable("habit_logs", {
   id: serial("id").primaryKey(),
@@ -94,7 +102,11 @@ export const habitLogs = pgTable("habit_logs", {
 });
 
 // Relations
-export const habitsRelations = relations(habits, ({ many }) => ({
+export const habitsRelations = relations(habits, ({ one, many }) => ({
+  user: one(user, {
+    fields: [habits.userId],
+    references: [user.id],
+  }),
   logs: many(habitLogs),
 }));
 
