@@ -4,24 +4,27 @@ import { userGoalsAndPreferences } from "../schema";
 import type { CoachTone } from "../schema/user-goals-and-preferences";
 
 export interface UserPreferencesData {
+  id: number;
+  userId: string;
   coachName: string;
   coachTone: CoachTone;
   workingHoursStart: string;
   workingHoursEnd: string;
-  defaultFocusArea?: string;
+  defaultFocusArea?: string | null;
+  goalsText: string;
+  motivation?: string | null;
+  lifeStyle?: string | null;
+  taskComplexity: "Simple" | "Balanced" | "Ambitious";
+  focusAreas: string;
+  weekendPreference: "Work" | "Rest" | "Mixed";
+  preferredTaskDuration?: number | null;
+  fixedCommitmentsJson: any;
+  updatedAt: Date;
 }
 
 export async function getUserPreferences(userId: string) {
   const [preferences] = await db
-    .select({
-      id: userGoalsAndPreferences.id,
-      userId: userGoalsAndPreferences.userId,
-      coachName: userGoalsAndPreferences.coachName,
-      coachTone: userGoalsAndPreferences.coachTone,
-      workingHoursStart: userGoalsAndPreferences.workingHoursStart,
-      workingHoursEnd: userGoalsAndPreferences.workingHoursEnd,
-      defaultFocusArea: userGoalsAndPreferences.defaultFocusArea,
-    })
+    .select()
     .from(userGoalsAndPreferences)
     .where(eq(userGoalsAndPreferences.userId, userId));
 
@@ -30,55 +33,32 @@ export async function getUserPreferences(userId: string) {
 
 export async function updateUserPreferences(
   userId: string,
-  updates: Partial<{
-    coachName: string;
-    coachTone: CoachTone;
-    workingHoursStart: string;
-    workingHoursEnd: string;
-    defaultFocusArea: string;
-  }>,
+  updates: Partial<Omit<UserPreferencesData, "id" | "userId" | "updatedAt">>,
 ) {
   const [preferences] = await db
     .update(userGoalsAndPreferences)
     .set({ ...updates, updatedAt: new Date() })
     .where(eq(userGoalsAndPreferences.userId, userId))
-    .returning({
-      id: userGoalsAndPreferences.id,
-      userId: userGoalsAndPreferences.userId,
-      coachName: userGoalsAndPreferences.coachName,
-      coachTone: userGoalsAndPreferences.coachTone,
-      workingHoursStart: userGoalsAndPreferences.workingHoursStart,
-      workingHoursEnd: userGoalsAndPreferences.workingHoursEnd,
-      defaultFocusArea: userGoalsAndPreferences.defaultFocusArea,
-    });
+    .returning();
 
   return preferences;
 }
 
 export async function createOrUpdatePreferences(
   userId: string,
-  data: Partial<{
-    coachName: string;
-    coachTone: CoachTone;
-    workingHoursStart: string;
-    workingHoursEnd: string;
-    defaultFocusArea: string;
-    goalsText: string;
-    taskComplexity: string;
-    focusAreas: string;
-    weekendPreference: string;
-    fixedCommitmentsJson: unknown;
-  }>,
+  data: Partial<Omit<UserPreferencesData, "id" | "userId" | "updatedAt">>,
 ) {
-  // Use upsert to avoid read-then-write pattern
   const [preferences] = await db
     .insert(userGoalsAndPreferences)
     .values({
       userId,
       goalsText: data.goalsText || "",
-      taskComplexity: (data.taskComplexity as "Simple" | "Balanced" | "Ambitious") || "Balanced",
+      motivation: data.motivation || "",
+      lifeStyle: data.lifeStyle || "",
+      taskComplexity: (data.taskComplexity as any) || "Balanced",
       focusAreas: data.focusAreas || "personal",
-      weekendPreference: (data.weekendPreference as "Work" | "Rest" | "Mixed") || "Mixed",
+      weekendPreference: (data.weekendPreference as any) || "Mixed",
+      preferredTaskDuration: data.preferredTaskDuration || 45,
       fixedCommitmentsJson: (data.fixedCommitmentsJson as any) || { commitments: [] },
       coachName: data.coachName || "Coach",
       coachTone: (data.coachTone as CoachTone) || "encouraging",
@@ -89,28 +69,11 @@ export async function createOrUpdatePreferences(
     .onConflictDoUpdate({
       target: userGoalsAndPreferences.userId,
       set: {
-        coachName: data.coachName || "Coach",
-        coachTone: (data.coachTone as CoachTone) || "encouraging",
-        workingHoursStart: data.workingHoursStart || "09:00",
-        workingHoursEnd: data.workingHoursEnd || "17:00",
-        defaultFocusArea: data.defaultFocusArea,
-        goalsText: data.goalsText || "",
-        taskComplexity: (data.taskComplexity as "Simple" | "Balanced" | "Ambitious") || "Balanced",
-        focusAreas: data.focusAreas || "personal",
-        weekendPreference: (data.weekendPreference as "Work" | "Rest" | "Mixed") || "Mixed",
-        fixedCommitmentsJson: (data.fixedCommitmentsJson as any) || { commitments: [] },
+        ...data,
         updatedAt: new Date(),
       },
     })
-    .returning({
-      id: userGoalsAndPreferences.id,
-      userId: userGoalsAndPreferences.userId,
-      coachName: userGoalsAndPreferences.coachName,
-      coachTone: userGoalsAndPreferences.coachTone,
-      workingHoursStart: userGoalsAndPreferences.workingHoursStart,
-      workingHoursEnd: userGoalsAndPreferences.workingHoursEnd,
-      defaultFocusArea: userGoalsAndPreferences.defaultFocusArea,
-    });
+    .returning();
 
   return preferences;
 }

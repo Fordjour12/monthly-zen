@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, serial, text, varchar, timestamp, jsonb, time } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  varchar,
+  timestamp,
+  jsonb,
+  time,
+  integer,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { complexityEnum, weekendEnum } from "./enums";
 
@@ -22,28 +31,38 @@ export const userGoalsAndPreferences = pgTable("user_goals_and_preferences", {
   id: serial("id").primaryKey(),
   userId: text("user_id")
     .references(() => user.id)
-    .notNull(),
+    .notNull()
+    .unique(), // Enforce 1:1 relationship
 
-  // Original goal-setting fields
-  goalsText: text("goals_text").notNull(),
-  taskComplexity: complexityEnum("task_complexity").notNull(),
-  focusAreas: varchar("focus_areas", { length: 150 }).notNull(),
-  weekendPreference: weekendEnum("weekend_preference").notNull(),
+  // Core Goal Architecture
+  goalsText: text("goals_text").notNull().default(""),
+  motivation: text("motivation").default(""),
+  lifeStyle: text("lifestyle_description").default(""),
+  focusAreas: varchar("focus_areas", { length: 255 }).notNull().default("personal"),
 
-  fixedCommitmentsJson: jsonb("fixed_commitments_json").notNull().$type<FixedCommitmentsJson>(),
+  // Tactical Preferences
+  taskComplexity: complexityEnum("task_complexity").notNull().default("Balanced"),
+  weekendPreference: weekendEnum("weekend_preference").notNull().default("Mixed"),
+  preferredTaskDuration: integer("preferred_task_duration").default(45), // in minutes
 
-  inputSavedAt: timestamp("input_saved_at").notNull().defaultNow(),
+  // Schedule Logic
+  fixedCommitmentsJson: jsonb("fixed_commitments_json")
+    .notNull()
+    .$type<FixedCommitmentsJson>()
+    .default({ commitments: [] }),
+  workingHoursStart: time("working_hours_start").default("09:00").notNull(),
+  workingHoursEnd: time("working_hours_end").default("17:00").notNull(),
 
-  // Application Preferences
+  // AI Companion Personality
   coachName: varchar("coach_name", { length: 50 }).default("Coach").notNull(),
   coachTone: varchar("coach_tone", { length: 20 })
     .$type<CoachTone>()
     .default("encouraging")
     .notNull(),
-  workingHoursStart: time("working_hours_start").default("09:00").notNull(),
-  workingHoursEnd: time("working_hours_end").default("17:00").notNull(),
-  defaultFocusArea: varchar("default_focus_area", { length: 50 }),
 
+  // Registry Metadata
+  defaultFocusArea: varchar("default_focus_area", { length: 50 }),
+  inputSavedAt: timestamp("input_saved_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
