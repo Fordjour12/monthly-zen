@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { orpc } from "@/utils/orpc";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -32,29 +32,8 @@ export interface CoachingStats {
 }
 
 export function useCoaching() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
   const insightsQuery = useQuery(orpc.coaching.getInsights.queryOptions());
   const statsQuery = useQuery(orpc.coaching.getStats.queryOptions());
-
-  const loadCoachingData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      await Promise.all([insightsQuery.refetch(), statsQuery.refetch()]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [insightsQuery, statsQuery]);
-
-  const refresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([insightsQuery.refetch(), statsQuery.refetch()]);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [insightsQuery, statsQuery]);
 
   const generateInsightsMutation = useMutation({
     ...orpc.coaching.generateInsights.mutationOptions(),
@@ -89,16 +68,8 @@ export function useCoaching() {
   });
 
   const generateInsights = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await generateInsightsMutation.mutateAsync(undefined);
-      return response;
-    } catch (error) {
-      console.error("Failed to generate insights:", error);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
+    const response = await generateInsightsMutation.mutateAsync(undefined);
+    return response;
   }, [generateInsightsMutation]);
 
   const dismissInsight = useCallback(
@@ -118,12 +89,13 @@ export function useCoaching() {
   return {
     insights: insightsQuery.data?.data as unknown as Insight[] | undefined,
     stats: statsQuery.data?.data as unknown as CoachingStats | undefined,
-    isLoading,
-    isRefreshing,
+    isLoading: generateInsightsMutation.isPending,
+    isRefreshing: insightsQuery.isRefetching || statsQuery.isRefetching,
     insightsQuery,
     statsQuery,
-    loadCoachingData,
-    refresh,
+    refresh: useCallback(async () => {
+      await Promise.all([insightsQuery.refetch(), statsQuery.refetch()]);
+    }, [insightsQuery, statsQuery]),
     generateInsights,
     dismissInsight,
     markAsRead,

@@ -1,53 +1,63 @@
-import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { PressableFeedback } from "heroui-native";
-import { router } from "expo-router";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  AiMagicIcon,
+  Analytics01Icon,
+  Calendar01Icon,
+  Location01Icon,
+  PlusSignIcon,
+} from "@hugeicons/core-free-icons";
+import { useRouter } from "expo-router";
+import Animated, { FadeInRight } from "react-native-reanimated";
 
 interface QuickAction {
-  icon: string;
+  icon: any;
   label: string;
   route?: string;
+  color?: string;
 }
 
 const actions: QuickAction[] = [
-  { icon: "sparkles", label: "Generate Plan", route: "/generate-plan" },
-  { icon: "analytics", label: "Insights" },
-  { icon: "calendar", label: "Calendar", route: "/calendar" },
-  { icon: "compass", label: "Explore", route: "/explore" },
+  { icon: PlusSignIcon, label: "Add Task", route: "/planner/create", color: "bg-blue-500" },
+  { icon: AiMagicIcon, label: "Generate", route: "/planner/create", color: "bg-purple-500" },
+  { icon: Calendar01Icon, label: "Calendar", route: "/calendar", color: "bg-emerald-500" },
+  { icon: Analytics01Icon, label: "Insights", route: "/coaching", color: "bg-orange-500" },
+  { icon: Location01Icon, label: "Explore", route: "/explore", color: "bg-pink-500" },
 ];
 
-function QuickActionCard({ icon, label, route }: QuickAction) {
-  const handlePress = () => {
-    if (route) {
-      router.push(route as any);
-    }
-  };
-
-  return (
-    <PressableFeedback feedbackVariant="highlight" onPress={handlePress}>
-      <View className="flex-1 aspect-square bg-surface rounded-xl p-4 items-center justify-center border border-default-200 dark:border-default-800">
-        <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center mb-2">
-          <Ionicons name={icon as any} size={24} color="currentColor" className="text-primary" />
-        </View>
-        <Text className="text-xs text-center text-foreground font-medium">{label}</Text>
-      </View>
-    </PressableFeedback>
-  );
-}
-
 export function QuickActions() {
+  const router = useRouter();
+
   return (
-    <View className="px-4 mb-4">
-      <View className="flex-row gap-3">
-        {actions.slice(0, 2).map((action, index) => (
-          <QuickActionCard key={index} {...action} />
-        ))}
+    <View className="mb-8">
+      <View className="px-6 mb-4 flex-row items-center justify-between">
+        <Text className="text-sm font-sans-bold text-foreground uppercase tracking-widest">
+          Quick Access
+        </Text>
       </View>
-      <View className="flex-row gap-3 mt-3">
-        {actions.slice(2, 4).map((action, index) => (
-          <QuickActionCard key={index} {...action} />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 24 }}
+      >
+        {actions.map((action, index) => (
+          <Animated.View key={index} entering={FadeInRight.delay(400 + index * 100).duration(600)}>
+            <TouchableOpacity
+              onPress={() => action.route && router.push(action.route as any)}
+              activeOpacity={0.7}
+              className="items-center mr-6"
+            >
+              <View className="w-16 h-16 rounded-[22px] bg-surface border border-border/50 items-center justify-center mb-2 shadow-sm">
+                <HugeiconsIcon icon={action.icon} size={24} color="var(--foreground)" />
+              </View>
+              <Text className="text-[11px] font-sans-semibold text-muted-foreground uppercase tracking-tighter">
+                {action.label}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }

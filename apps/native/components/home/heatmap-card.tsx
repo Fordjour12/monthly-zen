@@ -1,7 +1,9 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { Card } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { FireIcon, Analytics01Icon } from "@hugeicons/core-free-icons";
 import { HeatmapHorizontalLabels, type DayData } from "@/components/ui/heatmap-horizontal-labels";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 interface HeatmapCardProps {
   onViewFull?: () => void;
@@ -55,46 +57,62 @@ export function HeatmapCard({ onViewFull }: HeatmapCardProps) {
   const activeDays = data.filter((day) => day.total > 0).length;
 
   return (
-    <Card className="mx-4  pt-4">
-      <View className="flex-row items-center justify-between mb-4">
-        <View className="flex-row items-center gap-2">
-          <Ionicons name="flame" size={20} color="#f59e0b" />
-          <Text className="font-semibold text-foreground text-lg">Activity</Text>
+    <Animated.View entering={FadeInDown.delay(700).duration(600)} className="px-6 mb-8">
+      <View className="flex-row items-center justify-between mb-4 px-1">
+        <View className="flex-row items-center gap-x-2">
+          <Text className="text-sm font-sans-bold text-foreground uppercase tracking-widest">
+            Activity
+          </Text>
         </View>
-        <View className="flex-row items-center gap-4">
-          <View className="flex-row items-center gap-1">
-            <View className="size-2.5 rounded-xs bg-muted" />
-            <View className="size-2.5 rounded-xs bg-red-500" />
-            <View className="size-2.5 rounded-xs bg-yellow-500" />
-            <View className="size-2.5 rounded-xs bg-blue-500" />
-            <View className="size-2.5 rounded-xs bg-green-500" />
+        <TouchableOpacity onPress={onViewFull} className="flex-row items-center gap-x-1">
+          <HugeiconsIcon icon={Analytics01Icon} size={14} color="var(--accent)" />
+          <Text className="text-xs font-sans-semibold text-accent">Insights</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Card className="p-6 border-none bg-surface/50 rounded-[28px]">
+        <View className="flex-row items-center justify-between mb-8">
+          <View className="flex-row items-center gap-x-3">
+            <View className="w-10 h-10 rounded-full bg-orange-500/10 items-center justify-center">
+              <HugeiconsIcon icon={FireIcon} size={20} color="#f97316" />
+            </View>
+            <View>
+              <Text className="text-lg font-sans-bold text-foreground">Monthly Flow</Text>
+              <Text className="text-xs font-sans text-muted-foreground">
+                You're on a 5-day streak!
+              </Text>
+            </View>
           </View>
-          {onViewFull && (
-            <TouchableOpacity onPress={onViewFull}>
-              <Text className="text-sm text-primary">View Full</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
 
-      <View className="mb-4">
-        <HeatmapHorizontalLabels data={data} weeksToShow={4} showLabels={true} title="" />
-      </View>
+          <View className="flex-row items-center gap-x-1">
+            <View className="w-2 h-2 rounded-full bg-success/20" />
+            <Text className="text-[10px] font-sans-bold text-success uppercase tracking-widest">
+              High Focus
+            </Text>
+          </View>
+        </View>
 
-      <View className="flex-row justify-between px-2">
-        <View className="items-center">
-          <Text className="text-2xl font-bold text-foreground">{completionRate}%</Text>
-          <Text className="text-xs text-muted-foreground">Completion</Text>
+        <View className="mb-8 items-center">
+          <HeatmapHorizontalLabels data={data} weeksToShow={4} showLabels={true} title="" />
         </View>
-        <View className="items-center">
-          <Text className="text-2xl font-bold text-foreground">{completedTasks}</Text>
-          <Text className="text-xs text-muted-foreground">Tasks Done</Text>
+
+        <View className="flex-row justify-between pt-6 border-t border-border/30">
+          <MetricItem value={`${completionRate}%`} label="Rate" />
+          <MetricItem value={completedTasks.toString()} label="Done" />
+          <MetricItem value={activeDays.toString()} label="Days" />
         </View>
-        <View className="items-center">
-          <Text className="text-2xl font-bold text-foreground">{activeDays}</Text>
-          <Text className="text-xs text-muted-foreground">Active Days</Text>
-        </View>
-      </View>
-    </Card>
+      </Card>
+    </Animated.View>
+  );
+}
+
+function MetricItem({ value, label }: { value: string; label: string }) {
+  return (
+    <View className="items-center">
+      <Text className="text-xl font-sans-bold text-foreground">{value}</Text>
+      <Text className="text-[10px] font-sans-semibold text-muted-foreground uppercase tracking-widest">
+        {label}
+      </Text>
+    </View>
   );
 }

@@ -1,45 +1,51 @@
-import { View, Text } from "react-native";
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
 import { format } from "date-fns";
 import { useAuthStore } from "@/stores/auth-store";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Notification03Icon, Search01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
+import Animated, { FadeInUp } from "react-native-reanimated";
 
 export function HomeHeader() {
   const user = useAuthStore((state) => state.user);
-
   const now = new Date();
-  const dayOfWeek = format(now, "EEE").toUpperCase();
-  const month = format(now, "MMMM");
-  const date = format(now, "d");
-  const year = format(now, "yyyy");
 
   const hour = now.getHours();
   let greeting = "Good evening";
-  if (hour < 12) {
-    greeting = "Good morning";
-  } else if (hour < 17) {
-    greeting = "Good afternoon";
-  }
+  if (hour < 12) greeting = "Good morning";
+  else if (hour < 17) greeting = "Good afternoon";
+
+  const firstName = user?.name?.split(" ")[0] || "there";
 
   return (
-    <View className="px-4 pt-8 pb-2">
-      <View className="flex-row items-center justify-between mb-6">
-        <View className="flex-row items-center gap-1 align-middle">
-          <Text className="text-3xl font-bold text-foreground font-sans-black">{dayOfWeek}</Text>
-          <View className="size-5 rounded-full bg-accent mt-1" />
-        </View>
-        <View className="items-end">
-          <Text className="text-[18px] font-black text-[#fafafa]">
-            {month} {date}
+    <Animated.View
+      entering={FadeInUp.duration(600)}
+      className="px-6 pt-10 pb-4 flex-row items-center justify-between"
+    >
+      <View className="flex-1">
+        <View className="flex-row items-center gap-x-2 mb-1">
+          <Text className="text-sm font-sans-semibold text-muted-foreground uppercase tracking-widest">
+            {format(now, "EEEE, MMM do")}
           </Text>
-          <Text className="text-sm text-foreground">{year}</Text>
         </View>
+        <Text className="text-3xl font-sans-bold text-foreground">
+          {greeting}, {firstName}
+        </Text>
       </View>
 
-      <Text className="text-2xl font-sans-extrabold text-foreground">
-        {greeting}, {user?.name?.split(" ")[0] || "there"}! 👋
-      </Text>
-      <Text className="text-base text-muted-foreground mt-1 font-sans-black ">
-        You have 4 tasks today
-      </Text>
-    </View>
+      <View className="flex-row items-center gap-x-3">
+        <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border/50 items-center justify-center">
+          <HugeiconsIcon icon={Search01Icon} size={20} color="var(--foreground)" />
+        </TouchableOpacity>
+        <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border/50 items-center justify-center">
+          <HugeiconsIcon icon={Notification03Icon} size={20} color="var(--foreground)" />
+        </TouchableOpacity>
+        <TouchableOpacity className="ml-1">
+          <View className="w-10 h-10 rounded-full bg-accent items-center justify-center">
+            <HugeiconsIcon icon={UserCircleIcon} size={24} color="white" />
+          </View>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
   );
 }

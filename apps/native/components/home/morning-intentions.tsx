@@ -1,44 +1,54 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Card } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Sun01Icon, SparklesIcon, Add01Icon } from "@hugeicons/core-free-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 export function MorningIntentions() {
   const intention = {
-    title: "Schedule Deep Work Now",
-    reason: "Monday is your most productive day. Save 2-3 hours for challenging tasks.",
+    title: "Schedule Deep Work",
+    reason: "Monday is your most productive day. Protect 2 hours for focus.",
     confidence: 85,
     patternType: "peak-energy",
   };
 
   return (
-    <Card className="mx-4 mb-4 p-4 bg-primary/5 border-primary/20">
-      <View className="flex-row items-center gap-2 mb-3">
-        <Ionicons name="sunny" size={20} color="currentColor" className="text-primary" />
-        <Text className="font-semibold text-foreground font-sans">Today's Focus</Text>
-      </View>
-
-      <Text className="text-xl font-bold text-foreground mb-2">{intention.title}</Text>
-
-      <Text className="text-sm text-muted-foreground mb-3">{intention.reason}</Text>
-
-      <View className="flex-row items-center gap-2 mb-3">
-        <View className="px-2 py-1 bg-success/20 rounded">
-          <Text className="text-xs font-medium text-success">
-            {intention.confidence}% confident
-          </Text>
+    <Animated.View entering={FadeInDown.delay(300).duration(600)} className="px-6 mb-8">
+      <Card className="p-6 border-none bg-surface/50 rounded-[28px]">
+        <View className="flex-row items-center justify-between mb-5">
+          <View className="flex-row items-center gap-x-2">
+            <View className="w-8 h-8 rounded-lg bg-orange-500/10 items-center justify-center">
+              <HugeiconsIcon icon={Sun01Icon} size={16} color="#f97316" />
+            </View>
+            <Text className="text-sm font-sans-bold text-foreground tracking-tight">
+              AI Insight
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-x-1 p-1 px-2 bg-success/10 rounded-full">
+            <HugeiconsIcon icon={SparklesIcon} size={10} color="var(--success)" />
+            <Text className="text-[10px] font-sans-bold text-success uppercase">
+              {intention.confidence}% Match
+            </Text>
+          </View>
         </View>
-        <Text className="text-xs text-muted-foreground">
-          Based on your {intention.patternType} pattern
-        </Text>
-      </View>
 
-      <Pressable
-        className="py-2.5 px-4 rounded-lg bg-success items-center justify-center flex-row gap-2"
-        onPress={() => {}}
-      >
-        <Ionicons name="add" size={18} color="white" />
-        <Text className="text-white font-medium">Add to Tasks</Text>
-      </Pressable>
-    </Card>
+        <Text className="text-xl font-sans-bold text-foreground mb-2 leading-7">
+          {intention.title}
+        </Text>
+
+        <Text className="text-base font-sans text-muted-foreground mb-6 leading-6">
+          {intention.reason}
+        </Text>
+
+        <TouchableOpacity
+          className="py-4 px-6 rounded-2xl bg-foreground items-center justify-center flex-row gap-x-2 shadow-lg shadow-black/10"
+          activeOpacity={0.8}
+          onPress={() => {}}
+        >
+          <HugeiconsIcon icon={Add01Icon} size={18} color="var(--background)" />
+          <Text className="text-background font-sans-bold text-base">Add to Tasks</Text>
+        </TouchableOpacity>
+      </Card>
+    </Animated.View>
   );
 }
