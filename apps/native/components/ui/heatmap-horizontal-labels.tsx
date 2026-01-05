@@ -8,6 +8,7 @@
 import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useSemanticColors } from "@/utils/theme";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 interface DayData {
   date: Date;
@@ -26,129 +27,106 @@ interface HeatmapHorizontalLabelsProps {
   _title?: string;
 }
 
-type HeatmapColor = "gray" | "green" | "blue" | "yellow" | "red";
-
 export function HeatmapHorizontalLabels({
   data,
   weeksToShow = 4,
   onDayPress,
   showLabels = true,
-  _title = "Activity",
 }: HeatmapHorizontalLabelsProps) {
   const colors = useSemanticColors();
 
-  const getColor = (completed: number, total: number): HeatmapColor => {
-    if (total === 0) return "gray";
+  const getCellStyles = (completed: number, total: number) => {
+    if (total === 0) return { bg: "var(--muted)/10", border: "border-border/10" };
     const rate = completed / total;
-    if (rate === 0) return "gray";
-    if (rate <= 0.25) return "red";
-    if (rate <= 0.5) return "yellow";
-    if (rate <= 0.75) return "blue";
-    return "green";
-  };
-
-  const getBackgroundColor = (color: HeatmapColor): string => {
-    const colorMap: Record<HeatmapColor, string> = {
-      gray: colors.muted || "#6b7280",
-      green: "#10b981",
-      blue: "#3b82f6",
-      yellow: "#f59e0b",
-      red: "#ef4444",
-    };
-    return colorMap[color];
+    if (rate === 0) return { bg: "var(--muted)/20", border: "border-border/20" };
+    if (rate <= 0.3) return { bg: "rgba(34, 197, 94, 0.2)", border: "border-success/20" };
+    if (rate <= 0.6) return { bg: "rgba(34, 197, 94, 0.5)", border: "border-success/30" };
+    if (rate <= 0.8) return { bg: "rgba(34, 197, 94, 0.8)", border: "border-success/50" };
+    return { bg: "var(--success)", border: "border-success/80" };
   };
 
   const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-  const { gridData } = useMemo(() => {
+  const weeks = useMemo(() => {
     const today = new Date();
-    const start = new Date(today);
-    start.setDate(today.getDate() - weeksToShow * 7 + 1);
+    // Start from the most recent Sunday
+    const currentDay = today.getDay();
+    const endOfGrid = new Date(today);
+    endOfGrid.setDate(today.getDate() + (6 - currentDay));
 
-    const days: DayData[] = [];
-    for (let i = 0; i < weeksToShow * 7; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
+    const totalDays = weeksToShow * 7;
+    const gridDays: DayData[] = [];
 
-      const matchingData = data.find(
-        (d) => d.date.getDate() === date.getDate() && d.date.getMonth() === date.getMonth(),
-      );
+    for (let i = totalDays - 1; i >= 0; i--) {
+      const date = new Date(endOfGrid);
+      date.setDate(endOfGrid.getDate() - i);
 
-      days.push(matchingData || { date, completed: 0, total: 0 });
+      const matchingData = data.find((d) => d.date.toDateString() === date.toDateString());
+
+      gridDays.push(matchingData || { date, completed: 0, total: 0 });
     }
 
-    return { gridData: days };
-  }, [data, weeksToShow]);
-
-  const weeks = useMemo(() => {
     const result: DayData[][] = [];
-    for (let i = 0; i < gridData.length; i += 7) {
-      result.push(gridData.slice(i, i + 7));
+    for (let i = 0; i < gridDays.length; i += 7) {
+      result.push(gridDays.slice(i, i + 7));
     }
     return result;
-  }, [gridData]);
+  }, [data, weeksToShow]);
 
-  const cellSize = 16;
-  const cellGap = 3;
+  const cellSize = 22;
+  const cellGap = 4;
 
   return (
     <View className="w-full">
-      {/* Day labels row - M T W T F S S repeated */}
       {showLabels && (
-        <View className="flex-row mb-2">
-          {weeks.map((_, weekIndex) => (
-            <View key={weekIndex} className="flex-row" style={{ marginRight: cellGap }}>
-              {dayLabels.map((label, dayIndex) => (
-                <View key={dayIndex} style={{ width: cellSize }}>
-                  <Text className="text-[9px] text-muted-foreground text-center">{label}</Text>
-                </View>
-              ))}
+        <View className="flex-row mb-3 px-1">
+          {dayLabels.map((label, i) => (
+            <View key={i} style={{ width: cellSize, marginRight: cellGap }}>
+              <Text className="text-[9px] font-sans-bold text-muted-foreground text-center uppercase tracking-widest">
+                {label}
+              </Text>
             </View>
           ))}
         </View>
       )}
 
-      {/* Grid rows - each row is a day of week */}
-      {dayLabels.map((_, dayIndex) => (
-        <View key={dayIndex} className="flex-row mb-[3px]">
-          {weeks.map((week, weekIndex) => {
-            const day = week[dayIndex];
-            const color = getColor(day.completed, day.total);
-            const bgColor = getBackgroundColor(color);
-            const isToday = day.date.toDateString() === new Date().toDateString();
+      <View className="gap-y-[4px]">
+        {weeks.map((week, weekIdx) => (
+          <Animated.View
+            key={weekIdx}
+            entering={FadeIn.delay(weekIdx * 50)}
+            layout={LinearTransition}
+            className="flex-row items-center"
+          >
+            {week.map((day, dayIdx) => {
+              const { bg, border } = getCellStyles(day.completed, day.total);
+              const isToday = day.date.toDateString() === new Date().toDateString();
 
-            return (
-              <TouchableOpacity
-                key={weekIndex}
-                style={{
-                  width: cellSize,
-                  height: cellSize,
-                  marginRight: cellGap,
-                }}
-                onPress={() => onDayPress?.(day)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    {
-                      width: cellSize,
-                      height: cellSize,
-                      borderRadius: 3,
-                      backgroundColor: day.total === 0 ? `${colors.muted}30` : bgColor + "40",
-                      borderWidth: day.total > 0 ? 0 : 1,
-                      borderColor: colors.border,
-                    },
-                    isToday && {
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                    },
-                  ]}
-                />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ))}
+              return (
+                <TouchableOpacity
+                  key={dayIdx}
+                  activeOpacity={0.7}
+                  onPress={() => onDayPress?.(day)}
+                  style={{
+                    width: cellSize,
+                    height: cellSize,
+                    marginRight: cellGap,
+                    backgroundColor: bg,
+                  }}
+                  className={`rounded-[6px] border ${border} ${isToday ? "border-accent border-2 shadow-sm shadow-accent/20" : ""}`}
+                >
+                  {isToday && (
+                    <View className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent border border-background" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <Text className="text-[8px] font-sans-bold text-muted-foreground uppercase tracking-widest ml-1 opacity-40">
+              W{weekIdx + 1}
+            </Text>
+          </Animated.View>
+        ))}
+      </View>
     </View>
   );
 }

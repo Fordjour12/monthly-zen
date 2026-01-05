@@ -1,6 +1,16 @@
+import React from "react";
 import { View, Text } from "react-native";
-import { Card } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  AiMagicIcon,
+  Tick01Icon,
+  AlertCircleIcon,
+  SparklesIcon,
+  PulseIcon,
+  Search01Icon,
+  DatabaseIcon,
+} from "@hugeicons/core-free-icons";
+import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
 
 interface ParsingStatusProps {
   isLoading: boolean;
@@ -17,101 +27,137 @@ export function ParsingStatus({
 }: ParsingStatusProps) {
   if (isLoading) {
     return (
-      <Card className="p-4">
-        <View className="space-y-4">
-          <View className="flex items-center gap-3 flex-row">
-            <Ionicons name="sync" size={20} className="animate-spin text-primary" />
-            <Text className="font-semibold">Parsing AI Response</Text>
+      <Animated.View
+        entering={FadeInUp}
+        className="bg-surface rounded-3xl border border-border/50 p-6 overflow-hidden"
+      >
+        <View className="flex-row items-center gap-x-3 mb-6">
+          <View className="w-10 h-10 rounded-2xl bg-accent/10 items-center justify-center">
+            <HugeiconsIcon icon={PulseIcon} size={20} color="var(--accent)" />
           </View>
-          <Text className="text-sm text-foreground">
-            Processing and structuring your personalized plan...
-          </Text>
-          <View className="h-2 bg-muted rounded-full overflow-hidden">
-            <View className="h-full bg-primary w-[60%]" />
-          </View>
-          <View className="grid grid-cols-3 gap-4 text-xs text-foreground">
-            <View className="flex items-center gap-2 flex-row">
-              <View className="w-2 h-2 bg-green-500 rounded-full" />
-              <Text>JSON Extraction</Text>
-            </View>
-            <View className="flex items-center gap-2 flex-row">
-              <View className="w-2 h-2 bg-blue-500 rounded-full" />
-              <Text>Pattern Matching</Text>
-            </View>
-            <View className="flex items-center gap-2 flex-row">
-              <View className="w-2 h-2 bg-gray-300 rounded-full" />
-              <Text>Validation</Text>
-            </View>
+          <View>
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-1">
+              Neural Engine
+            </Text>
+            <Text className="text-base font-sans-bold text-foreground tracking-tight">
+              Structuring Objectives...
+            </Text>
           </View>
         </View>
-      </Card>
+
+        <View className="h-2 bg-muted/20 rounded-full overflow-hidden mb-8">
+          <Animated.View entering={FadeInDown} className="h-full bg-accent w-[65%]" />
+        </View>
+
+        <View className="flex-row flex-wrap gap-4">
+          <StatusMetric icon={Search01Icon} label="JSON Scan" active />
+          <StatusMetric icon={DatabaseIcon} label="Patterns" active />
+          <StatusMetric icon={Tick01Icon} label="Validation" />
+        </View>
+      </Animated.View>
     );
   }
 
   if (error) {
     return (
-      <Card className="p-4 border border-destructive/20">
-        <View className="space-y-2">
-          <View className="flex items-center gap-2 flex-row">
-            <Ionicons name="alert-circle" size={20} className="text-destructive" />
-            <Text className="font-semibold text-destructive">Parsing Failed</Text>
+      <Animated.View
+        entering={FadeInUp}
+        className="bg-danger/5 rounded-3xl border border-danger/20 p-6"
+      >
+        <View className="flex-row items-center gap-x-3 mb-4">
+          <View className="w-10 h-10 rounded-2xl bg-danger/10 items-center justify-center">
+            <HugeiconsIcon icon={AlertCircleIcon} size={20} color="var(--danger)" />
           </View>
-          <Text className="text-sm text-foreground">{error}</Text>
-          <Text className="text-sm text-foreground">
-            You can try regenerating the plan or proceed with available data.
+          <Text className="text-base font-sans-bold text-danger tracking-tight">
+            Synaptic Error
           </Text>
         </View>
-      </Card>
+        <Text className="text-sm font-sans text-muted-foreground leading-6 mb-2">{error}</Text>
+        <Text className="text-[10px] font-sans-bold text-danger uppercase tracking-widest opacity-60">
+          Try Regeneration Protocol
+        </Text>
+      </Animated.View>
     );
   }
 
   if (confidence && detectedFormat) {
-    const getConfidenceColor = (conf: number) => {
-      if (conf >= 80) return "bg-green-500/20 text-green-700 dark:text-green-300";
-      if (conf >= 60) return "bg-yellow-500/20 text-yellow-700 dark:text-yellow-300";
-      return "bg-red-500/20 text-red-700 dark:text-red-300";
-    };
-
+    const isHigh = confidence >= 85;
     return (
-      <Card className="p-4">
-        <View className="space-y-4">
-          <View className="flex items-center gap-2 flex-row">
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              className="text-green-600 dark:text-green-400"
-            />
-            <Text className="font-semibold">Parsing Complete</Text>
+      <Animated.View
+        layout={LinearTransition}
+        entering={FadeInUp}
+        className="bg-surface rounded-3xl border border-border/50 p-6"
+      >
+        <View className="flex-row items-center gap-x-3 mb-6">
+          <View className="w-10 h-10 rounded-2xl bg-success/10 items-center justify-center">
+            <HugeiconsIcon icon={Tick01Icon} size={20} color="var(--success)" />
           </View>
-          <Text className="text-sm text-foreground">
-            AI response has been successfully processed and structured
-          </Text>
-
-          <View className="flex items-center justify-between flex-row">
-            <View className="flex items-center gap-2 flex-row">
-              <Ionicons name="checkmark-circle" size={16} className="text-foreground" />
-              <Text className="text-sm font-medium">Confidence Score</Text>
-            </View>
-            <View className={`px-3 py-1 rounded-full ${getConfidenceColor(confidence)}`}>
-              <Text className="text-sm font-medium">{confidence}%</Text>
-            </View>
-          </View>
-
-          <View className="flex items-center justify-between flex-row">
-            <View className="flex items-center gap-2 flex-row">
-              <Ionicons name="sparkles" size={16} className="text-foreground" />
-              <Text className="text-sm font-medium">Detected Format</Text>
-            </View>
-            <View className="bg-blue-500/20 px-3 py-1 rounded-full">
-              <Text className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                {detectedFormat.toUpperCase()}
-              </Text>
-            </View>
+          <View>
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-1">
+              Architect Confirmed
+            </Text>
+            <Text className="text-base font-sans-bold text-foreground tracking-tight">
+              Sync Optimized
+            </Text>
           </View>
         </View>
-      </Card>
+
+        <View className="gap-y-4">
+          <ResultRow
+            icon={SparklesIcon}
+            label="Neural Confidence"
+            value={`${confidence}%`}
+            color={isHigh ? "success" : "warning"}
+          />
+          <ResultRow
+            icon={AiMagicIcon}
+            label="Detected Architecture"
+            value={detectedFormat.toUpperCase()}
+            color="accent"
+          />
+        </View>
+      </Animated.View>
     );
   }
 
   return null;
+}
+
+function StatusMetric({ icon, label, active }: { icon: any; label: string; active?: boolean }) {
+  return (
+    <View className="flex-row items-center gap-x-2">
+      <View className={`w-2 h-2 rounded-full ${active ? "bg-accent" : "bg-muted/30"}`} />
+      <Text
+        className={`text-[10px] font-sans-bold uppercase tracking-widest ${active ? "text-foreground" : "text-muted-foreground"}`}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function ResultRow({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center gap-x-3">
+        <HugeiconsIcon icon={icon} size={14} color="var(--muted-foreground)" />
+        <Text className="text-sm font-sans-medium text-muted-foreground">{label}</Text>
+      </View>
+      <View className={`px-4 py-1.5 rounded-full bg-${color}/10`}>
+        <Text className={`text-[10px] font-sans-bold text-${color} uppercase tracking-widest`}>
+          {value}
+        </Text>
+      </View>
+    </View>
+  );
 }

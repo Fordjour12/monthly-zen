@@ -1,8 +1,11 @@
 import type React from "react";
 import { useState } from "react";
-import { Platform, Pressable, View, Text } from "react-native";
+import { Platform, TouchableOpacity, View, Text } from "react-native";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import { Ionicons } from "@expo/vector-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Calendar03Icon, Clock01Icon, Tick01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
 
 type PickerMode = "date" | "time";
 
@@ -12,6 +15,7 @@ type DateTimePickerProps = {
   onChange: (date: Date | null) => void;
   mode?: PickerMode;
   placeholder?: string;
+  className?: string;
 };
 
 export const AppDateTimePicker: React.FC<DateTimePickerProps> = ({
@@ -19,7 +23,8 @@ export const AppDateTimePicker: React.FC<DateTimePickerProps> = ({
   value,
   onChange,
   mode = "date",
-  placeholder = mode === "date" ? "Select date" : "Select time",
+  placeholder = mode === "date" ? "Select Date Protocol" : "Select Temporal Offset",
+  className,
 }) => {
   const [show, setShow] = useState(false);
 
@@ -29,6 +34,7 @@ export const AppDateTimePicker: React.FC<DateTimePickerProps> = ({
     }
 
     if (event.type === "set" && selectedDate) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onChange(selectedDate);
     } else if (event.type === "dismissed") {
       setShow(false);
@@ -46,67 +52,90 @@ export const AppDateTimePicker: React.FC<DateTimePickerProps> = ({
     }
     return date.toLocaleDateString("en-US", {
       year: "numeric",
-      month: "short",
+      month: "long",
       day: "numeric",
     });
   };
 
   return (
-    <View className="gap-3">
-      {label && <Text className="text-sm font-medium text-muted-foreground">{label}</Text>}
+    <View className={`gap-y-3 ${className}`}>
+      {label && (
+        <View className="flex-row items-center gap-x-2 ml-1">
+          <HugeiconsIcon
+            icon={mode === "date" ? Calendar03Icon : Clock01Icon}
+            size={14}
+            color="var(--muted-foreground)"
+          />
+          <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+            {label}
+          </Text>
+        </View>
+      )}
 
-      <Pressable
-        className={`flex-row items-center justify-between px-4 py-3.5 rounded-xl bg-field-background border border-field-border ${value ? "border-accent" : ""}`}
-        onPress={() => setShow(true)}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        className={`flex-row items-center justify-between px-6 h-16 rounded-[24px] bg-surface border ${value ? "border-accent/40 bg-accent/5" : "border-border/50"}`}
+        onPress={() => {
+          Haptics.selectionAsync();
+          setShow(true);
+        }}
       >
         <Text
-          className={`text-base flex-1 ${value ? "text-field-foreground" : "text-field-placeholder"}`}
+          className={`text-sm font-sans-medium flex-1 ${value ? "text-foreground" : "text-muted-foreground/40"}`}
         >
           {formatValue(value)}
         </Text>
-        <Ionicons
-          name={mode === "date" ? "calendar-outline" : "time-outline"}
-          size={22}
-          color={value ? "var(--field-foreground)" : "var(--field-placeholder)"}
+        <HugeiconsIcon
+          icon={mode === "date" ? Calendar03Icon : Clock01Icon}
+          size={18}
+          color={value ? "var(--accent)" : "var(--muted-foreground)"}
         />
-      </Pressable>
+      </TouchableOpacity>
 
       {show && (
-        <>
+        <Animated.View
+          entering={FadeInUp}
+          layout={LinearTransition}
+          className="bg-surface rounded-[32px] border border-border/50 p-6 overflow-hidden mt-2"
+        >
           {Platform.OS === "ios" ? (
-            <View className="bg-surface rounded-xl border border-border p-4 gap-4">
+            <View className="gap-y-6">
               <DateTimePicker
                 display="spinner"
                 mode={mode}
                 onChange={handleChange}
-                testID="dateTimePicker"
                 value={value || new Date()}
-                is24Hour={mode === "time"}
+                is24Hour={true}
                 className="w-full"
+                textColor="var(--foreground)"
               />
-              <Pressable
-                className="bg-accent py-3.5 px-6 rounded-xl items-center"
-                onPress={() => setShow(false)}
+              <TouchableOpacity
+                className="bg-foreground h-14 rounded-2xl items-center justify-center flex-row gap-x-2"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShow(false);
+                }}
               >
-                <Text className="text-center font-semibold text-base text-accent-foreground">
-                  Done
+                <Text className="text-background font-sans-bold text-xs uppercase tracking-widest">
+                  Confirm Logic
                 </Text>
-              </Pressable>
+                <HugeiconsIcon icon={Tick01Icon} size={14} color="var(--background)" />
+              </TouchableOpacity>
             </View>
           ) : (
             <DateTimePicker
               display="default"
               mode={mode}
               onChange={handleChange}
-              testID="dateTimePicker"
               value={value || new Date()}
-              is24Hour={mode === "time"}
+              is24Hour={true}
             />
           )}
-        </>
+        </Animated.View>
       )}
     </View>
   );
 };
 
 export const DatePicker = AppDateTimePicker;
+export const TimePicker = AppDateTimePicker;
