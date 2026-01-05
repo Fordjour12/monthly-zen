@@ -21,7 +21,7 @@ export const quotaRouter = {
         quota = await db.createGenerationQuota({
           userId: String(userId),
           monthYear: currentMonth,
-          totalAllowed: 50,
+          totalAllowed: Number(process.env.TOKEN_QUOTA),
           generationsUsed: 0,
           resetsOn: resetDate,
         });
@@ -71,7 +71,7 @@ export const quotaRouter = {
       const quota = await db.createGenerationQuota({
         userId: String(userId),
         monthYear: currentMonth,
-        totalAllowed: 50,
+        totalAllowed: Number(process.env.TOKEN_QUOTA),
         generationsUsed: 0,
         resetsOn: resetDate,
       });
@@ -84,7 +84,7 @@ export const quotaRouter = {
           ...quota,
           ...calculatedStatus,
         },
-        message: "Welcome! You have received 50 free tokens to get started.",
+        message: `Welcome! You have received ${process.env.TOKEN_QUOTA} free tokens to get started.`,
       };
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "Failed to initialize quota");
