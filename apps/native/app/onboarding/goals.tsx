@@ -73,6 +73,10 @@ export default function GoalsScreen() {
   const [resolutions, setResolutions] = useState<Resolution[]>([]);
   const [coachName, setCoachName] = useState("Alex");
   const [coachTone, setCoachTone] = useState("encouraging");
+  const [taskComplexity, setTaskComplexity] = useState<"Simple" | "Balanced" | "Ambitious">(
+    "Balanced",
+  );
+  const [weekendPreference, setWeekendPreference] = useState<"Work" | "Rest" | "Mixed">("Mixed");
 
   // Modal State
   const [showResModal, setShowResModal] = useState(false);
@@ -82,9 +86,26 @@ export default function GoalsScreen() {
     targetCount: 12,
   });
 
+  const getFocusAreas = (resolutions: Resolution[]) => {
+    const categories = resolutions.map((r) => r.category);
+    const unique = [...new Set(categories)];
+    return unique.join(",") || "personal";
+  };
+
   const handleNext = () => {
     if (mainGoal.trim()) {
-      router.push("/onboarding/generating");
+      router.push({
+        pathname: "/onboarding/generating",
+        params: {
+          mainGoal,
+          resolutions: JSON.stringify(resolutions),
+          coachName,
+          coachTone,
+          taskComplexity,
+          weekendPreference,
+          focusAreas: getFocusAreas(resolutions),
+        },
+      });
     }
   };
 
@@ -281,6 +302,70 @@ export default function GoalsScreen() {
                 </View>
               </View>
             </Card>
+          </Animated.View>
+
+          {/* 4. Task Complexity Section */}
+          <Animated.View entering={FadeInDown.delay(600).duration(600)} className="mb-8">
+            <View className="flex-row items-center gap-x-2 mb-4">
+              <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
+                <HugeiconsIcon icon={Task01Icon} size={16} color={colors.accent} />
+              </View>
+              <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
+                Task Complexity
+              </Text>
+            </View>
+            <View className="flex-row gap-2">
+              {["Simple", "Balanced", "Ambitious"].map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => setTaskComplexity(type as any)}
+                  className={`flex-1 p-3 rounded-xl border items-center ${
+                    taskComplexity === type ? "bg-accent border-accent" : "bg-surface border-border"
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-sans-medium ${
+                      taskComplexity === type ? "text-primary-foreground" : "text-foreground"
+                    }`}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* 5. Weekend Preference Section */}
+          <Animated.View entering={FadeInDown.delay(700).duration(600)} className="mb-6">
+            <View className="flex-row items-center gap-x-2 mb-4">
+              <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
+                <HugeiconsIcon icon={SparklesIcon} size={16} color={colors.accent} />
+              </View>
+              <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
+                Weekend Preference
+              </Text>
+            </View>
+            <View className="flex-row gap-2">
+              {["Work", "Rest", "Mixed"].map((pref) => (
+                <TouchableOpacity
+                  key={pref}
+                  onPress={() => setWeekendPreference(pref as any)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl border items-center ${
+                    weekendPreference === pref
+                      ? "bg-accent border-accent"
+                      : "bg-background border-border"
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-sans-medium ${
+                      weekendPreference === pref ? "text-primary-foreground" : "text-foreground"
+                    }`}
+                  >
+                    {pref}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </Animated.View>
         </ScrollView>
 

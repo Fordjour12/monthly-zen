@@ -70,8 +70,6 @@ export default function ProfileDynamicScreen() {
 
   // Goal Preferences State
   const [goalsText, setGoalsText] = useState("");
-  const [motivation, setMotivation] = useState("");
-  const [lifeStyle, setLifeStyle] = useState("");
   const [taskComplexity, setTaskComplexity] = useState<"Simple" | "Balanced" | "Ambitious">(
     "Balanced",
   );
@@ -90,8 +88,6 @@ export default function ProfileDynamicScreen() {
   useEffect(() => {
     if (preferences) {
       setGoalsText(preferences.goalsText || "");
-      setMotivation(preferences.motivation || "");
-      setLifeStyle(preferences.lifeStyle || "");
       setTaskComplexity(preferences.taskComplexity || "Balanced");
       setFocusAreas(preferences.focusAreas || "");
       setWeekendPreference(preferences.weekendPreference || "Mixed");
@@ -127,8 +123,6 @@ export default function ProfileDynamicScreen() {
       updatePreferences.mutate(
         {
           goalsText,
-          motivation,
-          lifeStyle,
           taskComplexity,
           focusAreas,
           weekendPreference,
@@ -157,8 +151,6 @@ export default function ProfileDynamicScreen() {
     isEditPreferences,
     profileName,
     goalsText,
-    motivation,
-    lifeStyle,
     taskComplexity,
     focusAreas,
     weekendPreference,
@@ -455,40 +447,10 @@ export default function ProfileDynamicScreen() {
                       style={{ minHeight: 100, textAlignVertical: "top" }}
                     />
                   </View>
-                  <View className="bg-surface rounded-[24px] border border-border/50 p-5">
-                    <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-3 ml-1">
-                      The 'Why' (Motivation)
-                    </Text>
-                    <TextInput
-                      className="text-foreground text-sm font-sans-medium leading-5"
-                      value={motivation}
-                      onChangeText={setMotivation}
-                      placeholder="What drives this goal? (Optional)"
-                      placeholderTextColor="var(--muted-foreground)/40"
-                      multiline
-                      numberOfLines={2}
-                      style={{ minHeight: 60, textAlignVertical: "top" }}
-                    />
-                  </View>
                 </Section>
 
                 {/* 4. Operating Habitat */}
                 <Section icon={Compass01Icon} title="Operating Habitat">
-                  <View className="bg-surface rounded-[32px] border border-border/50 p-6 mb-4">
-                    <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-3 ml-1">
-                      Daily Lifestyle
-                    </Text>
-                    <TextInput
-                      className="text-foreground text-sm font-sans-medium leading-6"
-                      value={lifeStyle}
-                      onChangeText={setLifeStyle}
-                      placeholder="e.g. Work from home, frequent travel, early riser..."
-                      placeholderTextColor="var(--muted-foreground)/40"
-                      multiline
-                      numberOfLines={3}
-                      style={{ minHeight: 80, textAlignVertical: "top" }}
-                    />
-                  </View>
                   <View className="bg-surface rounded-[24px] border border-border/50 px-5 py-5">
                     <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-2 ml-1">
                       Focus Sectors

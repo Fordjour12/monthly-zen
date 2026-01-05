@@ -207,3 +207,15 @@ export async function getResolutionsWithTasks(userId: string) {
 
   return resolutionsWithTasks;
 }
+
+export async function getResolutionsWithProgress(userId: string, year: number) {
+  const currentYear = year || new Date().getFullYear();
+  const resolutions = await getYearlyResolutions(userId, currentYear);
+
+  return Promise.all(
+    resolutions.map(async (r) => ({
+      ...r,
+      progressPercent: await calculateResolutionProgress(r.id),
+    })),
+  );
+}

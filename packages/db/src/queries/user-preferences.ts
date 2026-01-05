@@ -12,8 +12,6 @@ export interface UserPreferencesData {
   workingHoursEnd: string;
   defaultFocusArea?: string | null;
   goalsText: string;
-  motivation?: string | null;
-  lifeStyle?: string | null;
   taskComplexity: "Simple" | "Balanced" | "Ambitious";
   focusAreas: string;
   weekendPreference: "Work" | "Rest" | "Mixed";
@@ -53,8 +51,6 @@ export async function createOrUpdatePreferences(
     .values({
       userId,
       goalsText: data.goalsText || "",
-      motivation: data.motivation || "",
-      lifeStyle: data.lifeStyle || "",
       taskComplexity: (data.taskComplexity as any) || "Balanced",
       focusAreas: data.focusAreas || "personal",
       weekendPreference: (data.weekendPreference as any) || "Mixed",

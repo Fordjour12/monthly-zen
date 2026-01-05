@@ -36,8 +36,6 @@ export const userGoalsAndPreferences = pgTable("user_goals_and_preferences", {
 
   // Core Goal Architecture
   goalsText: text("goals_text").notNull().default(""),
-  motivation: text("motivation").default(""),
-  lifeStyle: text("lifestyle_description").default(""),
   focusAreas: varchar("focus_areas", { length: 255 }).notNull().default("personal"),
 
   // Tactical Preferences

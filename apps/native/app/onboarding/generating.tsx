@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -10,7 +10,7 @@ import {
   SparklesIcon,
   RocketIcon,
 } from "@hugeicons/core-free-icons";
-import { Button } from "heroui-native";
+import { Button, Card } from "heroui-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -22,12 +22,14 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
+import { useMutation } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
 
 const STEPS = [
-  "Analyzing your monthly focus...",
-  "Synthesizing actionable steps...",
-  "Calibrating your ideal schedule...",
-  "Finalizing your Zen plan...",
+  { id: 0, label: "Saving your resolutions..." },
+  { id: 1, label: "Configuring your AI companion..." },
+  { id: 2, label: "Generating your monthly plan..." },
+  { id: 3, label: "Finalizing your Zen plan..." },
 ];
 
 /**
@@ -38,15 +40,76 @@ export default function GeneratingScreen() {
   const router = useRouter();
   const colors = useSemanticColors();
   const { completeOnboarding } = useAuthStore();
+  const params = useLocalSearchParams();
+
+  const mainGoal = params.mainGoal as string;
+  const resolutions = params.resolutions ? JSON.parse(params.resolutions as string) : [];
+  const coachName = params.coachName as string;
+  const coachTone = params.coachTone as "encouraging" | "direct" | "analytical" | "friendly";
+  const taskComplexity = params.taskComplexity as "Simple" | "Balanced" | "Ambitious";
+  const weekendPreference = params.weekendPreference as "Work" | "Rest" | "Mixed";
+  const focusAreas = (params.focusAreas as string) || "personal";
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Animation values
   const pulseScale = useSharedValue(1);
   const rotation = useSharedValue(0);
 
+  const generatePlanMutation = useMutation({
+    mutationFn: async () => {
+      setError(null);
+      setCurrentStep(0);
+
+      // Step 1: Save yearly resolutions
+      if (resolutions.length > 0) {
+        await orpc.resolutions.createBatch.call({
+          resolutions: resolutions.map((r: any) => ({
+            text: r.title,
+            category: r.category,
+            resolutionType: "yearly" as const,
+            priority: 2,
+          })),
+        });
+      }
+
+      // Step 2: Save AI companion & preferences
+      setCurrentStep(1);
+      await orpc.preferences.update.call({
+        coachName,
+        coachTone,
+        goalsText: mainGoal,
+        taskComplexity,
+        weekendPreference,
+        focusAreas,
+      });
+
+      // Step 3: Generate monthly plan
+      setCurrentStep(2);
+      await orpc.plan.generate.call({
+        goalsText: mainGoal,
+        taskComplexity,
+        focusAreas,
+        weekendPreference,
+        fixedCommitmentsJson: { commitments: [] },
+      });
+
+      // Step 4: Complete
+      setCurrentStep(3);
+    },
+    onSuccess: () => {
+      setIsComplete(true);
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
   useEffect(() => {
+    generatePlanMutation.mutate();
+
     // Pulse animation for the AI icon
     pulseScale.value = withRepeat(
       withSequence(
@@ -63,26 +126,6 @@ export default function GeneratingScreen() {
       -1,
       false,
     );
-
-    const stepInterval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < STEPS.length - 1) return prev + 1;
-        return prev;
-      });
-    }, 1800);
-
-    const completionTimeout = setTimeout(
-      () => {
-        setIsComplete(true);
-        clearInterval(stepInterval);
-      },
-      STEPS.length * 1800 + 500,
-    );
-
-    return () => {
-      clearInterval(stepInterval);
-      clearTimeout(completionTimeout);
-    };
   }, []);
 
   const handleContinue = async () => {
@@ -124,49 +167,69 @@ export default function GeneratingScreen() {
         <Animated.View
           key={isComplete ? "complete" : "generating"}
           entering={FadeInDown.duration(600)}
-          className="items-center"
+          className="items-center w-full"
         >
           <Text className="text-3xl font-sans-bold text-foreground text-center mb-4 tracking-tight">
             {isComplete ? "Your plan is curated" : "Curating your journey"}
           </Text>
-          <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-15">
-            {isComplete
-              ? "Everything is set. Your path to clarity and focus starts now."
-              : STEPS[currentStep]}
-          </Text>
+
+          {error ? (
+            <Animated.View entering={FadeInDown} className="w-full">
+              <Card className="p-6 bg-danger/10 border-danger/30 items-center justify-center">
+                <Text className="text-base font-sans text-danger mb-4 text-center">{error}</Text>
+                <Button
+                  size="lg"
+                  className="h-14 rounded-xl w-full"
+                  onPress={() => generatePlanMutation.mutate()}
+                >
+                  <Text className="text-lg font-sans-semibold text-danger-foreground">
+                    Try Again
+                  </Text>
+                </Button>
+              </Card>
+            </Animated.View>
+          ) : (
+            <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-[60px]">
+              {isComplete
+                ? "Everything is set. Your path to clarity and focus starts now."
+                : STEPS[currentStep]?.label || "Preparing..."}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Progress Bar or Button */}
-        <View className="w-full mt-12 overflow-hidden h-16 justify-center">
-          {isComplete ? (
-            <Animated.View entering={FadeInDown.duration(600)}>
-              <Button
-                size="lg"
-                className="h-16 rounded-2xl shadow-xl shadow-accent/20"
-                onPress={handleContinue}
-              >
-                <View className="flex-row items-center justify-center gap-x-2">
-                  <Text className="text-lg font-sans-semibold text-primary-foreground">
-                    Enter Zen Mode
-                  </Text>
-                  <HugeiconsIcon icon={RocketIcon} size={20} color={colors.foreground} />
+        {!error && (
+          <View className="w-full mt-12 overflow-hidden h-16 justify-center">
+            {isComplete ? (
+              <Animated.View entering={FadeInDown.duration(600)}>
+                <Button
+                  size="lg"
+                  className="h-16 rounded-2xl shadow-xl shadow-accent/20"
+                  onPress={handleContinue}
+                >
+                  <View className="flex-row items-center justify-center gap-x-2">
+                    <Text className="text-lg font-sans-semibold text-primary-foreground">
+                      Enter Zen Mode
+                    </Text>
+                    <HugeiconsIcon icon={RocketIcon} size={20} color={colors.foreground} />
+                  </View>
+                </Button>
+              </Animated.View>
+            ) : (
+              <View>
+                <View className="h-2 w-full bg-surface-foreground/5 rounded-full overflow-hidden">
+                  <Animated.View style={progressStyle} className="h-full bg-accent" />
                 </View>
-              </Button>
-            </Animated.View>
-          ) : (
-            <View>
-              <View className="h-2 w-full bg-surface-foreground/5 rounded-full overflow-hidden">
-                <Animated.View style={progressStyle} className="h-full bg-accent" />
+                <View className="flex-row items-center justify-center mt-4 gap-x-2">
+                  <HugeiconsIcon icon={SparklesIcon} size={14} color="var(--accent)" />
+                  <Text className="text-xs font-sans-medium text-accent uppercase tracking-widest">
+                    AI is crafting...
+                  </Text>
+                </View>
               </View>
-              <View className="flex-row items-center justify-center mt-4 gap-x-2">
-                <HugeiconsIcon icon={SparklesIcon} size={14} color="var(--accent)" />
-                <Text className="text-xs font-sans-medium text-accent uppercase tracking-widest">
-                  AI is crafting...
-                </Text>
-              </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        )}
       </View>
     </Container>
   );

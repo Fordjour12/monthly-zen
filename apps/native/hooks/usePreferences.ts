@@ -18,6 +18,7 @@ export type UpdatePreferencesInput = {
   taskComplexity?: "Simple" | "Balanced" | "Ambitious";
   focusAreas?: string;
   weekendPreference?: "Work" | "Rest" | "Mixed";
+  preferredTaskDuration?: number;
   fixedCommitmentsJson?: any;
 };
 

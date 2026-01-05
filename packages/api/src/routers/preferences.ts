@@ -12,6 +12,7 @@ const updatePreferencesSchema = z.object({
   taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]).optional(),
   focusAreas: z.string().optional(),
   weekendPreference: z.enum(["Work", "Rest", "Mixed"]).optional(),
+  preferredTaskDuration: z.number().optional(),
   fixedCommitmentsJson: z.any().optional(),
 });
 
