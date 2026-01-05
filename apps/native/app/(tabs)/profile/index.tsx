@@ -46,7 +46,7 @@ import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-r
 import * as Haptics from "expo-haptics";
 import { useQuota } from "@/hooks/useQuota";
 import { format } from "date-fns";
-import { TextField, useToast } from "heroui-native";
+import { TextField, useToast, Dialog, Button } from "heroui-native";
 
 export default function ProfileScreen() {
   const { user, signOut, hasCompletedOnboarding } = useAuthStore();
@@ -63,23 +63,21 @@ export default function ProfileScreen() {
   const { toast } = useToast();
 
   const [isRequestSheetOpen, setIsRequestSheetOpen] = useState(false);
+  const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [requestedAmount, setRequestedAmount] = useState(50);
 
   const handleSignOut = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert("Sign Out", "Are you sure you want to sign out from the Zen system?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/sign-in");
-        },
-      },
-    ]);
-  }, [signOut, router]);
+    setIsSignOutDialogOpen(true);
+  }, []);
+
+  const confirmSignOut = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsSignOutDialogOpen(false);
+    await signOut();
+    router.replace("/sign-in");
+  };
 
   const handleSupport = useCallback(() => {
     Haptics.selectionAsync();
@@ -403,6 +401,51 @@ export default function ProfileScreen() {
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Sign Out Dialog */}
+      <Dialog isOpen={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="bg-black/60" />
+          <Dialog.Content className="bg-background rounded-[40px] p-8 border border-border/50 mx-4">
+            <View className="items-center mb-6">
+              <View className="w-20 h-20 bg-danger/10 rounded-[32px] items-center justify-center mb-6 border border-danger/20">
+                <HugeiconsIcon icon={Logout01Icon} size={40} color="var(--danger)" />
+              </View>
+              <Dialog.Title className="text-2xl font-sans-bold text-foreground text-center">
+                Sign Out Protocol
+              </Dialog.Title>
+              <Dialog.Description className="text-sm font-sans text-muted-foreground text-center mt-3 leading-6">
+                Are you sure you want to terminate your current neural session and sign out from the
+                Zen system?
+              </Dialog.Description>
+            </View>
+
+            <View className="gap-y-4">
+              <Button
+                size="lg"
+                color="danger"
+                variant="solid"
+                className="rounded-[24px] h-14"
+                onPress={confirmSignOut}
+              >
+                <Text className="text-white font-sans-bold uppercase tracking-widest text-xs">
+                  Terminate Session
+                </Text>
+              </Button>
+              <Button
+                size="lg"
+                variant="light"
+                className="rounded-[24px] h-14"
+                onPress={() => setIsSignOutDialogOpen(false)}
+              >
+                <Text className="text-muted-foreground font-sans-bold uppercase tracking-widest text-xs">
+                  Cancel
+                </Text>
+              </Button>
+            </View>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog>
 
       <ScrollView
         className="flex-1"
