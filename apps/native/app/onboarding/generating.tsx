@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
@@ -129,7 +129,7 @@ export default function GeneratingScreen() {
           <Text className="text-3xl font-sans-bold text-foreground text-center mb-4 tracking-tight">
             {isComplete ? "Your plan is curated" : "Curating your journey"}
           </Text>
-          <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-[60px]">
+          <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-15">
             {isComplete
               ? "Everything is set. Your path to clarity and focus starts now."
               : STEPS[currentStep]}
