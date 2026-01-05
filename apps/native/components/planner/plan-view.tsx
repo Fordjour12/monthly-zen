@@ -2,13 +2,28 @@ import { useMemo, useState, useCallback } from "react";
 import { View, Text, RefreshControl, TouchableOpacity } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Button, Skeleton } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Card, Skeleton } from "heroui-native";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  Calendar03Icon,
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  Tick01Icon,
+  CircleIcon,
+  AlertCircleIcon,
+  Note01Icon,
+  Flag01Icon,
+  Time01Icon,
+  DashboardCircleIcon,
+  Target01Icon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "expo-router";
 import { orpc } from "@/utils/orpc";
 import { format } from "date-fns";
 import { Container } from "@/components/ui/container";
 import type { AIResponseWithMetadata, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
+import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 interface TaskItem {
   id: string;
@@ -31,19 +46,19 @@ interface WeekSectionData {
 }
 
 function PriorityBadge({ priority }: { priority: "High" | "Medium" | "Low" }) {
-  const colors = {
-    High: { bg: "#fef2f2", text: "#dc2626", border: "#fecaca" },
-    Medium: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
-    Low: { bg: "#f0fdf4", text: "#16a34a", border: "#bbf7d0" },
+  const configs = {
+    High: { color: "var(--danger)", bg: "bg-danger/10" },
+    Medium: { color: "var(--warning)", bg: "bg-warning/10" },
+    Low: { color: "var(--success)", bg: "bg-success/10" },
   };
-  const color = colors[priority];
+  const config = configs[priority];
 
   return (
-    <View
-      className="px-2 py-0.5 rounded-full"
-      style={{ backgroundColor: color.bg, borderColor: color.border, borderWidth: 1 }}
-    >
-      <Text className="text-xs font-medium" style={{ color: color.text }}>
+    <View className={`px-2 py-0.5 rounded-full ${config.bg}`}>
+      <Text
+        className="text-[8px] font-sans-bold uppercase tracking-wider"
+        style={{ color: config.color }}
+      >
         {priority}
       </Text>
     </View>
@@ -51,25 +66,23 @@ function PriorityBadge({ priority }: { priority: "High" | "Medium" | "Low" }) {
 }
 
 function StatusBadge({ status, confidence }: { status: string; confidence?: number | null }) {
-  const statusColor = status === "CONFIRMED" ? "#10b981" : "#f59e0b";
-  const statusBg = status === "CONFIRMED" ? "#ecfdf5" : "#fffbeb";
-
+  const isConfirmed = status === "CONFIRMED";
   return (
-    <View className="flex-row items-center gap-2">
+    <View className="flex-row items-center gap-x-3">
       <View
-        className="px-2 py-0.5 rounded-full"
-        style={{ backgroundColor: statusBg, borderColor: statusColor, borderWidth: 1 }}
+        className={`px-3 py-1 rounded-full border ${isConfirmed ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}
       >
-        <Text className="text-xs font-medium" style={{ color: statusColor }}>
+        <Text
+          className={`text-[9px] font-sans-bold uppercase tracking-widest ${isConfirmed ? "text-success" : "text-warning"}`}
+        >
           {status}
         </Text>
       </View>
-      {confidence !== null && confidence !== undefined && (
-        <View
-          className="px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: "#f3f4f6", borderColor: "#d1d5db", borderWidth: 1 }}
-        >
-          <Text className="text-xs font-medium text-gray-600">{confidence}% confidence</Text>
+      {confidence && (
+        <View className="flex-row items-center gap-x-1.5 opacity-60">
+          <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+            {confidence}% Alignment
+          </Text>
         </View>
       )}
     </View>
@@ -97,6 +110,7 @@ export function PlanView({ planId }: { planId: number }) {
   const planInfo = result?.data?.plan;
 
   const toggleWeek = useCallback((weekNumber: number) => {
+    Haptics.selectionAsync();
     setExpandedWeeks((prev) => {
       const next = new Set(prev);
       if (next.has(weekNumber)) {
@@ -133,10 +147,7 @@ export function PlanView({ planId }: { planId: number }) {
             }),
           );
 
-          dailyTasks.push({
-            day,
-            tasks: taskItems,
-          });
+          dailyTasks.push({ day, tasks: taskItems });
         });
       }
 
@@ -172,79 +183,124 @@ export function PlanView({ planId }: { planId: number }) {
   }, [refetch]);
 
   const renderWeekSection = useCallback(
-    ({ item }: { item: WeekSectionData }) => {
+    ({ item, index }: { item: WeekSectionData; index: number }) => {
       const taskCount = item.dailyTasks.reduce((acc, d) => acc + d.tasks.length, 0);
 
       return (
-        <Card className="m-4 p-4">
-          <TouchableOpacity
-            onPress={() => toggleWeek(item.weekNumber)}
-            className="flex-row items-center justify-between mb-3"
+        <Animated.View
+          entering={FadeInDown.delay(index * 100).duration(600)}
+          layout={LinearTransition}
+          className="mx-6 mb-4"
+        >
+          <Card
+            className={`p-6 rounded-[32px] border ${item.isExpanded ? "bg-surface border-border/50 shadow-sm" : "bg-surface/50 border-border/20"}`}
           >
-            <View className="flex-row items-center gap-2">
-              <Ionicons
-                name={item.isExpanded ? "chevron-down" : "chevron-forward"}
-                size={20}
-                color="#6b7280"
-              />
-              <Text className="text-lg font-semibold text-foreground">Week {item.weekNumber}</Text>
-            </View>
-            <View className="px-2 py-1 bg-primary/10 rounded">
-              <Text className="text-sm text-foreground font-medium">{taskCount} tasks</Text>
-            </View>
-          </TouchableOpacity>
-
-          {item.isExpanded && (
-            <View className="mt-2 pl-6 border-l-2 border-muted">
-              {item.goals.length > 0 && (
-                <View className="mb-4">
-                  <Text className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                    Goals
-                  </Text>
-                  {item.goals.map((goal, i) => (
-                    <View key={i} className="flex-row items-start gap-2 mb-1">
-                      <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                      <Text className="text-foreground flex-1">{goal}</Text>
-                    </View>
-                  ))}
+            <TouchableOpacity
+              onPress={() => toggleWeek(item.weekNumber)}
+              activeOpacity={0.7}
+              className="flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-x-4">
+                <View
+                  className={`w-10 h-10 rounded-2xl items-center justify-center ${item.isExpanded ? "bg-accent/10" : "bg-muted/10"}`}
+                >
+                  <HugeiconsIcon
+                    icon={item.isExpanded ? ArrowDown01Icon : ArrowRight01Icon}
+                    size={18}
+                    color={item.isExpanded ? "var(--accent)" : "var(--muted-foreground)"}
+                  />
                 </View>
-              )}
+                <View>
+                  <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                    Segment {item.weekNumber}
+                  </Text>
+                  <Text className="text-base font-sans-bold text-foreground">Week Protocol</Text>
+                </View>
+              </View>
+              <View className="px-3 py-1 bg-surface border border-border/50 rounded-xl">
+                <Text className="text-[10px] font-sans-bold text-foreground uppercase tracking-tight">
+                  {taskCount} units
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-              {item.dailyTasks.map((dayTasks) => (
-                <View key={dayTasks.day} className="mb-4">
-                  <Text className="text-sm font-medium text-foreground mb-2">{dayTasks.day}</Text>
-                  {dayTasks.tasks.map((task) => (
-                    <View
-                      key={task.id}
-                      className="flex-row items-center gap-3 py-2 border-b border-border last:border-0"
-                    >
-                      <TouchableOpacity
-                        className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                          task.isCompleted ? "bg-primary border-primary" : "border-muted-foreground"
-                        }`}
-                      >
-                        {task.isCompleted && <Ionicons name="checkmark" size={14} color="white" />}
-                      </TouchableOpacity>
-                      <View className="flex-1">
-                        <Text
-                          className={`text-foreground ${
-                            task.isCompleted ? "line-through opacity-50" : ""
-                          }`}
+            {item.isExpanded && (
+              <Animated.View
+                entering={FadeInDown.duration(400)}
+                className="mt-8 pt-6 border-t border-border/10"
+              >
+                {item.goals.length > 0 && (
+                  <View className="mb-8">
+                    <View className="flex-row items-center gap-x-2 mb-4 ml-1">
+                      <HugeiconsIcon icon={Target01Icon} size={14} color="var(--success)" />
+                      <Text className="text-[10px] font-sans-bold text-success uppercase tracking-widest">
+                        Success Directives
+                      </Text>
+                    </View>
+                    <View className="gap-y-3">
+                      {item.goals.map((goal, i) => (
+                        <View
+                          key={i}
+                          className="flex-row items-start gap-x-3 p-4 bg-success/5 rounded-2xl border border-success/10"
                         >
-                          {task.title}
-                        </Text>
-                        <View className="flex-row items-center gap-2 mt-1">
-                          <PriorityBadge priority={task.priority} />
-                          <Text className="text-xs text-muted-foreground">{task.focusArea}</Text>
+                          <HugeiconsIcon
+                            icon={Tick01Icon}
+                            size={14}
+                            color="var(--success)"
+                            className="mt-0.5"
+                          />
+                          <Text className="text-sm font-sans text-foreground flex-1 leading-5">
+                            {goal}
+                          </Text>
                         </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <View className="gap-y-8">
+                  {item.dailyTasks.map((dayTasks) => (
+                    <View key={dayTasks.day}>
+                      <View className="flex-row items-center mb-4">
+                        <View className="w-1.5 h-1.5 rounded-full bg-accent mr-3" />
+                        <Text className="text-[10px] font-sans-bold text-foreground uppercase tracking-[3px]">
+                          {dayTasks.day}
+                        </Text>
+                      </View>
+                      <View className="gap-y-3">
+                        {dayTasks.tasks.map((task) => (
+                          <View
+                            key={task.id}
+                            className="flex-row items-center gap-x-4 p-5 bg-muted/5 rounded-[24px] border border-border/10"
+                          >
+                            <View className="w-5 h-5 rounded-full border border-border/40 items-center justify-center">
+                              <HugeiconsIcon
+                                icon={CircleIcon}
+                                size={8}
+                                color="var(--muted-foreground)"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-sm font-sans-medium text-foreground">
+                                {task.title}
+                              </Text>
+                              <View className="flex-row items-center gap-x-3 mt-1.5">
+                                <PriorityBadge priority={task.priority} />
+                                <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase opacity-40 tracking-wider">
+                                  {task.focusArea}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
                       </View>
                     </View>
                   ))}
                 </View>
-              ))}
-            </View>
-          )}
-        </Card>
+              </Animated.View>
+            )}
+          </Card>
+        </Animated.View>
       );
     },
     [toggleWeek],
@@ -253,44 +309,67 @@ export function PlanView({ planId }: { planId: number }) {
   const ListHeaderComponent = useMemo(() => {
     if (!planInfo) return null;
     return (
-      <Card className="m-4 p-4">
-        <View className="flex-row items-center justify-between mb-3">
-          <View>
-            <Text className="text-xl font-bold text-foreground">
-              {format(new Date(planInfo.monthYear), "MMMM yyyy")}
-            </Text>
-            <View className="flex-row items-center gap-2 mt-1">
+      <Animated.View entering={FadeInUp.duration(600)} className="m-6">
+        <Card className="p-8 rounded-[40px] bg-surface border border-border/50 shadow-xl shadow-black/5">
+          <View className="flex-row items-center justify-between mb-8">
+            <View className="flex-1 mr-4">
+              <View className="flex-row items-center gap-x-2 mb-2">
+                <HugeiconsIcon icon={DashboardCircleIcon} size={14} color="var(--accent)" />
+                <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-[3px]">
+                  Mission Control
+                </Text>
+              </View>
+              <Text className="text-3xl font-sans-bold text-foreground tracking-tighter leading-none mb-4">
+                {format(new Date(planInfo.monthYear), "MMMM yyyy")}
+              </Text>
               <StatusBadge status={planInfo.status} confidence={planInfo.extractionConfidence} />
             </View>
+            <View className="w-16 h-16 bg-foreground rounded-[24px] items-center justify-center shadow-2xl shadow-black/20">
+              <HugeiconsIcon icon={Calendar03Icon} size={32} color="var(--background)" />
+            </View>
           </View>
-          <View className="w-12 h-12 bg-primary/10 rounded-lg items-center justify-center">
-            <Ionicons name="calendar" size={24} color="#3b82f6" />
+
+          {structuredData?.monthly_summary && (
+            <View className="bg-muted/5 rounded-[24px] p-6 border border-border/10 mb-8">
+              <Text className="text-sm font-sans text-muted-foreground leading-7 opacity-80">
+                {structuredData.monthly_summary}
+              </Text>
+            </View>
+          )}
+
+          <View className="flex-row items-center justify-between pt-6 border-t border-border/10">
+            <View className="flex-row items-center gap-x-2">
+              <HugeiconsIcon icon={Time01Icon} size={14} color="var(--muted-foreground)" />
+              <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                Synched {format(new Date(planInfo.generatedAt), "MMM d, HH:mm")}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => refetch()}
+              className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/50"
+            >
+              <HugeiconsIcon icon={Time01Icon} size={14} color="var(--foreground)" />
+            </TouchableOpacity>
           </View>
-        </View>
-        {structuredData?.monthly_summary && (
-          <Text className="text-muted-foreground mt-2">{structuredData.monthly_summary}</Text>
-        )}
-        <View className="flex-row items-center gap-2 mt-4 pt-3 border-t border-border">
-          <Ionicons name="time-outline" size={16} color="#6b7280" />
-          <Text className="text-xs text-muted-foreground">
-            Generated {format(new Date(planInfo.generatedAt), "MMM d, yyyy 'at' h:mm a")}
+        </Card>
+        <View className="mb-4 px-2">
+          <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-[4px] mb-4">
+            Strategic Sequence
           </Text>
         </View>
-      </Card>
+      </Animated.View>
     );
-  }, [planInfo, structuredData]);
+  }, [planInfo, structuredData, refetch]);
 
   if (isLoading) {
     return (
-      <Container>
-        <View className="flex-1 p-4">
-          <View className="mb-4">
-            <Skeleton className="h-8 w-48 rounded mb-2" />
-            <Skeleton className="h-5 w-32 rounded" />
-          </View>
-          <Skeleton className="h-48 w-full rounded-lg mb-4" />
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-lg mb-4" />
+      <Container className="bg-background">
+        <View className="flex-1 p-8">
+          <Skeleton className="h-12 w-3/4 rounded-3xl mb-4" />
+          <Skeleton className="h-4 w-1/2 rounded-full mb-10 opacity-40" />
+          <Skeleton className="h-64 w-full rounded-[40px] mb-8" />
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-[32px] mb-4" />
           ))}
         </View>
       </Container>
@@ -299,39 +378,21 @@ export function PlanView({ planId }: { planId: number }) {
 
   if (error || !result?.success || !planInfo) {
     return (
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="alert-circle" size={48} color="#ef4444" />
-          <Text className="text-danger text-center mt-4">Failed to load plan</Text>
-          <Text className="text-muted-foreground text-center mt-2">
-            {error instanceof Error ? error.message : "Plan not found or no data available"}
-          </Text>
-          {error && (
-            <Text className="text-xs text-muted-foreground text-center mt-2">
-              Debug: success={result?.success?.toString()}, hasPlan={!!planInfo}
-            </Text>
-          )}
-          <Button onPress={() => refetch()} className="mt-6">
-            Try Again
-          </Button>
+      <Container className="bg-background items-center justify-center p-10">
+        <View className="w-20 h-20 rounded-[32px] bg-danger/10 items-center justify-center mb-8">
+          <HugeiconsIcon icon={AlertCircleIcon} size={40} color="var(--danger)" />
         </View>
-      </Container>
-    );
-  }
-
-  if (!structuredData?.weekly_breakdown?.length) {
-    return (
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="document-text-outline" size={48} color="#6b7280" />
-          <Text className="text-foreground text-center mt-4">No plan data available</Text>
-          <Text className="text-muted-foreground text-center mt-2">
-            This plan doesn't have any structured data to display.
+        <Text className="text-xl font-sans-bold text-foreground text-center mb-4">
+          Uplink Interrupted
+        </Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          className="bg-foreground h-16 w-full rounded-[24px] items-center justify-center"
+        >
+          <Text className="text-background font-sans-bold text-xs uppercase tracking-[3px]">
+            Reinitialize
           </Text>
-          <Button onPress={() => router.back()} className="mt-6">
-            Go Back
-          </Button>
-        </View>
+        </TouchableOpacity>
       </Container>
     );
   }
@@ -341,16 +402,11 @@ export function PlanView({ planId }: { planId: number }) {
       <FlashList
         data={sectionedData}
         renderItem={renderWeekSection}
+        estimatedItemSize={100}
         keyExtractor={(item) => `week-${item.weekNumber}`}
         ListHeaderComponent={ListHeaderComponent}
-        ListEmptyComponent={
-          <View className="p-8 items-center justify-center">
-            <Text className="text-muted-foreground">No plan data available</Text>
-          </View>
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
-        }
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       />
     </View>
   );

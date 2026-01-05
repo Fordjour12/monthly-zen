@@ -1,13 +1,25 @@
 import { useMemo, useState, useCallback } from "react";
 import { View, Text, RefreshControl, TouchableOpacity, ScrollView } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Skeleton, Surface } from "heroui-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Skeleton, Surface } from "heroui-native";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import {
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  Flag01Icon,
+  Task01Icon,
+  Calendar03Icon,
+  AlertCircleIcon,
+  RecordIcon,
+  AiMagicIcon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "expo-router";
 import { orpc } from "@/utils/orpc";
 import { format } from "date-fns";
 import { Container } from "@/components/ui/container";
 import type { AIResponseWithMetadata, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
+import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 interface TaskItem {
   id: string;
@@ -31,17 +43,17 @@ interface WeekSectionData {
 }
 
 function CompactPriorityBadge({ priority }: { priority: "High" | "Medium" | "Low" }) {
-  const colors = {
-    High: { bg: "#fef2f2", text: "#dc2626" },
-    Medium: { bg: "#fffbeb", text: "#d97706" },
-    Low: { bg: "#f0fdf4", text: "#16a34a" },
+  const configs = {
+    High: { color: "var(--danger)", label: "H" },
+    Medium: { color: "var(--warning)", label: "M" },
+    Low: { color: "var(--success)", label: "L" },
   };
-  const color = colors[priority];
+  const config = configs[priority];
 
   return (
-    <View className="px-1.5 py-0.5 rounded" style={{ backgroundColor: color.bg }}>
-      <Text className="text-[10px] font-medium" style={{ color: color.text }}>
-        {priority[0]}
+    <View className="px-1.5 py-0.5 rounded-md border border-border/10 bg-surface/50">
+      <Text className="text-[8px] font-sans-bold" style={{ color: config.color }}>
+        {config.label}
       </Text>
     </View>
   );
@@ -68,6 +80,7 @@ export function PlanViewMinimal({ planId }: { planId: number }) {
   const planInfo = result?.data?.plan;
 
   const toggleWeek = useCallback((weekNumber: number) => {
+    Haptics.selectionAsync();
     setExpandedWeek((prev) => (prev === weekNumber ? null : weekNumber));
   }, []);
 
@@ -128,12 +141,13 @@ export function PlanViewMinimal({ planId }: { planId: number }) {
 
   if (isLoading) {
     return (
-      <Container>
-        <View className="flex-1 p-4">
-          <Skeleton className="h-6 w-40 rounded mb-4" />
-          <Skeleton className="h-24 w-full rounded-lg mb-3" />
-          <Skeleton className="h-20 w-full rounded-lg mb-3" />
-          <Skeleton className="h-20 w-full rounded-lg" />
+      <Container className="bg-background">
+        <View className="flex-1 p-6">
+          <Skeleton className="h-6 w-32 rounded-full mb-6 opacity-40" />
+          <Skeleton className="h-32 w-full rounded-[32px] mb-6" />
+          <Skeleton className="h-16 w-full rounded-2xl mb-3" />
+          <Skeleton className="h-16 w-full rounded-2xl mb-3" />
+          <Skeleton className="h-16 w-full rounded-2xl" />
         </View>
       </Container>
     );
@@ -141,115 +155,170 @@ export function PlanViewMinimal({ planId }: { planId: number }) {
 
   if (error || !result?.success || !planInfo) {
     return (
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="alert-circle" size={40} color="#ef4444" />
-          <Text className="text-danger text-center mt-3 text-sm">Failed to load</Text>
-          <Button size="sm" onPress={() => refetch()} className="mt-4">
-            Retry
-          </Button>
-        </View>
-      </Container>
-    );
-  }
-
-  if (!structuredData?.weekly_breakdown?.length) {
-    return (
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Ionicons name="document-outline" size={40} color="#6b7280" />
-          <Text className="text-foreground text-center mt-3 text-sm">No data</Text>
-          <Button size="sm" onPress={() => router.back()} className="mt-4">
-            Back
-          </Button>
+      <Container className="bg-background">
+        <View className="flex-1 justify-center items-center p-8">
+          <View className="w-16 h-16 rounded-[24px] bg-danger/10 items-center justify-center mb-6">
+            <HugeiconsIcon icon={AlertCircleIcon} size={32} color="var(--danger)" />
+          </View>
+          <Text className="text-foreground font-sans-bold text-center mb-2">Sync Interrupted</Text>
+          <Text className="text-muted-foreground font-sans text-xs text-center mb-8 opacity-60">
+            Unable to retrieve neural architecture.
+          </Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            className="px-8 h-12 bg-foreground rounded-2xl items-center justify-center"
+          >
+            <Text className="text-background font-sans-bold text-[10px] uppercase tracking-widest">
+              Reinitialize
+            </Text>
+          </TouchableOpacity>
         </View>
       </Container>
     );
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-background"
-      contentContainerClassName="p-4 pb-24"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
-      }
-    >
-      <Surface className="p-4 rounded-xl mb-4">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-lg font-bold text-foreground">
-              {format(new Date(planInfo.monthYear), "MMM yyyy")}
-            </Text>
-            <View className="flex-row items-center gap-2 mt-1">
-              <Text className="text-xs text-muted-foreground">
-                {totalTasks} tasks · {totalGoals} goals
-              </Text>
-            </View>
-          </View>
-          <View
-            className={`px-2 py-1 rounded ${
-              planInfo.status === "CONFIRMED" ? "bg-success/10" : "bg-warning/10"
-            }`}
-          >
-            <Text
-              className={`text-xs font-medium ${
-                planInfo.status === "CONFIRMED" ? "text-success" : "text-warning"
-              }`}
-            >
-              {planInfo.status}
-            </Text>
-          </View>
-        </View>
-      </Surface>
-
-      {sectionedData.map((week) => (
-        <Surface key={week.weekNumber} className="rounded-lg mb-2 overflow-hidden">
-          <TouchableOpacity
-            onPress={() => toggleWeek(week.weekNumber)}
-            className="flex-row items-center justify-between p-3"
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons
-                name={week.isExpanded ? "chevron-down" : "chevron-forward"}
-                size={18}
-                color="#6b7280"
-              />
-              <Text className="font-medium text-foreground">Week {week.weekNumber}</Text>
-            </View>
-            <Text className="text-xs text-muted-foreground">{week.taskCount} tasks</Text>
-          </TouchableOpacity>
-
-          {week.isExpanded && (
-            <View className="px-3 pb-3 border-t border-border">
-              {week.goals.slice(0, 3).map((goal, i) => (
-                <View key={i} className="flex-row items-start gap-2 py-1.5">
-                  <Ionicons name="flag-outline" size={12} color="#10b981" />
-                  <Text className="text-xs text-foreground flex-1" numberOfLines={1}>
-                    {goal}
+    <Container className="bg-background">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-6 pb-32"
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <Animated.View entering={FadeInUp.duration(600)} className="mb-8">
+          <Surface className="p-6 rounded-[32px] bg-surface border border-border/50 shadow-sm">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <View className="flex-row items-center gap-x-2 mb-2">
+                  <HugeiconsIcon icon={Calendar03Icon} size={12} color="var(--muted-foreground)" />
+                  <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                    Temporal Node
                   </Text>
                 </View>
-              ))}
-
-              <View className="flex-row flex-wrap gap-1 mt-2">
-                {week.dailyTasks.map((dayTasks) =>
-                  dayTasks.tasks.slice(0, 2).map((task) => (
-                    <View
-                      key={task.id}
-                      className="flex-row items-center gap-1 px-2 py-1 bg-surface rounded"
-                    >
-                      <Text className="text-[10px] text-foreground" numberOfLines={1}>
-                        {task.title.substring(0, 20)}
-                      </Text>
-                      <CompactPriorityBadge priority={task.priority} />
-                    </View>
-                  )),
-                )}
+                <Text className="text-2xl font-sans-bold text-foreground tracking-tight">
+                  {format(new Date(planInfo.monthYear), "MMMM yyyy")}
+                </Text>
+              </View>
+              <View
+                className={`px-4 py-1.5 rounded-full border ${planInfo.status === "CONFIRMED" ? "bg-success/5 border-success/20" : "bg-warning/5 border-warning/20"}`}
+              >
+                <Text
+                  className={`text-[10px] font-sans-bold uppercase tracking-widest ${planInfo.status === "CONFIRMED" ? "text-success" : "text-warning"}`}
+                >
+                  {planInfo.status}
+                </Text>
               </View>
             </View>
-          )}
-        </Surface>
-      ))}
-    </ScrollView>
+            <View className="flex-row items-center gap-x-6 mt-6 pt-6 border-t border-border/10">
+              <View className="flex-row items-center gap-x-2">
+                <HugeiconsIcon icon={Task01Icon} size={14} color="var(--muted-foreground)" />
+                <Text className="text-xs font-sans-medium text-foreground">
+                  {totalTasks} <Text className="text-muted-foreground font-sans">Tasks</Text>
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-x-2">
+                <HugeiconsIcon icon={Flag01Icon} size={14} color="var(--muted-foreground)" />
+                <Text className="text-xs font-sans-medium text-foreground">
+                  {totalGoals} <Text className="text-muted-foreground font-sans">Goals</Text>
+                </Text>
+              </View>
+            </View>
+          </Surface>
+        </Animated.View>
+
+        <View className="gap-y-3">
+          {sectionedData.map((week, idx) => (
+            <Animated.View
+              key={week.weekNumber}
+              entering={FadeInDown.delay(idx * 50).duration(600)}
+              layout={LinearTransition}
+            >
+              <TouchableOpacity
+                onPress={() => toggleWeek(week.weekNumber)}
+                activeOpacity={0.7}
+                className={`rounded-[24px] overflow-hidden border ${week.isExpanded ? "bg-surface border-border/50 shadow-sm" : "bg-surface/40 border-border/20"}`}
+              >
+                <View className="flex-row items-center justify-between p-5">
+                  <View className="flex-row items-center gap-x-4">
+                    <View
+                      className={`w-10 h-10 rounded-2xl items-center justify-center ${week.isExpanded ? "bg-foreground" : "bg-muted/10"}`}
+                    >
+                      <HugeiconsIcon
+                        icon={week.isExpanded ? ArrowDown01Icon : ArrowRight01Icon}
+                        size={18}
+                        color={week.isExpanded ? "var(--background)" : "var(--muted-foreground)"}
+                      />
+                    </View>
+                    <View>
+                      <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                        Segment {week.weekNumber}
+                      </Text>
+                      <Text className="text-sm font-sans-bold text-foreground">Week Protocol</Text>
+                    </View>
+                  </View>
+                  <View className="items-end">
+                    <Text className="text-xs font-sans-bold text-foreground">{week.taskCount}</Text>
+                    <Text className="text-[8px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                      Active Units
+                    </Text>
+                  </View>
+                </View>
+
+                {week.isExpanded && (
+                  <Animated.View entering={FadeInDown.duration(400)} className="px-5 pb-5 pt-2">
+                    <View className="h-px bg-border/10 mb-5" />
+
+                    <View className="gap-y-3 mb-6">
+                      {week.goals.slice(0, 3).map((goal, i) => (
+                        <View key={i} className="flex-row items-start gap-x-3">
+                          <HugeiconsIcon
+                            icon={RecordIcon}
+                            size={10}
+                            color="var(--success)"
+                            className="mt-1"
+                          />
+                          <Text
+                            className="text-xs font-sans text-foreground leading-5 flex-1"
+                            numberOfLines={2}
+                          >
+                            {goal}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    <View className="flex-row flex-wrap gap-2">
+                      {week.dailyTasks
+                        .flatMap((dt) => dt.tasks.slice(0, 1))
+                        .map((task, i) => (
+                          <View
+                            key={task.id}
+                            className="flex-row items-center gap-x-2 px-3 py-2 bg-muted/5 rounded-xl border border-border/10"
+                          >
+                            <Text
+                              className="text-[10px] font-sans-medium text-foreground opacity-70"
+                              numberOfLines={1}
+                            >
+                              {task.title.substring(0, 15)}...
+                            </Text>
+                            <CompactPriorityBadge priority={task.priority} />
+                          </View>
+                        ))}
+                    </View>
+
+                    <TouchableOpacity className="flex-row items-center justify-center gap-x-2 mt-6 py-2">
+                      <HugeiconsIcon icon={AiMagicIcon} size={12} color="var(--accent)" />
+                      <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-widest">
+                        View Full Breakdown
+                      </Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
+        </View>
+      </ScrollView>
+    </Container>
   );
 }

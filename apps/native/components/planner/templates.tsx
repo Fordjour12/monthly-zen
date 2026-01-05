@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
-import { Card, Button, Divider, Skeleton } from "heroui-native";
+import { Card, Skeleton } from "heroui-native";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   Search01Icon,
   Cancel01Icon,
-  ArrowRight01Icon,
   RocketIcon,
   Sun01Icon,
   Wallet01Icon,
@@ -13,84 +12,87 @@ import {
   Book02Icon,
   PaintBrush01Icon,
   SparklesIcon,
-  Add01Icon,
+  ArrowRight02Icon,
+  FlashIcon,
+  Configuration01Icon,
 } from "@hugeicons/core-free-icons";
-import { useSemanticColors } from "@/utils/theme";
 import { useRouter } from "expo-router";
-import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInRight, LinearTransition } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 const CATEGORIES = [
-  { key: "all", label: "All" },
-  { key: "productivity", label: "Productivity" },
-  { key: "wellness", label: "Wellness" },
-  { key: "finance", label: "Finance" },
-  { key: "learning", label: "Learning" },
-  { key: "creativity", label: "Creativity" },
+  { key: "all", label: "Registry" },
+  { key: "productivity", label: "Performance" },
+  { key: "wellness", label: "Vitality" },
+  { key: "finance", label: "Assets" },
+  { key: "learning", label: "Cognition" },
+  { key: "creativity", label: "Synthesis" },
 ];
 
 const TEMPLATES = [
   {
     id: "1",
     title: "Deep Work Sprint",
-    description: "Maximize output with 4 hours of uninterrupted deep work daily.",
+    description: "Maximize neural output with 4 hours of uninterrupted high-focus work segments.",
     category: "productivity",
-    complexity: "Ambitious",
-    focusAreas: "Efficiency",
+    complexity: "High",
+    focusAreas: "Output Efficiency",
     icon: RocketIcon,
     color: "bg-purple-500/10",
     iconColor: "#a855f7",
   },
   {
     id: "2",
-    title: "Morning Routine",
-    description: "Build a rock-solid morning ritual including meditation and stretching.",
+    title: "System Initialization",
+    description: "Calibrate your morning state with meditation, hydration and physical activation.",
     category: "wellness",
-    complexity: "Simple",
-    focusAreas: "Wellness",
+    complexity: "Low",
+    focusAreas: "Physical Vitality",
     icon: Sun01Icon,
     color: "bg-orange-500/10",
     iconColor: "#f97316",
   },
   {
     id: "3",
-    title: "Financial Zen",
-    description: "Master your budget with daily tracking and weekly audits.",
+    title: "Asset Optimization",
+    description:
+      "Maintain fiscal equilibrium through precise budget tracking and recursive audits.",
     category: "finance",
-    complexity: "Balanced",
-    focusAreas: "Finance",
+    complexity: "Medium",
+    focusAreas: "Fiscal Stability",
     icon: Wallet01Icon,
     color: "bg-emerald-500/10",
     iconColor: "#10b981",
   },
   {
     id: "4",
-    title: "Language Lab",
-    description: "Consistent 30-minute daily practice using immersion techniques.",
+    title: "Linguistic Synapse",
+    description: "Establish neural pathways for new languages through recursive daily immersion.",
     category: "learning",
-    complexity: "Balanced",
-    focusAreas: "Learning",
+    complexity: "High",
+    focusAreas: "Neural Expansion",
     icon: LanguageSkillIcon,
     color: "bg-blue-500/10",
     iconColor: "#3b82f6",
   },
   {
     id: "5",
-    title: "Book Club",
-    description: "Read and discuss one book per month with structured schedule.",
+    title: "Knowledge Archive",
+    description: "Systematically digest high-value information through shared structured reading.",
     category: "learning",
-    complexity: "Simple",
-    focusAreas: "Reading",
+    complexity: "Low",
+    focusAreas: "Cognition",
     icon: Book02Icon,
     color: "bg-amber-500/10",
     iconColor: "#f59e0b",
   },
   {
     id: "6",
-    title: "Art Challenge",
-    description: "Daily sketch prompts and weekly project completion.",
+    title: "Creative Synthesis",
+    description: "Execute daily creative iterations to accelerate aesthetic mastery.",
     category: "creativity",
-    complexity: "Balanced",
-    focusAreas: "Creativity",
+    complexity: "Medium",
+    focusAreas: "Aesthetic Output",
     icon: PaintBrush01Icon,
     color: "bg-pink-500/10",
     iconColor: "#ec4899",
@@ -118,39 +120,54 @@ const TemplateCard = ({
   onApply: (template: TemplateData) => void;
   index: number;
 }) => (
-  <Animated.View entering={FadeInDown.delay(index * 100).duration(600)}>
-    <TouchableOpacity activeOpacity={0.9} onPress={() => onApply(template)} className="mb-6">
-      <Card className="p-6 border-none bg-surface/50 rounded-[32px]">
-        <View className="flex-row justify-between items-start mb-4">
-          <View className="flex-row items-center gap-x-3">
-            <View className={`w-12 h-12 rounded-2xl ${template.color} items-center justify-center`}>
-              <HugeiconsIcon icon={template.icon} size={24} color={template.iconColor} />
+  <Animated.View entering={FadeInDown.delay(index * 80).duration(600)} layout={LinearTransition}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onApply(template);
+      }}
+      className="mb-8"
+    >
+      <Card className="p-8 rounded-[40px] bg-surface border border-border/50 shadow-sm shadow-black/5">
+        <View className="flex-row justify-between items-start mb-6">
+          <View className="flex-row items-center gap-x-4">
+            <View
+              className={`w-14 h-14 rounded-[22px] ${template.color} items-center justify-center border border-white/5`}
+            >
+              <HugeiconsIcon icon={template.icon} size={28} color={template.iconColor} />
             </View>
             <View>
-              <Text className="text-lg font-sans-bold text-foreground">{template.title}</Text>
-              <View className="flex-row items-center gap-x-1.5">
+              <Text className="text-xl font-sans-bold text-foreground tracking-tight">
+                {template.title}
+              </Text>
+              <View className="flex-row items-center gap-x-2 mt-1">
                 <View className="w-1.5 h-1.5 rounded-full bg-accent" />
-                <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-widest">
-                  {template.complexity}
+                <Text className="text-[10px] font-sans-bold text-accent uppercase tracking-[2px]">
+                  Complexity: {template.complexity}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        <Text className="text-base font-sans text-muted-foreground mb-6 leading-6">
-          {template.description}
-        </Text>
+        <View className="bg-muted/5 rounded-[24px] p-5 border border-border/5 mb-8">
+          <Text className="text-sm font-sans text-muted-foreground leading-6 opacity-80">
+            {template.description}
+          </Text>
+        </View>
 
-        <View className="flex-row justify-between items-center pt-5 border-t border-border/30">
-          <View className="flex-row items-center gap-x-2">
-            <HugeiconsIcon icon={SparklesIcon} size={14} color="var(--muted-foreground)" />
-            <Text className="text-xs font-sans-medium text-muted-foreground capitalize">
+        <View className="flex-row justify-between items-center pt-6 border-t border-border/10">
+          <View className="flex-row items-center gap-x-3">
+            <View className="w-8 h-8 rounded-full bg-surface items-center justify-center border border-border/40">
+              <HugeiconsIcon icon={Configuration01Icon} size={14} color="var(--muted-foreground)" />
+            </View>
+            <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
               {template.focusAreas}
             </Text>
           </View>
-          <View className="w-10 h-10 rounded-full bg-foreground items-center justify-center">
-            <HugeiconsIcon icon={ArrowRight01Icon} size={18} color="var(--background)" />
+          <View className="w-12 h-12 rounded-full bg-foreground items-center justify-center shadow-lg shadow-black/20">
+            <HugeiconsIcon icon={ArrowRight02Icon} size={20} color="var(--background)" />
           </View>
         </View>
       </Card>
@@ -166,7 +183,7 @@ export default function TemplatesTab() {
 
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 600);
+    const timer = setTimeout(() => setIsLoading(false), 400);
     return () => clearTimeout(timer);
   }, [activeCategory, searchQuery]);
 
@@ -194,47 +211,53 @@ export default function TemplatesTab() {
   return (
     <ScrollView
       className="flex-1"
-      contentContainerStyle={{ paddingBottom: 100 }}
+      contentContainerClassName="pb-32"
       showsVerticalScrollIndicator={false}
     >
-      {/* Search Bar */}
-      <Animated.View entering={FadeInDown.delay(100).duration(600)} className="px-6 mt-4 mb-6">
-        <View className="flex-row items-center bg-surface border border-border/50 rounded-2xl px-4 py-1">
+      <Animated.View entering={FadeInDown.delay(100).duration(600)} className="px-6 mt-6 mb-8">
+        <View className="flex-row items-center bg-surface border border-border/50 rounded-[24px] px-6 py-2 shadow-sm shadow-black/5">
           <HugeiconsIcon icon={Search01Icon} size={20} color="var(--muted-foreground)" />
           <TextInput
-            className="flex-1 p-3 font-sans text-foreground"
-            placeholder="Search strategies..."
+            className="flex-1 p-3 font-sans-medium text-foreground text-sm"
+            placeholder="Search directives..."
             placeholderTextColor="var(--muted-foreground)"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery !== "" && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSearchQuery("");
+              }}
+            >
               <HugeiconsIcon icon={Cancel01Icon} size={18} color="var(--muted-foreground)" />
             </TouchableOpacity>
           )}
         </View>
       </Animated.View>
 
-      {/* Categories Scroller */}
-      <Animated.View entering={FadeInRight.delay(200).duration(600)} className="mb-8">
+      <Animated.View entering={FadeInRight.delay(200).duration(600)} className="mb-10">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 24 }}
+          contentContainerClassName="px-6"
         >
           {CATEGORIES.map((cat) => (
             <TouchableOpacity
               key={cat.key}
-              onPress={() => setActiveCategory(cat.key)}
-              className={`mr-3 px-6 py-3 rounded-2xl border ${
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveCategory(cat.key);
+              }}
+              className={`mr-3 px-6 py-4 rounded-[20px] border ${
                 activeCategory === cat.key
-                  ? "bg-foreground border-foreground"
+                  ? "bg-foreground border-foreground shadow-lg shadow-black/10"
                   : "bg-surface border-border/50"
               }`}
             >
               <Text
-                className={`text-xs font-sans-bold uppercase tracking-widest ${
+                className={`text-[10px] font-sans-bold uppercase tracking-[2px] ${
                   activeCategory === cat.key ? "text-background" : "text-muted-foreground"
                 }`}
               >
@@ -245,12 +268,11 @@ export default function TemplatesTab() {
         </ScrollView>
       </Animated.View>
 
-      {/* Template Grid */}
       <View className="px-6">
         {isLoading ? (
-          <View className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <View key={i} className="h-48 w-full bg-surface rounded-[32px] animate-pulse" />
+          <View className="gap-y-8">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-64 w-full rounded-[40px] opacity-40" />
             ))}
           </View>
         ) : (
@@ -265,12 +287,12 @@ export default function TemplatesTab() {
             ))}
 
             {filteredTemplates.length === 0 && (
-              <View className="items-center justify-center py-20">
-                <View className="w-16 h-16 rounded-full bg-muted/5 items-center justify-center mb-4">
-                  <HugeiconsIcon icon={Search01Icon} size={32} color="var(--muted-foreground)" />
+              <View className="items-center justify-center py-24">
+                <View className="w-20 h-20 rounded-[32px] bg-muted/5 items-center justify-center mb-6 border border-border/10">
+                  <HugeiconsIcon icon={FlashIcon} size={32} color="var(--muted-foreground)" />
                 </View>
-                <Text className="text-muted-foreground font-sans-semibold">
-                  No strategies found
+                <Text className="text-muted-foreground font-sans-bold uppercase tracking-widest opacity-60">
+                  Directives Clear
                 </Text>
               </View>
             )}
