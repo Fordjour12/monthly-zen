@@ -6,12 +6,12 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
-  Dimensions,
   TextInput,
+  Pressable,
+  Image,
 } from "react-native";
-import { useRouter, Link, Stack } from "expo-router";
+import { useRouter, Link } from "expo-router";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   Mail01Icon,
@@ -19,10 +19,7 @@ import {
   ViewIcon,
   ViewOffIcon,
   GoogleIcon,
-  ArrowRight01Icon,
-  AiMagicIcon,
   UserIcon,
-  FingerPrintIcon,
   Tick01Icon,
 } from "@hugeicons/core-free-icons";
 import { useSemanticColors } from "@/utils/theme";
@@ -30,12 +27,13 @@ import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { z } from "zod";
-import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 const SignUpSchema = z.object({
   name: z.string().min(1, "Identity label required"),
-  email: z.string().email("Invalid neural identifier").min(1, "Email required"),
+  email: z.email("Invalid neural identifier").min(1, "Email required"),
   password: z.string().min(8, "Access key must be >= 8 chars"),
 });
 
@@ -60,13 +58,15 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { signUp, isLoading, error } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const { height } = Dimensions.get("window");
 
   const form = useForm({
     defaultValues: {
       name: "",
       email: "",
       password: "",
+    },
+    validators: {
+      onChange: SignUpSchema,
     },
     onSubmit: async ({ value }) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -91,7 +91,6 @@ export default function SignUpScreen() {
 
   return (
     <Container className="bg-background">
-      <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -104,8 +103,13 @@ export default function SignUpScreen() {
           <View className="flex-1 px-8 justify-center pt-20">
             {/* Header Section */}
             <Animated.View entering={FadeInUp.duration(600)} className="mb-12 items-center">
-              <View className="w-20 h-20 rounded-[32px] bg-accent items-center justify-center mb-6 shadow-2xl shadow-accent/20">
-                <HugeiconsIcon icon={AiMagicIcon} size={36} color="white" />
+              <View className="size-20 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
+                <View className="-rotate-12">
+                  <Image
+                    source={require("../assets/images/android-icon-foreground.png")}
+                    className="size-19"
+                  />
+                </View>
               </View>
               <Text className="text-3xl font-sans-bold text-foreground tracking-tight text-center">
                 Create Identity
@@ -121,9 +125,9 @@ export default function SignUpScreen() {
                 onPress={handleGoogleSignUp}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                className="bg-surface rounded-[24px] border border-border/50 h-16 flex-row items-center justify-center gap-x-3"
+                className="bg-surface rounded-4xl border border-border/50 h-16 flex-row items-center justify-center gap-x-3"
               >
-                <HugeiconsIcon icon={GoogleIcon} size={20} color="var(--foreground)" />
+                <HugeiconsIcon icon={GoogleIcon} size={20} color={colors.foreground} />
                 <Text className="text-sm font-sans-bold text-foreground uppercase tracking-widest">
                   Initialize via Google
                 </Text>
@@ -142,29 +146,24 @@ export default function SignUpScreen() {
             <Animated.View entering={FadeInDown.delay(400).duration(600)} className="gap-y-6">
               <form.Field
                 name="name"
-                validators={{
-                  onChange: ({ value }) => {
-                    const res = SignUpSchema.shape.name.safeParse(value);
-                    return res.success ? undefined : res.error.errors[0].message;
-                  },
-                }}
                 children={(field) => (
                   <View>
                     <View className="flex-row items-center gap-x-2 mb-3 ml-1">
-                      <HugeiconsIcon icon={UserIcon} size={14} color="var(--muted-foreground)" />
+                      <HugeiconsIcon icon={UserIcon} size={14} color={colors.accent} />
                       <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                         Identity Label (Full Name)
                       </Text>
                     </View>
                     <View className="bg-surface rounded-2xl border border-border/50 px-5 h-14 justify-center focus:border-accent">
                       <TextInput
-                        className="text-foreground text-sm font-sans-medium"
+                        className="text-foreground text-sm font-sans-medium placeholder:text-muted-foreground/30"
                         value={field.state.value}
                         onChangeText={field.handleChange}
                         placeholder="Neural Entity Name"
                         placeholderTextColor="var(--muted-foreground)/30"
                         autoCapitalize="words"
                         autoCorrect={false}
+                        autoComplete="name"
                       />
                     </View>
                     <FieldInfo field={field} />
@@ -174,23 +173,17 @@ export default function SignUpScreen() {
 
               <form.Field
                 name="email"
-                validators={{
-                  onChange: ({ value }) => {
-                    const res = SignUpSchema.shape.email.safeParse(value);
-                    return res.success ? undefined : res.error.errors[0].message;
-                  },
-                }}
                 children={(field) => (
                   <View>
                     <View className="flex-row items-center gap-x-2 mb-3 ml-1">
-                      <HugeiconsIcon icon={Mail01Icon} size={14} color="var(--muted-foreground)" />
+                      <HugeiconsIcon icon={Mail01Icon} size={14} color={colors.accent} />
                       <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                         Neural Identifier (Email)
                       </Text>
                     </View>
                     <View className="bg-surface rounded-2xl border border-border/50 px-5 h-14 justify-center focus:border-accent">
                       <TextInput
-                        className="text-foreground text-sm font-sans-medium"
+                        className="text-foreground text-sm font-sans-medium placeholder:text-muted-foreground/30"
                         value={field.state.value}
                         onChangeText={field.handleChange}
                         placeholder="entity@uplink.com"
@@ -198,6 +191,7 @@ export default function SignUpScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
+                        autoComplete="email"
                       />
                     </View>
                     <FieldInfo field={field} />
@@ -207,21 +201,11 @@ export default function SignUpScreen() {
 
               <form.Field
                 name="password"
-                validators={{
-                  onChange: ({ value }) => {
-                    const res = SignUpSchema.shape.password.safeParse(value);
-                    return res.success ? undefined : res.error.errors[0].message;
-                  },
-                }}
                 children={(field) => (
                   <View>
                     <View className="flex-row items-center justify-between mb-3 ml-1">
                       <View className="flex-row items-center gap-x-2">
-                        <HugeiconsIcon
-                          icon={LockPasswordIcon}
-                          size={14}
-                          color="var(--muted-foreground)"
-                        />
+                        <HugeiconsIcon icon={LockPasswordIcon} size={14} color={colors.accent} />
                         <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                           Access Key (8+ Chars)
                         </Text>
@@ -235,19 +219,20 @@ export default function SignUpScreen() {
                         <HugeiconsIcon
                           icon={showPassword ? ViewOffIcon : ViewIcon}
                           size={16}
-                          color="var(--muted-foreground)"
+                          color={colors.accent}
                         />
                       </TouchableOpacity>
                     </View>
                     <View className="bg-surface rounded-2xl border border-border/50 px-5 h-14 justify-center focus:border-accent">
                       <TextInput
-                        className="text-foreground text-sm font-sans-medium"
+                        className="text-foreground text-sm font-sans-medium placeholder:text-muted-foreground/30"
                         value={field.state.value}
                         onChangeText={field.handleChange}
                         placeholder="••••••••"
                         placeholderTextColor="var(--muted-foreground)/30"
                         secureTextEntry={!showPassword}
                         autoCorrect={false}
+                        autoComplete="password"
                       />
                     </View>
                     <FieldInfo field={field} />
@@ -273,20 +258,20 @@ export default function SignUpScreen() {
                     onPress={() => form.handleSubmit()}
                     disabled={!canSubmit || isSubmitting || isLoading}
                     activeOpacity={0.8}
-                    className={`h-16 rounded-[24px] flex-row items-center justify-center gap-x-3 mt-4 shadow-xl ${
+                    className={`h-16 rounded-4xl flex-row items-center justify-center gap-x-3 mt-4 shadow-xl ${
                       !canSubmit || isSubmitting || isLoading
                         ? "bg-muted opacity-50"
                         : "bg-foreground shadow-black/20"
                     }`}
                   >
                     {isSubmitting || isLoading ? (
-                      <ActivityIndicator color="var(--background)" />
+                      <ActivityIndicator color={colors.accent} />
                     ) : (
                       <>
                         <Text className="text-sm font-sans-bold text-background uppercase tracking-widest">
                           Finalize Identity
                         </Text>
-                        <HugeiconsIcon icon={Tick01Icon} size={18} color="var(--background)" />
+                        <HugeiconsIcon icon={Tick01Icon} size={18} color={colors.background} />
                       </>
                     )}
                   </TouchableOpacity>
@@ -297,13 +282,14 @@ export default function SignUpScreen() {
                 <Text className="text-xs font-sans text-muted-foreground">
                   Already documented?{" "}
                 </Text>
-                <Link href="/sign-in" asChild>
-                  <TouchableOpacity>
+
+                <Pressable>
+                  <Link href="/sign-in" asChild>
                     <Text className="text-xs font-sans-bold text-foreground uppercase tracking-widest underline">
                       Authorize Access
                     </Text>
-                  </TouchableOpacity>
-                </Link>
+                  </Link>
+                </Pressable>
               </View>
 
               <View className="mt-6 pt-6 border-t border-border/30">

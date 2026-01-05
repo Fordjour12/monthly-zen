@@ -6,10 +6,12 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
+  Pressable,
+  TextInput,
+  Image,
 } from "react-native";
-import { useRouter, Link, Stack } from "expo-router";
+import { useRouter, Link } from "expo-router";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   Mail01Icon,
@@ -18,18 +20,15 @@ import {
   ViewOffIcon,
   GoogleIcon,
   ArrowRight01Icon,
-  AiMagicIcon,
-  FingerPrintIcon,
-  Cancel01Icon,
 } from "@hugeicons/core-free-icons";
-import { useSemanticColors } from "@/utils/theme";
-import { Card, TextField } from "heroui-native";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
 import { useForm, type AnyFieldApi } from "@tanstack/react-form";
 import { z } from "zod";
-import Animated, { FadeInUp, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { useSemanticColors } from "@/utils/theme";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 const SignInSchema = z.object({
   email: z.email("Please enter a valid email address").min(1, "Email is required"),
@@ -53,15 +52,18 @@ function FieldInfo({ field }: { field: AnyFieldApi }) {
 }
 
 export default function SignInScreen() {
-  const colors = useSemanticColors();
   const router = useRouter();
   const { signIn, isLoading, error } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const colors = useSemanticColors();
 
   const form = useForm({
     defaultValues: {
       email: "",
       password: "",
+    },
+    validators: {
+      onChange: SignInSchema,
     },
     onSubmit: async ({ value }) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -82,7 +84,6 @@ export default function SignInScreen() {
 
   return (
     <Container className="bg-background">
-      <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -95,8 +96,13 @@ export default function SignInScreen() {
           <View className="flex-1 px-8 justify-center pt-20">
             {/* Header / Logo Section */}
             <Animated.View entering={FadeInUp.duration(600)} className="mb-12 items-center">
-              <View className="w-20 h-20 rounded-[32px] bg-foreground items-center justify-center mb-6 shadow-2xl shadow-black/20">
-                <HugeiconsIcon icon={AiMagicIcon} size={36} color="var(--background)" />
+              <View className="size-20 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
+                <View className="-rotate-12">
+                  <Image
+                    source={require("../assets/images/android-icon-foreground.png")}
+                    className="size-19"
+                  />
+                </View>
               </View>
               <Text className="text-3xl font-sans-bold text-foreground tracking-tight text-center">
                 Welcome Back
@@ -112,10 +118,10 @@ export default function SignInScreen() {
                 onPress={handleGoogleSignIn}
                 disabled={isLoading}
                 activeOpacity={0.8}
-                className="bg-surface rounded-[24px] border border-border/50 h-16 flex-row items-center justify-center gap-x-3"
+                className="bg-surface rounded-4xl border border-border/50 h-16 flex-row items-center justify-center gap-x-3"
               >
                 <View className="w-6 h-6 items-center justify-center">
-                  <HugeiconsIcon icon={GoogleIcon} size={20} color="var(--foreground)" />
+                  <HugeiconsIcon icon={GoogleIcon} size={20} color={colors.foreground} />
                 </View>
                 <Text className="text-sm font-sans-bold text-foreground uppercase tracking-widest">
                   Connect via Google
@@ -135,23 +141,17 @@ export default function SignInScreen() {
             <Animated.View entering={FadeInDown.delay(400).duration(600)} className="gap-y-6">
               <form.Field
                 name="email"
-                validators={{
-                  onChange: ({ value }) => {
-                    const res = SignInSchema.shape.email.safeParse(value);
-                    return res.success ? undefined : res.error.errors[0].message;
-                  },
-                }}
                 children={(field) => (
                   <View>
                     <View className="flex-row items-center gap-x-2 mb-3 ml-1">
-                      <HugeiconsIcon icon={Mail01Icon} size={14} color="var(--muted-foreground)" />
+                      <HugeiconsIcon icon={Mail01Icon} size={14} color={colors.accent} />
                       <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                         Neural Identifier (Email)
                       </Text>
                     </View>
                     <View className="bg-surface rounded-2xl border border-border/50 px-5 h-14 justify-center focus:border-accent">
                       <TextInput
-                        className="text-foreground text-sm font-sans-medium"
+                        className="text-foreground text-sm font-sans-medium placeholder:text-muted-foreground/30"
                         value={field.state.value}
                         onChangeText={field.handleChange}
                         placeholder="your@uplink.com"
@@ -159,6 +159,7 @@ export default function SignInScreen() {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
+                        autoComplete="email"
                       />
                     </View>
                     <FieldInfo field={field} />
@@ -168,21 +169,11 @@ export default function SignInScreen() {
 
               <form.Field
                 name="password"
-                validators={{
-                  onChange: ({ value }) => {
-                    const res = SignInSchema.shape.password.safeParse(value);
-                    return res.success ? undefined : res.error.errors[0].message;
-                  },
-                }}
                 children={(field) => (
                   <View>
                     <View className="flex-row items-center justify-between mb-3 ml-1">
                       <View className="flex-row items-center gap-x-2">
-                        <HugeiconsIcon
-                          icon={LockPasswordIcon}
-                          size={14}
-                          color="var(--muted-foreground)"
-                        />
+                        <HugeiconsIcon icon={LockPasswordIcon} size={14} color={colors.accent} />
                         <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                           Access Key
                         </Text>
@@ -196,19 +187,20 @@ export default function SignInScreen() {
                         <HugeiconsIcon
                           icon={showPassword ? ViewOffIcon : ViewIcon}
                           size={16}
-                          color="var(--muted-foreground)"
+                          color={colors.accent}
                         />
                       </TouchableOpacity>
                     </View>
                     <View className="bg-surface rounded-2xl border border-border/50 px-5 h-14 justify-center focus:border-accent">
                       <TextInput
-                        className="text-foreground text-sm font-sans-medium"
+                        className="text-foreground text-sm font-sans-medium placeholder:text-muted-foreground/30"
                         value={field.state.value}
                         onChangeText={field.handleChange}
                         placeholder="••••••••"
                         placeholderTextColor="var(--muted-foreground)/30"
                         secureTextEntry={!showPassword}
                         autoCorrect={false}
+                        autoComplete="password"
                       />
                     </View>
                     <FieldInfo field={field} />
@@ -234,14 +226,14 @@ export default function SignInScreen() {
                     onPress={() => form.handleSubmit()}
                     disabled={!canSubmit || isSubmitting || isLoading}
                     activeOpacity={0.8}
-                    className={`h-16 rounded-[24px] flex-row items-center justify-center gap-x-3 mt-4 shadow-xl ${
+                    className={`h-16 rounded-4xl flex-row items-center justify-center gap-x-3 mt-4 shadow-xl ${
                       !canSubmit || isSubmitting || isLoading
                         ? "bg-muted opacity-50"
                         : "bg-foreground shadow-black/20"
                     }`}
                   >
                     {isSubmitting || isLoading ? (
-                      <ActivityIndicator color="var(--background)" />
+                      <ActivityIndicator color={colors.background} />
                     ) : (
                       <>
                         <Text className="text-sm font-sans-bold text-background uppercase tracking-widest">
@@ -250,7 +242,7 @@ export default function SignInScreen() {
                         <HugeiconsIcon
                           icon={ArrowRight01Icon}
                           size={18}
-                          color="var(--background)"
+                          color={colors.background}
                         />
                       </>
                     )}
@@ -262,13 +254,13 @@ export default function SignInScreen() {
                 <Text className="text-xs font-sans text-muted-foreground">
                   New to the ecosystem?{" "}
                 </Text>
-                <Link href="/sign-up" asChild>
-                  <TouchableOpacity>
+                <Pressable>
+                  <Link href="/sign-up" asChild>
                     <Text className="text-xs font-sans-bold text-foreground uppercase tracking-widest underline">
                       Register Entity
                     </Text>
-                  </TouchableOpacity>
-                </Link>
+                  </Link>
+                </Pressable>
               </View>
             </Animated.View>
           </View>
@@ -277,6 +269,3 @@ export default function SignInScreen() {
     </Container>
   );
 }
-
-// Re-using TextInput from react-native for better raw control with semantic colors
-import { TextInput } from "react-native";

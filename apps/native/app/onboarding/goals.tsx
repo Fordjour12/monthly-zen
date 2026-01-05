@@ -17,7 +17,6 @@ import {
   Target01Icon,
   SparklesIcon,
   ChampionIcon,
-  Calendar01Icon,
   PlusSignIcon,
   Delete02Icon,
   CheckmarkCircle01Icon,
@@ -30,7 +29,7 @@ import {
   Task01Icon,
   MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
-import { Button, TextField, Card, Divider } from "heroui-native";
+import { Button, TextField, Card } from "heroui-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
 
@@ -115,13 +114,13 @@ export default function GoalsScreen() {
           {/* Header */}
           <Animated.View
             entering={FadeInUp.delay(100).duration(600)}
-            className="flex-row items-center mb-8"
+            className="flex-row items-center mb-8 pt-2"
           >
             <TouchableOpacity
               onPress={() => router.back()}
-              className="w-12 h-12 rounded-2xl bg-surface items-center justify-center border border-border/50"
+              className="size-12 rounded-2xl bg-surface items-center justify-center border border-border/50"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color={colors.foreground} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -139,7 +138,7 @@ export default function GoalsScreen() {
           <Animated.View entering={FadeInDown.delay(300).duration(600)} className="mb-8">
             <View className="flex-row items-center gap-x-2 mb-4">
               <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
-                <HugeiconsIcon icon={Target01Icon} size={16} color="var(--accent)" />
+                <HugeiconsIcon icon={Target01Icon} size={16} color={colors.accent} />
               </View>
               <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
                 This Month's Focus
@@ -153,11 +152,11 @@ export default function GoalsScreen() {
                   onChangeText={setMainGoal}
                   multiline
                   numberOfLines={2}
-                  className="text-lg font-sans leading-7 min-h-[80px]"
+                  className="text-lg font-sans leading-7 min-h-20"
                 />
               </TextField>
               <View className="mt-3 flex-row items-center gap-x-2">
-                <HugeiconsIcon icon={SparklesIcon} size={14} color="var(--muted-foreground)" />
+                <HugeiconsIcon icon={SparklesIcon} size={14} color={colors.muted} />
                 <Text className="text-xs font-sans text-muted-foreground">
                   AI will use this to prioritize your tasks.
                 </Text>
@@ -169,8 +168,8 @@ export default function GoalsScreen() {
           <Animated.View entering={FadeInDown.delay(400).duration(600)} className="mb-8">
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center gap-x-2">
-                <View className="w-8 h-8 rounded-lg bg-success/10 items-center justify-center">
-                  <HugeiconsIcon icon={ChampionIcon} size={16} color="var(--success)" />
+                <View className="w-8 h-8 rounded-lg bg-success/20 items-center justify-center">
+                  <HugeiconsIcon icon={ChampionIcon} size={16} color={colors.success} />
                 </View>
                 <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
                   Yearly Resolutions
@@ -178,9 +177,9 @@ export default function GoalsScreen() {
               </View>
               <TouchableOpacity
                 onPress={() => setShowResModal(true)}
-                className="bg-accent/10 py-1.5 px-3 rounded-full flex-row items-center gap-x-1"
+                className="bg-accent/20 py-1.5 px-3 rounded-full flex-row items-center gap-x-1"
               >
-                <HugeiconsIcon icon={PlusSignIcon} size={14} color="var(--accent)" />
+                <HugeiconsIcon icon={PlusSignIcon} size={14} color={colors.accent} />
                 <Text className="text-xs font-sans-semibold text-accent">Add</Text>
               </TouchableOpacity>
             </View>
@@ -204,7 +203,7 @@ export default function GoalsScreen() {
                               UserIcon
                             }
                             size={20}
-                            color="var(--accent)"
+                            color={colors.accent}
                           />
                         </View>
                         <View className="flex-1">
@@ -220,7 +219,7 @@ export default function GoalsScreen() {
                         </View>
                       </View>
                       <TouchableOpacity onPress={() => removeResolution(idx)}>
-                        <HugeiconsIcon icon={Delete02Icon} size={18} color="var(--danger)" />
+                        <HugeiconsIcon icon={Delete02Icon} size={18} color={colors.danger} />
                       </TouchableOpacity>
                     </Card>
                   </Animated.View>
@@ -233,7 +232,7 @@ export default function GoalsScreen() {
           <Animated.View entering={FadeInDown.delay(500).duration(600)} className="mb-6">
             <View className="flex-row items-center gap-x-2 mb-4">
               <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
-                <HugeiconsIcon icon={AiChat01Icon} size={16} color="var(--accent)" />
+                <HugeiconsIcon icon={AiChat01Icon} size={16} color={colors.accent} />
               </View>
               <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
                 AI Companion
@@ -297,9 +296,7 @@ export default function GoalsScreen() {
             isDisabled={!mainGoal.trim()}
           >
             <View className="flex-row items-center justify-center gap-x-2">
-              <Text className="text-lg font-sans-semibold text-primary-foreground">
-                Finalize My Plan
-              </Text>
+              <Text className="text-lg font-sans-semibold text-foreground">Finalize My Plan</Text>
               <HugeiconsIcon icon={CheckmarkCircle01Icon} size={20} color={colors.foreground} />
             </View>
           </Button>
@@ -350,7 +347,7 @@ export default function GoalsScreen() {
                   <TouchableOpacity
                     key={cat.key}
                     onPress={() => setNewRes({ ...newRes, category: cat.key })}
-                    className={`flex-row items-center gap-x-2 px-4 py-2.5 rounded-xl border ${
+                    className={`flex-row items-center gap-x-2  ml-2 px-4 py-2.5 rounded-xl border ${
                       newRes.category === cat.key
                         ? "bg-accent/10 border-accent"
                         : "bg-background border-border"
@@ -359,9 +356,7 @@ export default function GoalsScreen() {
                     <HugeiconsIcon
                       icon={cat.icon}
                       size={16}
-                      color={
-                        newRes.category === cat.key ? "var(--accent)" : "var(--muted-foreground)"
-                      }
+                      color={newRes.category === cat.key ? `${colors.accent}` : `${colors.muted}`}
                     />
                     <Text
                       className={`text-sm font-sans-medium ${

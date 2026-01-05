@@ -185,7 +185,7 @@ export default function WelcomeScreen() {
               <Text className="text-lg font-sans-semibold text-primary-foreground">
                 Get Started
               </Text>
-              <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={colors.foreground} />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={20} color={colors.background} />
             </View>
           </Button>
 
