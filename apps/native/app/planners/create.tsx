@@ -10,7 +10,10 @@ import {
   AiChat01Icon,
   ArrowLeft01Icon,
   ArrowUp01Icon,
+  Calendar01Icon,
+  CheckmarkCircle01Icon,
   Clock01Icon,
+  Files01Icon,
   PlusSignIcon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
@@ -34,14 +37,12 @@ const SUGGESTIONS: Suggestion[] = [
   { id: "s1", label: "Save Plan", description: "Store this blueprint in your planner" },
   { id: "s2", label: "Adjust Intensity", description: "Make it more ambitious" },
   { id: "s3", label: "Add Commitments", description: "Block existing meetings" },
-  { id: "s4", label: "Split Focus", description: "Balance work and recovery" },
 ];
 
 const FOLLOW_UPS = [
   "Summarize my plan in 3 bullets",
   "Add a weekly review ritual",
   "Make weekends recovery focused",
-  "Add a travel week",
 ];
 
 type Message = {
@@ -114,6 +115,7 @@ export default function PlannerChatCreate() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [planSaved, setPlanSaved] = useState(false);
+  const [showSavedDrawer, setShowSavedDrawer] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "system-1",
@@ -206,6 +208,7 @@ export default function PlannerChatCreate() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (suggestion.id === "s1") {
       setPlanSaved(true);
+      setShowSavedDrawer(true);
       setMessages((prev) => [
         ...prev,
         {
@@ -255,58 +258,58 @@ export default function PlannerChatCreate() {
       >
         <View className="flex-1">
           {backgroundGlow}
-          <View className="px-6 pt-12 pb-4 flex-row items-center gap-x-4">
+          <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
             <TouchableOpacity
               onPress={() => router.back()}
-              className="w-11 h-11 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+              className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={20} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
             </TouchableOpacity>
             <View className="flex-1">
-              <Text className="text-[11px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
+              <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
                 Planner
               </Text>
-              <Text className="text-2xl font-sans-bold text-foreground">Chat Blueprint</Text>
+              <Text className="text-xl font-sans-bold text-foreground">Chat Blueprint</Text>
             </View>
-            <View className="w-11 h-11 rounded-2xl bg-accent/15 items-center justify-center">
-              <HugeiconsIcon icon={AiChat01Icon} size={22} color="var(--accent)" />
+            <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
+              <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
             </View>
           </View>
 
           <View className="px-6">
             <Animated.View
               entering={FadeInDown.duration(500)}
-              className="bg-surface/60 border border-border/40 rounded-[28px] p-5"
+              className="bg-surface/60 border border-border/40 rounded-[24px] p-4"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-x-3">
-                  <View className="w-10 h-10 rounded-2xl bg-accent/20 items-center justify-center">
-                    <HugeiconsIcon icon={SparklesIcon} size={18} color="var(--accent)" />
+                  <View className="w-9 h-9 rounded-2xl bg-accent/20 items-center justify-center">
+                    <HugeiconsIcon icon={SparklesIcon} size={16} color="var(--accent)" />
                   </View>
                   <View>
                     <Text className="text-sm font-sans-bold text-foreground">Monthly Engine</Text>
-                    <Text className="text-xs font-sans text-muted-foreground">
+                    <Text className="text-[11px] font-sans text-muted-foreground">
                       System crafting mode
                     </Text>
                   </View>
                 </View>
                 <View className="flex-row items-center gap-x-1">
-                  <HugeiconsIcon icon={Clock01Icon} size={14} color="var(--muted-foreground)" />
-                  <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                  <HugeiconsIcon icon={Clock01Icon} size={12} color="var(--muted-foreground)" />
+                  <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                     Live
                   </Text>
                 </View>
               </View>
-              <View className="flex-row gap-x-2 mt-4">
+              <View className="flex-row gap-x-2 mt-3">
                 {QUICK_STATS.map((stat) => (
                   <View
                     key={stat.label}
                     className="flex-1 rounded-2xl bg-background/60 border border-border/30 px-3 py-2"
                   >
-                    <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                    <Text className="text-[8px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
                       {stat.label}
                     </Text>
-                    <Text className="text-sm font-sans-semibold text-foreground mt-1">
+                    <Text className="text-xs font-sans-semibold text-foreground mt-1">
                       {stat.value}
                     </Text>
                   </View>
@@ -316,7 +319,7 @@ export default function PlannerChatCreate() {
 
             <ScrollView
               ref={scrollRef}
-              className="mt-6"
+              className="mt-5"
               contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
@@ -338,47 +341,52 @@ export default function PlannerChatCreate() {
                         </Text>
                       </View>
                     ) : message.kind === "plan" ? (
-                      <View className="w-full rounded-[32px] border border-border/40 bg-surface/70 p-5">
-                        <View className="flex-row items-center justify-between mb-4">
+                      <View className="w-full rounded-[28px] border border-border/40 bg-surface/70 p-4">
+                        <View className="flex-row items-center justify-between mb-3">
                           <View>
-                            <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
+                            <Text className="text-[9px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
                               {PLAN_DATA.duration}
                             </Text>
-                            <Text className="text-xl font-sans-bold text-foreground">
+                            <Text className="text-lg font-sans-bold text-foreground">
                               {PLAN_DATA.title}
                             </Text>
                           </View>
-                          <View className="w-12 h-12 rounded-2xl bg-accent/15 items-center justify-center">
-                            <HugeiconsIcon icon={SparklesIcon} size={22} color="var(--accent)" />
+                          <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
+                            <HugeiconsIcon icon={SparklesIcon} size={18} color="var(--accent)" />
                           </View>
                         </View>
                         <Text className="text-sm font-sans text-muted-foreground leading-6">
                           {PLAN_DATA.summary}
                         </Text>
-                        <View className="mt-4 gap-y-4">
+                        <View className="mt-4 gap-y-3">
                           {PLAN_DATA.sections.map((section: PlanSection) => (
                             <View
                               key={section.title}
-                              className="rounded-2xl border border-border/30 bg-background/40 p-4"
+                              className="rounded-2xl border border-border/30 bg-background/40 p-3"
                             >
-                              <Text className="text-xs font-sans-bold uppercase tracking-[2px] text-muted-foreground mb-2">
+                              <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground mb-2">
                                 {section.title}
                               </Text>
-                              {section.items.map((item: string) => (
+                              {section.items.slice(0, 2).map((item: string) => (
                                 <View
                                   key={item}
                                   className="flex-row items-start gap-x-2 mb-2 last:mb-0"
                                 >
-                                  <View className="w-2 h-2 rounded-full bg-accent mt-2" />
+                                  <View className="w-1.5 h-1.5 rounded-full bg-accent mt-2" />
                                   <Text className="text-sm font-sans text-foreground leading-6 flex-1">
                                     {item}
                                   </Text>
                                 </View>
                               ))}
+                              {section.items.length > 2 && (
+                                <Text className="text-[11px] font-sans-medium text-muted-foreground mt-1">
+                                  +{section.items.length - 2} more
+                                </Text>
+                              )}
                             </View>
                           ))}
                         </View>
-                        <View className="flex-row gap-x-2 mt-5">
+                        <View className="flex-row gap-x-2 mt-4">
                           <TouchableOpacity
                             onPress={() => handleSuggestion(SUGGESTIONS[0])}
                             className={`flex-1 rounded-2xl px-4 py-3 items-center justify-center border ${
@@ -388,7 +396,7 @@ export default function PlannerChatCreate() {
                             }`}
                           >
                             <Text
-                              className={`text-xs font-sans-bold uppercase tracking-[2px] ${
+                              className={`text-[11px] font-sans-bold uppercase tracking-[2px] ${
                                 planSaved ? "text-success" : "text-background"
                               }`}
                             >
@@ -396,11 +404,11 @@ export default function PlannerChatCreate() {
                             </Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            onPress={() => handleSuggestion(SUGGESTIONS[1])}
+                            onPress={() => setShowSavedDrawer(true)}
                             className="flex-1 rounded-2xl px-4 py-3 items-center justify-center border border-border/40 bg-background/40"
                           >
-                            <Text className="text-xs font-sans-bold uppercase tracking-[2px] text-foreground">
-                              Adjust
+                            <Text className="text-[11px] font-sans-bold uppercase tracking-[2px] text-foreground">
+                              Preview
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -447,11 +455,11 @@ export default function PlannerChatCreate() {
           </View>
         </View>
 
-        <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} className="px-6 pt-4">
+        <View style={{ paddingBottom: Math.max(insets.bottom, 12) }} className="px-6 pt-3">
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 12 }}
+            contentContainerStyle={{ paddingBottom: 8 }}
           >
             <View className="flex-row gap-x-2">
               {PROMPTS.map((prompt) => (
@@ -460,76 +468,47 @@ export default function PlannerChatCreate() {
                   onPress={() => handlePrompt(prompt)}
                   className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
                 >
-                  <Text className="text-xs font-sans-semibold text-foreground">{prompt}</Text>
+                  <Text className="text-[11px] font-sans-semibold text-foreground">{prompt}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
-          <View className="mt-2">
-            <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground mb-2">
-              Suggestions
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-x-2 pb-3">
-                {SUGGESTIONS.map((suggestion: Suggestion) => (
-                  <TouchableOpacity
-                    key={suggestion.id}
-                    onPress={() => handleSuggestion(suggestion)}
-                    className="px-4 py-2 rounded-2xl bg-background/60 border border-border/40"
-                  >
-                    <Text className="text-xs font-sans-semibold text-foreground">
-                      {suggestion.label}
-                    </Text>
-                    <Text className="text-[10px] font-sans text-muted-foreground">
-                      {suggestion.description}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          <View className="flex-row items-end gap-x-3">
+          <View className="flex-row items-end gap-x-3 mt-2">
             <TouchableOpacity
-              className="w-12 h-12 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+              className="w-11 h-11 rounded-2xl bg-surface border border-border/50 items-center justify-center"
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={20} color="var(--foreground)" />
+              <HugeiconsIcon icon={PlusSignIcon} size={18} color="var(--foreground)" />
             </TouchableOpacity>
-            <View className="flex-1 bg-surface border border-border/50 rounded-[22px] px-4 py-2">
+            <View className="flex-1 bg-surface border border-border/50 rounded-[20px] px-4 py-2">
               <TextInput
                 value={input}
                 onChangeText={setInput}
                 placeholder="Describe your month, goals, or constraints..."
                 placeholderTextColor="var(--muted-foreground)"
-                className="min-h-[44px] max-h-28 text-sm font-sans text-foreground"
+                className="min-h-[42px] max-h-28 text-sm font-sans text-foreground"
                 multiline
               />
             </View>
             <TouchableOpacity
               onPress={() => sendMessage(input)}
-              className="w-12 h-12 rounded-2xl bg-foreground items-center justify-center"
+              className="w-11 h-11 rounded-2xl bg-foreground items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowUp01Icon} size={20} color={colors.background} />
+              <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
             </TouchableOpacity>
           </View>
 
-          <View className="mt-4 rounded-[24px] border border-border/40 bg-surface/40 px-4 py-3">
-            <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground mb-2">
-              Follow-ups
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {FOLLOW_UPS.map((item: string) => (
-                <TouchableOpacity
-                  key={item}
-                  onPress={() => handlePrompt(item)}
-                  className="px-3 py-2 rounded-2xl bg-background/60 border border-border/40"
-                >
-                  <Text className="text-[11px] font-sans-medium text-foreground">{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <View className="flex-row gap-x-2 mt-3">
+            {FOLLOW_UPS.map((item: string) => (
+              <TouchableOpacity
+                key={item}
+                onPress={() => handlePrompt(item)}
+                className="px-3 py-2 rounded-2xl bg-background/60 border border-border/40"
+              >
+                <Text className="text-[10px] font-sans-medium text-foreground">{item}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </KeyboardAvoidingView>
