@@ -55,7 +55,7 @@ export function PlanProgressCard() {
     if (planData?.success && planData.data) {
       router.push(`/plans/${planData.data.id}`);
     } else {
-      router.push("/(tabs)/planner/create");
+      router.push("/planner/create");
     }
   };
 

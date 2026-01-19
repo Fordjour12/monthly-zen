@@ -51,6 +51,7 @@ export default function Layout() {
                 {/* Auth Protected Routes */}
                 <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="planners/create" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: "modal" }} />
                 </Stack.Protected>
 

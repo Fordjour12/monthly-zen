@@ -28,7 +28,7 @@ export default function PlannerTabs() {
           <Text className="text-3xl font-sans-bold text-foreground">Design Your Month</Text>
         </View>
         <TouchableOpacity
-          onPress={() => router.push("/(tabs)/planner/create")}
+          onPress={() => router.push("/planners/create")}
           className="w-12 h-12 rounded-2xl bg-accent items-center justify-center shadow-lg shadow-accent/20"
         >
           <HugeiconsIcon icon={PlusSignIcon} size={24} color="white" />
