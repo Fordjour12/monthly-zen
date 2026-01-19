@@ -18,8 +18,8 @@ interface QuickAction {
 }
 
 const actions: QuickAction[] = [
-  { icon: PlusSignIcon, label: "Add Task", route: "/planner/create", color: "bg-blue-500" },
-  { icon: AiMagicIcon, label: "Generate", route: "/planner/create", color: "bg-purple-500" },
+  { icon: PlusSignIcon, label: "Add Task", route: "/planners/create", color: "bg-blue-500" },
+  { icon: AiMagicIcon, label: "Generate", route: "/planners/create", color: "bg-purple-500" },
   { icon: Calendar01Icon, label: "Calendar", route: "/calendar", color: "bg-emerald-500" },
   { icon: Analytics01Icon, label: "Insights", route: "/coaching", color: "bg-orange-500" },
   { icon: Location01Icon, label: "Explore", route: "/explore", color: "bg-pink-500" },

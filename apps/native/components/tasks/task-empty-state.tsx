@@ -53,7 +53,7 @@ export function TaskEmptyState({ hasFilters, onResetFilters }: TaskEmptyStatePro
         </TouchableOpacity>
       ) : (
         <TouchableOpacity
-          onPress={() => router.push("/planner/create")}
+          onPress={() => router.push("/planners/create")}
           activeOpacity={0.8}
           className="flex-row items-center gap-x-3 px-10 py-4 bg-accent rounded-2xl shadow-lg shadow-accent/20"
         >

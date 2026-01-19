@@ -71,6 +71,12 @@ type PlanPayload = {
   sections: PlanSection[];
 };
 
+type SavedPlan = {
+  id: string;
+  title: string;
+  subtitle: string;
+};
+
 const PLAN_DATA: PlanPayload = {
   title: "Balanced Month Blueprint",
   summary:
@@ -104,6 +110,19 @@ const PLAN_DATA: PlanPayload = {
     },
   ],
 };
+
+const SAVED_PLANS: SavedPlan[] = [
+  {
+    id: "saved-1",
+    title: "Balanced Month Blueprint",
+    subtitle: "Active plan · Updated today",
+  },
+  {
+    id: "saved-2",
+    title: "Sprint Mode Template",
+    subtitle: "Draft · Saved 2 days ago",
+  },
+];
 
 export default function PlannerChatCreate() {
   const router = useRouter();
@@ -511,6 +530,83 @@ export default function PlannerChatCreate() {
             ))}
           </View>
         </View>
+
+        {showSavedDrawer && (
+          <View className="absolute inset-0 justify-end">
+            <TouchableOpacity
+              onPress={() => setShowSavedDrawer(false)}
+              className="absolute inset-0 bg-background/70"
+              activeOpacity={1}
+            />
+            <Animated.View
+              entering={FadeInUp.duration(240)}
+              className="bg-surface border border-border/40 rounded-t-[32px] px-6 pt-6 pb-8"
+            >
+              <View className="flex-row items-center justify-between mb-4">
+                <View>
+                  <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
+                    Saved Plans
+                  </Text>
+                  <Text className="text-xl font-sans-bold text-foreground">
+                    Your Blueprint Vault
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowSavedDrawer(false)}
+                  className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
+                >
+                  <HugeiconsIcon icon={CheckmarkCircle01Icon} size={18} color="var(--foreground)" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="gap-y-3">
+                {SAVED_PLANS.map((plan) => (
+                  <View
+                    key={plan.id}
+                    className="flex-row items-center justify-between rounded-3xl border border-border/40 bg-background/40 px-4 py-3"
+                  >
+                    <View className="flex-row items-center gap-x-3">
+                      <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
+                        <HugeiconsIcon icon={Calendar01Icon} size={18} color="var(--accent)" />
+                      </View>
+                      <View>
+                        <Text className="text-sm font-sans-bold text-foreground">{plan.title}</Text>
+                        <Text className="text-[11px] font-sans text-muted-foreground">
+                          {plan.subtitle}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="w-9 h-9 rounded-2xl bg-surface items-center justify-center border border-border/50">
+                      <HugeiconsIcon icon={Files01Icon} size={16} color="var(--muted-foreground)" />
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View className="flex-row gap-x-2 mt-5">
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowSavedDrawer(false);
+                    handleSuggestion(SUGGESTIONS[1]);
+                  }}
+                  className="flex-1 rounded-2xl px-4 py-3 items-center justify-center border border-border/40 bg-background/40"
+                >
+                  <Text className="text-[11px] font-sans-bold uppercase tracking-[2px] text-foreground">
+                    Open Plan
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowSavedDrawer(false)}
+                  className="flex-1 rounded-2xl px-4 py-3 items-center justify-center border border-foreground bg-foreground"
+                >
+                  <Text className="text-[11px] font-sans-bold uppercase tracking-[2px] text-background">
+                    Keep Chatting
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </Container>
   );

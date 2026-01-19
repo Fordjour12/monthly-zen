@@ -208,7 +208,7 @@ export default function MyPlansTab() {
           className="bg-accent h-16 w-full rounded-[24px] shadow-2xl shadow-accent/40 items-center justify-center"
           onPress={() => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.push("/planner/create");
+            router.push("/planners/create");
           }}
         >
           <Text className="text-white font-sans-bold text-xs uppercase tracking-[3px]">

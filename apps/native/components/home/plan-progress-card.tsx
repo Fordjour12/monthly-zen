@@ -55,7 +55,7 @@ export function PlanProgressCard() {
     if (planData?.success && planData.data) {
       router.push(`/plans/${planData.data.id}`);
     } else {
-      router.push("/planner/create");
+      router.push("/planners/create");
     }
   };
 
@@ -105,7 +105,7 @@ export function PlanProgressCard() {
 
           <View className="flex-row items-center justify-between">
             <Text className="text-xs font-sans-medium text-white/80 uppercase tracking-widest">
-              {weeksLeft} {weeksLeft === 1 ? "week" : "weeks"} remaining
+              {weeksLef} {weeksLeft === 1 ? "week" : "weeks"} remaining
             </Text>
             <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
               <HugeiconsIcon icon={ArrowRight01Icon} size={16} color="white" />

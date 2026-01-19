@@ -203,7 +203,7 @@ export default function TemplatesTab() {
       focusAreas: template.focusAreas,
     });
     router.push({
-      pathname: "/planner/create",
+      pathname: "/planners/create",
       params: { template: templateData },
     });
   };
