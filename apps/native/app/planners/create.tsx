@@ -493,41 +493,49 @@ export default function PlannerChatCreate() {
             </View>
           </ScrollView>
 
-          <View className="flex-row items-end gap-x-3 mt-2">
-            <TouchableOpacity
-              className="w-11 h-11 rounded-2xl bg-surface border border-border/50 items-center justify-center"
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={18} color="var(--foreground)" />
-            </TouchableOpacity>
-            <View className="flex-1 bg-surface border border-border/50 rounded-[20px] px-4 py-2">
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Describe your month, goals, or constraints..."
-                placeholderTextColor="var(--muted-foreground)"
-                className="min-h-[42px] max-h-28 text-sm font-sans text-foreground"
-                multiline
-              />
+          <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 p-3 shadow-xl shadow-black/10">
+            <View className="flex-row items-end gap-x-3">
+              <TouchableOpacity
+                className="w-10 h-10 rounded-2xl bg-background/80 border border-border/50 items-center justify-center"
+                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              >
+                <HugeiconsIcon icon={PlusSignIcon} size={18} color="var(--foreground)" />
+              </TouchableOpacity>
+              <View className="flex-1">
+                <TextInput
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Describe your month, goals, or constraints..."
+                  placeholderTextColor="var(--muted-foreground)"
+                  className="min-h-[44px] max-h-28 text-sm font-sans text-foreground leading-6"
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+              <TouchableOpacity
+                onPress={() => sendMessage(input)}
+                className="w-10 h-10 rounded-2xl bg-foreground items-center justify-center"
+              >
+                <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => sendMessage(input)}
-              className="w-11 h-11 rounded-2xl bg-foreground items-center justify-center"
-            >
-              <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
-            </TouchableOpacity>
           </View>
 
-          <View className="flex-row gap-x-2 mt-3">
-            {FOLLOW_UPS.map((item: string) => (
-              <TouchableOpacity
-                key={item}
-                onPress={() => handlePrompt(item)}
-                className="px-3 py-2 rounded-2xl bg-background/60 border border-border/40"
-              >
-                <Text className="text-[10px] font-sans-medium text-foreground">{item}</Text>
-              </TouchableOpacity>
-            ))}
+          <View className="mt-3 rounded-[22px] bg-surface/90 border border-border/40 px-4 py-3">
+            <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground mb-2">
+              Follow-ups
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {FOLLOW_UPS.map((item: string) => (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => handlePrompt(item)}
+                  className="px-3 py-2 rounded-2xl bg-background/80 border border-border/30"
+                >
+                  <Text className="text-[10px] font-sans-medium text-foreground">{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
