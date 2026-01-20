@@ -469,6 +469,32 @@ export default function PlannerChatCreate() {
                     </View>
                   </Animated.View>
                 )}
+
+                {!isTyping && (
+                  <Animated.View
+                    entering={FadeInUp.delay(180).duration(360)}
+                    className="items-start"
+                  >
+                    <View className="w-full rounded-[24px] border border-accent/30 bg-accent/10 px-4 py-3">
+                      <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-accent mb-2">
+                        Follow-ups
+                      </Text>
+                      <View className="flex-row flex-wrap gap-2">
+                        {FOLLOW_UPS.map((item: string) => (
+                          <TouchableOpacity
+                            key={item}
+                            onPress={() => handlePrompt(item)}
+                            className="px-3 py-2 rounded-2xl bg-accent/15 border border-accent/30"
+                          >
+                            <Text className="text-[10px] font-sans-medium text-foreground">
+                              {item}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  </Animated.View>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -518,23 +544,6 @@ export default function PlannerChatCreate() {
               >
                 <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
               </TouchableOpacity>
-            </View>
-          </View>
-
-          <View className="mt-3 rounded-[22px] bg-surface/90 border border-border/40 px-4 py-3">
-            <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground mb-2">
-              Follow-ups
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {FOLLOW_UPS.map((item: string) => (
-                <TouchableOpacity
-                  key={item}
-                  onPress={() => handlePrompt(item)}
-                  className="px-3 py-2 rounded-2xl bg-background/80 border border-border/30"
-                >
-                  <Text className="text-[10px] font-sans-medium text-foreground">{item}</Text>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
         </View>
