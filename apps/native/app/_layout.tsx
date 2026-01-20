@@ -22,6 +22,7 @@ export const unstable_settings = {
 };
 
 export default function Layout() {
+  /*
   const { isLoggedIn, hasCompletedOnboarding, _hasHydrated, syncOnboarding } = useAuthStore();
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function Layout() {
 
   if (!_hasHydrated && !isWeb) {
     return null;
-  }
+  }*/
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -49,25 +50,34 @@ export default function Layout() {
             <HeroUINativeProvider>
               <Stack>
                 {/* Auth Protected Routes */}
-                <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="planners/create" options={{ headerShown: false }} />
-                  <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
-                  <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-                </Stack.Protected>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: "modal" }} />
 
-                {/* Onboarding Routes*/}
+                {/* Onboarding Routes
+
+    <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
+
+    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                   <Stack.Screen
+                     name="planners/create"
+                     options={{ headerShown: false }}
+                   />
+                  </Stack.Protected>
+
                 <Stack.Protected guard={isLoggedIn && !hasCompletedOnboarding}>
                   <Stack.Screen name="onboarding/welcome" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding/goals" options={{ headerShown: false }} />
                   <Stack.Screen name="onboarding/generating" options={{ headerShown: false }} />
                 </Stack.Protected>
 
-                {/* Public Routes */}
+                Public Routes
                 <Stack.Protected guard={!isLoggedIn}>
                   <Stack.Screen name="sign-in" options={{ headerShown: false }} />
                   <Stack.Screen name="sign-up" options={{ headerShown: false }} />
                 </Stack.Protected>
+
+                */}
               </Stack>
             </HeroUINativeProvider>
           </AppThemeProvider>

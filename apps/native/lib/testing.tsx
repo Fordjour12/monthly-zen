@@ -37,18 +37,15 @@ type Message = {
   meta?: string;
 };
 
-type OpenRouterChunk = {
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-};
+type StreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "ping" }
+  | { type: "usage"; usage: Record<string, number | null> }
+  | { type: "done"; finishReason?: string }
+  | { type: "error"; message: string };
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
-const SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+//const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "openai/gpt-4o";
 
 export default function PlannerAiStreamTest() {
   const router = useRouter();
@@ -62,8 +59,8 @@ export default function PlannerAiStreamTest() {
     {
       id: "system-1",
       role: "system",
-      content: "Public streaming mode. Sends requests directly to OpenRouter.",
-      meta: "Public Test",
+      content: "Server streaming mode. Sends requests through the Hono endpoint.",
+      meta: "Server Test",
     },
     {
       id: "assistant-1",
@@ -90,18 +87,6 @@ export default function PlannerAiStreamTest() {
     [],
   );
 
-  const buildChatMessages = (history: Message[]) => {
-    const cleanedHistory = history
-      .filter((message) => message.role !== "system")
-      .map((message) => ({
-        role: message.role,
-        content: message.content.trim(),
-      }))
-      .filter((message) => message.content.length > 0);
-
-    return [{ role: "system", content: SYSTEM_PROMPT }, ...cleanedHistory];
-  };
-
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
     if (!streamingMessageId.current) return;
     setMessages((prev) =>
@@ -124,22 +109,6 @@ export default function PlannerAiStreamTest() {
       content: content.trim(),
     };
 
-    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
-          meta: "Config",
-        },
-      ]);
-      setInput("");
-      return;
-    }
-
     const assistantId = `assistant-${Date.now()}`;
     streamingMessageId.current = assistantId;
 
@@ -159,16 +128,14 @@ export default function PlannerAiStreamTest() {
     const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
     const payload = JSON.stringify({
       model,
-      stream: true,
-      messages: buildChatMessages([...messages, userMessage]),
+      question: content.trim(),
     });
 
-    const eventSource = new EventSource(OPENROUTER_URL, {
+    const eventSource = new EventSource(`${process.env.EXPO_PUBLIC_SERVER_URL!}/api/openrouter`, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
         "X-Title": "Monthly Zen (Native)",
       },
       body: payload,
@@ -194,21 +161,29 @@ export default function PlannerAiStreamTest() {
       }
 
       try {
-        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
-        if (parsed.error?.message) {
-          updateStreamingMessage(`Error: ${parsed.error.message}`);
+        const parsed = JSON.parse(trimmed) as StreamEvent;
+        if (parsed.type === "error") {
+          updateStreamingMessage(`Error: ${parsed.message}`);
           closeStream();
           return;
         }
 
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          updateStreamingMessage((prev) => prev + delta);
+        if (parsed.type === "delta") {
+          updateStreamingMessage((prev) => prev + parsed.text);
         }
 
-        const finishReason = parsed.choices?.[0]?.finish_reason;
-        if (finishReason) {
-          updateStreamingMessage((prev) => `${prev}\n\n[${finishReason}]`);
+        if (parsed.type === "usage") {
+          console.log("Usage:", parsed.usage);
+        }
+
+        if (parsed.type === "ping") {
+          return;
+        }
+
+        if (parsed.type === "done") {
+          if (parsed.finishReason) {
+            updateStreamingMessage((prev) => `${prev}\n\n[${parsed.finishReason}]`);
+          }
           closeStream();
         }
       } catch (error) {
@@ -285,7 +260,7 @@ export default function PlannerAiStreamTest() {
                       Streaming Monitor
                     </Text>
                     <Text className="text-[11px] font-sans text-muted-foreground">
-                      openrouter.ai /chat/completions
+                      /api/openrouter (server)
                     </Text>
                   </View>
                 </View>
