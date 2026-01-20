@@ -34,6 +34,7 @@
     "better-auth": "catalog:",
     "date-fns": "^4.1.0",
     "dotenv": "catalog:",
+    "eventsource-parser": "^3.0.6",
     "expo": "^54.0.23",
     "expo-constants": "~18.0.10",
     "expo-dev-client": "~6.0.20",

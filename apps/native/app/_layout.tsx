@@ -52,6 +52,7 @@ export default function Layout() {
                 <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="planners/create" options={{ headerShown: false }} />
+                  <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: "modal" }} />
                 </Stack.Protected>
 
