@@ -1,6 +1,13 @@
 import { z } from "zod";
-import { protectedProcedure } from "../index";
+import { eventIterator } from "@orpc/server";
+import { protectedProcedure, publicProcedure } from "../index";
 import { generatePlan, confirmPlan } from "../services/hybrid-plan-generation";
+import {
+  streamPlanAiResponse,
+  planAiStreamEventSchema,
+  type PlanAiStreamEvent,
+} from "../services/plan-ai-stream";
+import { generateInputSchema } from "../services/plan-ai-schema";
 import {
   getDraft,
   deleteDraft,
@@ -12,28 +19,49 @@ import {
 } from "@monthly-zen/db";
 import { responseExtractor } from "@monthly-zen/response-parser";
 
-const generateInputSchema = z.object({
-  goalsText: z.string().min(1, "Goals are required"),
-  taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]),
-  focusAreas: z.string().min(1, "Focus areas are required"),
-  weekendPreference: z.enum(["Work", "Rest", "Mixed"]),
-  fixedCommitmentsJson: z.object({
-    commitments: z.array(
-      z.object({
-        dayOfWeek: z.string(),
-        startTime: z.string(),
-        endTime: z.string(),
-        description: z.string(),
-      }),
-    ),
-  }),
-});
-
 const confirmInputSchema = z.object({
   draftKey: z.string().min(1, "Draft key is required"),
 });
 
 export const planRouter = {
+  aiStreamPublic: publicProcedure
+    .input(generateInputSchema)
+    .output(eventIterator(planAiStreamEventSchema, z.void()))
+    .handler(async function* ({ input }): AsyncGenerator<PlanAiStreamEvent> {
+      if (process.env.ALLOW_PUBLIC_AI_STREAM !== "true") {
+        throw new Error("Public AI streaming is disabled");
+      }
+
+      for await (const event of streamPlanAiResponse(input)) {
+        if (event.type === "error") {
+          yield event;
+          return;
+        }
+        if (event.type === "done") {
+          yield event;
+          return;
+        }
+        yield event;
+      }
+    }),
+
+  aiStream: protectedProcedure
+    .input(generateInputSchema)
+    .output(eventIterator(planAiStreamEventSchema, z.void()))
+    .handler(async function* ({ input }): AsyncGenerator<PlanAiStreamEvent> {
+      for await (const event of streamPlanAiResponse(input)) {
+        if (event.type === "error") {
+          yield event;
+          return;
+        }
+        if (event.type === "done") {
+          yield event;
+          return;
+        }
+        yield event;
+      }
+    }),
+
   generate: protectedProcedure.input(generateInputSchema).handler(async ({ input, context }) => {
     try {
       const userId = context.session?.user?.id;

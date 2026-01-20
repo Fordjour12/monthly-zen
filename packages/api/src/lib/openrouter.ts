@@ -7,6 +7,14 @@ export interface OpenRouterConfig {
   maxTokens?: number;
 }
 
+export interface OpenRouterStreamChunk {
+  choices?: Array<{
+    delta?: { content?: string | null };
+    finish_reason?: string | null;
+  }>;
+  error?: { message?: string };
+}
+
 export class OpenRouterService {
   private client: OpenRouter;
   private model: string;
@@ -73,6 +81,36 @@ export class OpenRouterService {
         throw new Error(`OpenRouter API error: ${error.message}`);
       }
       throw new Error("Unknown error occurred while calling OpenRouter API");
+    }
+  }
+
+  async streamPlan(prompt: string): Promise<AsyncIterable<OpenRouterStreamChunk>> {
+    try {
+      console.log(
+        `Streaming OpenRouter with model: ${this.model}, prompt length: ${prompt.length}`,
+      );
+
+      const stream = await this.client.chat.send({
+        model: this.model,
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: this.temperature,
+        maxTokens: this.maxTokens,
+        stream: true,
+      });
+
+      return stream as AsyncIterable<OpenRouterStreamChunk>;
+    } catch (error) {
+      console.error("OpenRouter stream error:", error);
+
+      if (error instanceof Error) {
+        throw new Error(`OpenRouter stream error: ${error.message}`);
+      }
+      throw new Error("Unknown error occurred while calling OpenRouter streaming API");
     }
   }
 
