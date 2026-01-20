@@ -135,6 +135,7 @@ export default function PlannerChatCreate() {
   const [isTyping, setIsTyping] = useState(false);
   const [planSaved, setPlanSaved] = useState(false);
   const [showSavedDrawer, setShowSavedDrawer] = useState(false);
+  const [composerHeight, setComposerHeight] = useState(0);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "system-1",
@@ -339,7 +340,7 @@ export default function PlannerChatCreate() {
             <ScrollView
               ref={scrollRef}
               className="mt-5"
-              contentContainerStyle={{ paddingBottom: 20 }}
+              contentContainerStyle={{ paddingBottom: composerHeight + 24 }}
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             >
@@ -500,32 +501,38 @@ export default function PlannerChatCreate() {
           </View>
         </View>
 
-        <View style={{ paddingBottom: Math.max(insets.bottom, 12) }} className="px-6 pt-3">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 8 }}
-          >
-            <View className="flex-row gap-x-2">
-              {PROMPTS.map((prompt) => (
-                <TouchableOpacity
-                  key={prompt}
-                  onPress={() => handlePrompt(prompt)}
-                  className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
-                >
-                  <Text className="text-[11px] font-sans-semibold text-foreground">{prompt}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
+        <View
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+          className="pt-3"
+          onLayout={(event) => setComposerHeight(event.nativeEvent.layout.height)}
+        >
+          <View className="px-6">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 8 }}
+            >
+              <View className="flex-row gap-x-2">
+                {PROMPTS.map((prompt) => (
+                  <TouchableOpacity
+                    key={prompt}
+                    onPress={() => handlePrompt(prompt)}
+                    className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
+                  >
+                    <Text className="text-[11px] font-sans-semibold text-foreground">{prompt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
 
-          <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 p-3 shadow-xl shadow-black/10">
+          <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 px-4 py-3 shadow-xl shadow-black/10">
             <View className="flex-row items-end gap-x-3">
               <TouchableOpacity
                 className="w-10 h-10 rounded-2xl bg-background/80 border border-border/50 items-center justify-center"
                 onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
               >
-                <HugeiconsIcon icon={PlusSignIcon} size={18} color="var(--foreground)" />
+                <HugeiconsIcon icon={PlusSignIcon} size={18} color={colors.foreground} />
               </TouchableOpacity>
               <View className="flex-1">
                 <TextInput
