@@ -9,7 +9,7 @@ import {
   CoachingBanner,
 } from "@/components/home";
 import { useRouter } from "expo-router";
-import { View, ScrollView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 
 /**
  * Clean & Minimalist Home Screen for Monthly Zen.
@@ -20,6 +20,10 @@ export default function Home() {
 
   const handleViewAllCoaching = () => {
     router.push("/coaching");
+  };
+
+  const handleViewAllTesting = () => {
+    router.push("/test/ai-stream");
   };
 
   return (
@@ -49,6 +53,10 @@ export default function Home() {
 
         {/* 7. Coaching Integration */}
         <CoachingBanner onViewAll={handleViewAllCoaching} />
+
+        <TouchableOpacity onPress={handleViewAllTesting}>
+          <Text className="text-white">Testing Chat</Text>
+        </TouchableOpacity>
       </ScrollView>
     </Container>
   );

@@ -15,7 +15,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
-import { createParser, type ParsedEvent, type ReconnectInterval } from "eventsource-parser";
+import EventSource from "react-native-sse";
 import { authClient } from "@/lib/auth-client";
 
 const PROMPTS = [
@@ -66,12 +66,13 @@ export default function PlannerAiStreamTest() {
     },
   ]);
 
-  const streamingAbort = useRef<AbortController | null>(null);
+  const streamingAbort = useRef<EventSource | null>(null);
   const streamingMessageId = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
-      streamingAbort.current?.abort();
+      streamingAbort.current?.removeAllEventListeners();
+      streamingAbort.current?.close();
     };
   }, []);
 
@@ -130,68 +131,61 @@ export default function PlannerAiStreamTest() {
     setInput("");
     setIsStreaming(true);
 
-    const controller = new AbortController();
-    streamingAbort.current = controller;
+    const url = `${process.env.EXPO_PUBLIC_SERVER_URL}/rpc/plan/aiStreamPublic`;
+    const payload = JSON.stringify({ json: buildPayload(content.trim()), meta: [] });
 
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SERVER_URL}/rpc/plan/aiStreamPublic`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authClient.getCookie() ? { Cookie: authClient.getCookie() } : {}),
-          },
-          body: JSON.stringify({ json: buildPayload(content.trim()), meta: [] }),
-          signal: controller.signal,
-        },
-      );
+    const eventSource = new EventSource(url, {
+      method: "POST",
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+        ...(authClient.getCookie() ? { Cookie: authClient.getCookie() } : {}),
+      },
+      body: payload,
+      pollingInterval: 0,
+    });
 
-      if (!response.ok || !response.body) {
-        const message = response.ok ? "Stream unavailable" : `Stream failed (${response.status})`;
-        throw new Error(message);
-      }
-
-      const decoder = new TextDecoder();
-      const reader = response.body.getReader();
-      const eventParser = createParser({
-        onEvent: (event: ParsedEvent | ReconnectInterval) => {
-          if (event.type !== "event") return;
-          if (!event.data) return;
-
-          try {
-            const parsed = JSON.parse(event.data) as StreamEvent;
-            if (parsed.type === "delta") {
-              updateStreamingMessage((prev) => prev + parsed.text);
-            } else if (parsed.type === "error") {
-              updateStreamingMessage(`Error: ${parsed.message}`);
-            } else if (parsed.type === "done") {
-              if (parsed.finishReason) {
-                updateStreamingMessage((prev) => `${prev}\n\n[${parsed.finishReason}]`);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to parse SSE event", error);
-          }
-        },
-      });
-
-      let done = false;
-      while (!done) {
-        const result = await reader.read();
-        done = result.done;
-        if (result.value) {
-          eventParser.feed(decoder.decode(result.value, { stream: true }));
-        }
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Streaming failed";
-      updateStreamingMessage(`Error: ${message}`);
-    } finally {
+    const closeStream = () => {
+      eventSource.removeAllEventListeners();
+      eventSource.close();
       streamingAbort.current = null;
       streamingMessageId.current = null;
       setIsStreaming(false);
-    }
+    };
+
+    const handleMessage = (data: string | null) => {
+      if (!data) return;
+
+      try {
+        const parsed = JSON.parse(data) as StreamEvent;
+        if (parsed.type === "delta") {
+          updateStreamingMessage((prev) => prev + parsed.text);
+        } else if (parsed.type === "error") {
+          updateStreamingMessage(`Error: ${parsed.message}`);
+          closeStream();
+        } else if (parsed.type === "done") {
+          if (parsed.finishReason) {
+            updateStreamingMessage((prev) => `${prev}\n\n[${parsed.finishReason}]`);
+          }
+          closeStream();
+        }
+      } catch (error) {
+        console.error("Failed to parse SSE event", error);
+      }
+    };
+
+    eventSource.addEventListener("message", (event) => {
+      handleMessage(event.data ?? null);
+    });
+
+    eventSource.addEventListener("error", (event) => {
+      const message =
+        event.type === "error" || event.type === "exception" ? event.message : "Streaming failed";
+      updateStreamingMessage(`Error: ${message}`);
+      closeStream();
+    });
+
+    streamingAbort.current = eventSource;
   };
 
   const handlePrompt = (prompt: string) => {
@@ -200,7 +194,10 @@ export default function PlannerAiStreamTest() {
   };
 
   const stopStreaming = () => {
-    streamingAbort.current?.abort();
+    streamingAbort.current?.removeAllEventListeners();
+    streamingAbort.current?.close();
+    streamingAbort.current = null;
+    streamingMessageId.current = null;
     setIsStreaming(false);
   };
 
