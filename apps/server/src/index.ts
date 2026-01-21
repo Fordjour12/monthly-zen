@@ -32,8 +32,109 @@ app.get("/api/health", (c) => {
   return c.json({ ok: true });
 });
 
+app.post("/api/v2/openrouter", async (c) => {
+  let body: {
+    question?: string;
+    model?: string;
+    systemPrompt?: string;
+  } | null = null;
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const question = body?.question?.trim();
+  if (!question) return c.json({ error: "question is required" }, 400);
+
+  const model = "google/gemini-2.5-flash";
+  const systemPrompt = body?.systemPrompt?.trim();
+
+  const messages: OpenRouterMessage[] = systemPrompt
+    ? [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: question },
+      ]
+    : [{ role: "user", content: question }];
+
+  let streamResponse: Awaited<ReturnType<typeof streamChatCompletion>>;
+
+  try {
+    streamResponse = await streamChatCompletion({
+      model,
+      messages,
+      includeUsage: true,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to start stream";
+    return c.json({ error: message }, 500);
+  }
+
+  c.header("Content-Type", "text/event-stream; charset=utf-8");
+  c.header("Cache-Control", "no-cache, no-transform");
+  c.header("Connection", "keep-alive");
+  c.header("X-Accel-Buffering", "no");
+  c.header("Content-Encoding", "identity");
+
+  return stream(c, async (streamWriter) => {
+    let doneSent = false;
+
+    // comment heartbeat (best practice)
+    const keepalive = setInterval(() => {
+      streamWriter.write(": ping\n\n").catch(() => {});
+    }, 15000);
+
+    try {
+      for await (const chunk of streamResponse) {
+        if (chunk.error?.message) {
+          await streamWriter.write(
+            `data: ${JSON.stringify({ type: "error", message: chunk.error.message })}\n\n`,
+          );
+          doneSent = true;
+          break;
+        }
+
+        const choice = chunk.choices?.[0];
+        const delta = choice?.delta?.content;
+        if (delta) {
+          await streamWriter.write(`data: ${JSON.stringify({ type: "delta", text: delta })}\n\n`);
+        }
+
+        if (chunk.usage) {
+          await streamWriter.write(
+            `data: ${JSON.stringify({ type: "usage", usage: chunk.usage })}\n\n`,
+          );
+        }
+
+        const finishReason = choice?.finish_reason;
+        if (finishReason && finishReason !== "error") {
+          await streamWriter.write(`data: ${JSON.stringify({ type: "done", finishReason })}\n\n`);
+          doneSent = true;
+          break;
+        }
+      }
+
+      if (!doneSent) {
+        await streamWriter.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Stream failed";
+      await streamWriter.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
+    } finally {
+      clearInterval(keepalive);
+      // if your streamWriter has close/end, call it:
+      // streamWriter.close?.();
+    }
+  });
+});
+
 app.post("/api/openrouter", async (c) => {
-  let body: { question?: string; model?: string; systemPrompt?: string } | null = null;
+  let body: {
+    question?: string;
+    model?: string;
+    systemPrompt?: string;
+  } | null = null;
 
   try {
     body = await c.req.json();

@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import {
+  AndroidSoftInputModes,
+  KeyboardAvoidingView,
+  KeyboardController,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -37,24 +41,30 @@ type Message = {
   meta?: string;
 };
 
-type OpenRouterChunk = {
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-};
+// ✅ This matches YOUR relay events:
+// { type: "delta", text: "..." }
+// { type: "usage", usage: {...} }
+// { type: "done", finishReason?: "stop" | ... }
+// { type: "error", message: "..." }
+// { type: "ping" }
+type RelayChunk =
+  | { type: "delta"; text: string }
+  | { type: "usage"; usage: any }
+  | { type: "done"; finishReason?: string }
+  | { type: "error"; message: string }
+  | { type: "ping" };
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const RELAY_URL = process.env.EXPO_PUBLIC_RELAY_URL ?? ""; // e.g. http://10.0.2.2:3000/api/openrouter
 const DEFAULT_MODEL = "google/gemini-2.5-flash";
 const SYSTEM_PROMPT =
   "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
 
-export default function PlannerAiStreamTest() {
+export default function PlannerAiRelayOnly() {
   const router = useRouter();
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -62,8 +72,8 @@ export default function PlannerAiStreamTest() {
     {
       id: "system-1",
       role: "system",
-      content: "Public streaming mode. Sends requests directly to OpenRouter.",
-      meta: "Public Test",
+      content: "Streaming mode. All requests go to your relay server.",
+      meta: "Relay Only",
     },
     {
       id: "assistant-1",
@@ -83,6 +93,15 @@ export default function PlannerAiStreamTest() {
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    KeyboardController.setInputMode(AndroidSoftInputModes.SOFT_INPUT_ADJUST_RESIZE);
+    return () => {
+      KeyboardController.setDefaultMode();
+    };
+  }, []);
+
   const backgroundGlow = useMemo(
     () => (
       <View className="absolute -top-24 right-8 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
@@ -90,55 +109,113 @@ export default function PlannerAiStreamTest() {
     [],
   );
 
-  const buildChatMessages = (history: Message[]) => {
-    const cleanedHistory = history
-      .filter((message) => message.role !== "system")
-      .map((message) => ({
-        role: message.role,
-        content: message.content.trim(),
-      }))
-      .filter((message) => message.content.length > 0);
-
-    return [{ role: "system", content: SYSTEM_PROMPT }, ...cleanedHistory];
-  };
-
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
     if (!streamingMessageId.current) return;
     setMessages((prev) =>
-      prev.map((message) => {
-        if (message.id !== streamingMessageId.current) return message;
-        const nextContent =
-          typeof updater === "function" ? updater(message.content ?? "") : updater;
-        return { ...message, content: nextContent };
+      prev.map((m) => {
+        if (m.id !== streamingMessageId.current) return m;
+        const next = typeof updater === "function" ? updater(m.content ?? "") : updater;
+        return { ...m, content: next };
       }),
     );
+  };
+
+  const closeStream = (es: EventSource) => {
+    es.removeAllEventListeners();
+    es.close();
+    streamingAbort.current = null;
+    streamingMessageId.current = null;
+    setIsStreaming(false);
+  };
+
+  /**
+   * ✅ Robust relay SSE parsing:
+   * - normalizes CRLF
+   * - handles multiple JSON blobs in one event.data (common in dev/polyfills)
+   * - supports your relay event types: delta/usage/done/error/ping
+   */
+  const handleRelaySSE = (raw: string | null, es: EventSource) => {
+    if (!raw) return;
+
+    const normalized = raw.replace(/\r\n/g, "\n").trim();
+    if (!normalized) return;
+
+    // Some libs/dev servers batch multiple JSON objects into one "message" callback
+    const parts = normalized
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    for (const part of parts) {
+      let parsed: any;
+      try {
+        parsed = JSON.parse(part);
+      } catch {
+        // Rare: "data: {...}" gets passed through
+        if (part.startsWith("data:")) {
+          const maybe = part.slice(5).trim();
+          try {
+            parsed = JSON.parse(maybe);
+          } catch {
+            continue;
+          }
+        } else {
+          continue;
+        }
+      }
+
+      const chunk = parsed as RelayChunk;
+
+      if (chunk.type === "ping") continue;
+
+      if (chunk.type === "delta") {
+        updateStreamingMessage((prev) => prev + chunk.text);
+        continue;
+      }
+
+      if (chunk.type === "usage") {
+        // optional: you can show usage somewhere
+        continue;
+      }
+
+      if (chunk.type === "error") {
+        updateStreamingMessage(`Error: ${chunk.message}`);
+        closeStream(es);
+        continue;
+      }
+
+      if (chunk.type === "done") {
+        // optional:
+        // if (chunk.finishReason) updateStreamingMessage((p) => `${p}\n\n[${chunk.finishReason}]`);
+        closeStream(es);
+        continue;
+      }
+    }
   };
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isStreaming) return;
 
+    if (!RELAY_URL) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: "Missing EXPO_PUBLIC_RELAY_URL in your .env (relay server endpoint).",
+          meta: "Config",
+        },
+      ]);
+      return;
+    }
+
     Haptics.selectionAsync();
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
       content: content.trim(),
     };
-
-    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
-          meta: "Config",
-        },
-      ]);
-      setInput("");
-      return;
-    }
 
     const assistantId = `assistant-${Date.now()}`;
     streamingMessageId.current = assistantId;
@@ -146,88 +223,44 @@ export default function PlannerAiStreamTest() {
     setMessages((prev) => [
       ...prev,
       userMessage,
-      {
-        id: assistantId,
-        role: "assistant",
-        content: "",
-        meta: "Streaming",
-      },
+      { id: assistantId, role: "assistant", content: "", meta: "Streaming" },
     ]);
     setInput("");
     setIsStreaming(true);
 
-    const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
+    const model = process.env.EXPO_PUBLIC_RELAY_MODEL ?? DEFAULT_MODEL;
+
+    // ✅ Relay payload only (no OpenRouter key/client concerns)
     const payload = JSON.stringify({
+      question: userMessage.content,
       model,
-      stream: true,
-      messages: buildChatMessages([...messages, userMessage]),
+      systemPrompt: SYSTEM_PROMPT,
     });
 
-    const eventSource = new EventSource(OPENROUTER_URL, {
+    const es = new EventSource(RELAY_URL, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-Title": "Monthly Zen (Native)",
       },
       body: payload,
       pollingInterval: 0,
     });
 
-    const closeStream = () => {
-      eventSource.removeAllEventListeners();
-      eventSource.close();
-      streamingAbort.current = null;
-      streamingMessageId.current = null;
-      setIsStreaming(false);
-    };
+    streamingAbort.current = es;
 
-    const handleMessage = (data: string | null) => {
-      if (!data) return;
-      const trimmed = data.trim();
-      if (!trimmed) return;
-
-      if (trimmed === "[DONE]") {
-        closeStream();
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
-        if (parsed.error?.message) {
-          updateStreamingMessage(`Error: ${parsed.error.message}`);
-          closeStream();
-          return;
-        }
-
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          updateStreamingMessage((prev) => prev + delta);
-        }
-
-        const finishReason = parsed.choices?.[0]?.finish_reason;
-        if (finishReason) {
-          updateStreamingMessage((prev) => `${prev}\n\n[${finishReason}]`);
-          closeStream();
-        }
-      } catch (error) {
-        console.error("Failed to parse SSE event", error);
-      }
-    };
-
-    eventSource.addEventListener("message", (event) => {
-      handleMessage(event.data ?? null);
+    es.addEventListener("message", (event) => {
+      handleRelaySSE(event.data ?? null, es);
     });
 
-    eventSource.addEventListener("error", (event) => {
-      const message =
-        event.type === "error" || event.type === "exception" ? event.message : "Streaming failed";
-      updateStreamingMessage(`Error: ${message}`);
-      closeStream();
+    es.addEventListener("error", (event) => {
+      const msg =
+        event.type === "error" || event.type === "exception"
+          ? ((event as any).message ?? "Streaming failed")
+          : "Streaming failed";
+      updateStreamingMessage(`Error: ${msg}`);
+      closeStream(es);
     });
-
-    streamingAbort.current = eventSource;
   };
 
   const handlePrompt = (prompt: string) => {
@@ -246,12 +279,10 @@ export default function PlannerAiStreamTest() {
   return (
     <Container className="bg-background" withScroll={false}>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+      <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>
         <View className="flex-1">
           {backgroundGlow}
+
           <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
             <TouchableOpacity
               onPress={() => router.back()}
@@ -259,12 +290,14 @@ export default function PlannerAiStreamTest() {
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
             </TouchableOpacity>
+
             <View className="flex-1">
               <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
                 Planner
               </Text>
-              <Text className="text-xl font-sans-bold text-foreground">AI Stream (Public)</Text>
+              <Text className="text-xl font-sans-bold text-foreground">AI Stream (Relay Only)</Text>
             </View>
+
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
               <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
             </View>
@@ -285,21 +318,21 @@ export default function PlannerAiStreamTest() {
                       Streaming Monitor
                     </Text>
                     <Text className="text-[11px] font-sans text-muted-foreground">
-                      openrouter.ai /chat/completions
+                      Relay endpoint
                     </Text>
                   </View>
                 </View>
+
                 <View className="flex-row items-center gap-x-1">
                   <View
-                    className={`w-2 h-2 rounded-full ${
-                      isStreaming ? "bg-accent" : "bg-muted-foreground/40"
-                    }`}
+                    className={`w-2 h-2 rounded-full ${isStreaming ? "bg-accent" : "bg-muted-foreground/40"}`}
                   />
                   <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase tracking-widest">
                     {isStreaming ? "Live" : "Idle"}
                   </Text>
                 </View>
               </View>
+
               <View className="flex-row gap-x-2 mt-3">
                 {QUICK_STATS.map((stat) => (
                   <View
@@ -402,17 +435,19 @@ export default function PlannerAiStreamTest() {
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={18} color={colors.foreground} />
               </TouchableOpacity>
+
               <View className="flex-1">
                 <TextInput
                   value={input}
                   onChangeText={setInput}
                   placeholder="Describe your month goals to stream..."
                   placeholderTextColor="var(--muted-foreground)"
-                  className="min-h-[44px] max-h-28 text-sm font-sans text-foreground leading-6"
+                  className="min-h-11 max-h-28 text-sm font-sans text-foreground leading-6"
                   multiline
                   textAlignVertical="top"
                 />
               </View>
+
               {isStreaming ? (
                 <TouchableOpacity
                   onPress={stopStreaming}
