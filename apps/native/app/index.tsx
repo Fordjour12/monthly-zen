@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -16,10 +16,12 @@ import {
   ArrowUp01Icon,
   SparklesIcon,
   PlusSignIcon,
+  Settings02Icon,
 } from "@hugeicons/core-free-icons";
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -28,11 +30,9 @@ const PROMPTS = [
   "Review my last month",
 ];
 
-const QUICK_STATS = [
-  { label: "Intensity", value: "Balanced" },
-  { label: "Focus", value: "3 domains" },
-  { label: "Weekend", value: "Hybrid" },
-];
+const TONE_OPTIONS = ["Calm", "Direct", "Analytical"] as const;
+const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
+const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
 
 type Message = {
   id: string;
@@ -64,6 +64,7 @@ export default function PlannerAiRelayOnly() {
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const settingsSheetRef = useRef<BottomSheet>(null);
 
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
@@ -82,6 +83,9 @@ export default function PlannerAiRelayOnly() {
       meta: "Monthly Zen",
     },
   ]);
+  const [tone, setTone] = useState<(typeof TONE_OPTIONS)[number]>("Calm");
+  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>("Balanced");
+  const [format, setFormat] = useState<(typeof FORMAT_OPTIONS)[number]>("Bullets");
 
   const streamingAbort = useRef<EventSource | null>(null);
   const streamingMessageId = useRef<string | null>(null);
@@ -107,6 +111,28 @@ export default function PlannerAiRelayOnly() {
       <View className="absolute -top-24 right-8 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
     ),
     [],
+  );
+
+  const settingsSnapPoints = useMemo(() => ["50%"], []);
+  const renderSettingsBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
+  );
+
+  const monitorStats = useMemo(
+    () => [
+      { label: "Tone", value: tone },
+      { label: "Depth", value: depth },
+      { label: "Format", value: format },
+    ],
+    [depth, format, tone],
+  );
+
+  const systemPrompt = useMemo(
+    () => `${SYSTEM_PROMPT}\nResponse tone: ${tone}. Depth: ${depth}. Format: ${format}.`,
+    [depth, format, tone],
   );
 
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
@@ -234,7 +260,7 @@ export default function PlannerAiRelayOnly() {
     const payload = JSON.stringify({
       question: userMessage.content,
       model,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt,
     });
 
     const es = new EventSource(RELAY_URL, {
@@ -276,6 +302,11 @@ export default function PlannerAiRelayOnly() {
     setIsStreaming(false);
   };
 
+  const openSettings = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    settingsSheetRef.current?.expand();
+  };
+
   return (
     <Container className="bg-background" withScroll={false}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -288,7 +319,7 @@ export default function PlannerAiRelayOnly() {
               onPress={() => router.back()}
               className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color={colors.foreground} />
             </TouchableOpacity>
 
             <View className="flex-1">
@@ -299,19 +330,19 @@ export default function PlannerAiRelayOnly() {
             </View>
 
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
-              <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
+              <HugeiconsIcon icon={AiChat01Icon} size={20} color={colors.accent} />
             </View>
           </View>
 
           <View className="px-6">
             <Animated.View
               entering={FadeInDown.duration(500)}
-              className="bg-surface/60 border border-border/40 rounded-[24px] p-4"
+              className="bg-surface/60 border border-border/40 rounded-4xl p-4"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-x-3">
                   <View className="w-9 h-9 rounded-2xl bg-accent/20 items-center justify-center">
-                    <HugeiconsIcon icon={SparklesIcon} size={16} color="var(--accent)" />
+                    <HugeiconsIcon icon={SparklesIcon} size={16} color={colors.accent} />
                   </View>
                   <View>
                     <Text className="text-sm font-sans-bold text-foreground">
@@ -323,18 +354,26 @@ export default function PlannerAiRelayOnly() {
                   </View>
                 </View>
 
-                <View className="flex-row items-center gap-x-1">
-                  <View
-                    className={`w-2 h-2 rounded-full ${isStreaming ? "bg-accent" : "bg-muted-foreground/40"}`}
-                  />
-                  <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase tracking-widest">
-                    {isStreaming ? "Live" : "Idle"}
-                  </Text>
+                <View className="flex-row items-center gap-x-3">
+                  <TouchableOpacity
+                    onPress={openSettings}
+                    className="w-8 h-8 rounded-2xl bg-background/70 border border-border/40 items-center justify-center"
+                  >
+                    <HugeiconsIcon icon={Settings02Icon} size={14} color={colors.foreground} />
+                  </TouchableOpacity>
+                  <View className="flex-row items-center gap-x-1">
+                    <View
+                      className={`w-2 h-2 rounded-full ${isStreaming ? "bg-accent" : "bg-muted-foreground/40"}`}
+                    />
+                    <Text className="text-[9px] font-sans-bold text-muted-foreground uppercase tracking-widest">
+                      {isStreaming ? "Live" : "Idle"}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
               <View className="flex-row gap-x-2 mt-3">
-                {QUICK_STATS.map((stat) => (
+                {monitorStats.map((stat) => (
                   <View
                     key={stat.label}
                     className="flex-1 rounded-2xl bg-background/60 border border-border/30 px-3 py-2"
@@ -411,7 +450,7 @@ export default function PlannerAiRelayOnly() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 8 }}
+              contentContainerStyle={{ paddingBottom: 6 }}
             >
               <View className="flex-row gap-x-2">
                 {PROMPTS.map((prompt) => (
@@ -467,6 +506,88 @@ export default function PlannerAiRelayOnly() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      <BottomSheet
+        ref={settingsSheetRef}
+        index={-1}
+        snapPoints={settingsSnapPoints}
+        enablePanDownToClose
+        backdropComponent={renderSettingsBackdrop}
+        handleIndicatorStyle={{ backgroundColor: "var(--border)", width: 40 }}
+        backgroundStyle={{ backgroundColor: colors.background, borderRadius: 32 }}
+      >
+        <BottomSheetView className="flex-1 px-6 pb-10">
+          <View className="py-4">
+            <Text className="text-xl font-sans-bold text-foreground">Monitor Configuration</Text>
+            <Text className="text-xs font-sans text-muted-foreground mt-1">
+              Tune how the assistant responds to your stream.
+            </Text>
+          </View>
+          <View className="gap-y-5">
+            <ConfigRow
+              title="Response Tone"
+              options={TONE_OPTIONS}
+              value={tone}
+              onChange={setTone}
+            />
+            <ConfigRow
+              title="Response Depth"
+              options={DEPTH_OPTIONS}
+              value={depth}
+              onChange={setDepth}
+            />
+            <ConfigRow
+              title="Response Format"
+              options={FORMAT_OPTIONS}
+              value={format}
+              onChange={setFormat}
+            />
+          </View>
+        </BottomSheetView>
+      </BottomSheet>
     </Container>
+  );
+}
+
+type ConfigRowProps<T extends string> = {
+  title: string;
+  options: readonly T[];
+  value: T;
+  onChange: (value: T) => void;
+};
+
+function ConfigRow<T extends string>({ title, options, value, onChange }: ConfigRowProps<T>) {
+  return (
+    <View className="gap-y-2">
+      <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+        {title}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
+        <View className="flex-row gap-x-2">
+          {options.map((option) => {
+            const isActive = option === value;
+            return (
+              <TouchableOpacity
+                key={option}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  onChange(option);
+                }}
+                className={`px-4 py-2 rounded-2xl border ${
+                  isActive ? "bg-foreground border-foreground" : "bg-surface border-border/40"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-sans-bold uppercase tracking-[2px] ${
+                    isActive ? "text-background" : "text-muted-foreground"
+                  }`}
+                >
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
