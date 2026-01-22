@@ -53,6 +53,7 @@ export default function Layout() {
                 <Stack>
                   {/* Auth Protected Routes */}
                   <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="chat" options={{ headerShown: false }} />
                   <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
                   <Stack.Screen name="modal" options={{ presentation: "modal" }} />
 
