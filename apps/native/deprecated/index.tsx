@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Stack, useFocusEffect, useRouter } from "expo-router";
+import { Stack, useFocusEffect, useRootNavigationState, useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -19,6 +19,7 @@ import {
 
 export default function ConversationsIndex() {
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const colors = useSemanticColors();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const lastConversationRef = useRef<string | null>(null);
@@ -38,6 +39,7 @@ export default function ConversationsIndex() {
 
   useEffect(() => {
     if (didAutoOpen.current) return;
+    if (!rootNavigationState?.key) return;
     const lastId = getLastConversationId();
     if (!lastId) {
       didAutoOpen.current = true;
@@ -49,7 +51,7 @@ export default function ConversationsIndex() {
       didAutoOpen.current = true;
       router.replace({ pathname: "/chat", params: { conversationId: lastId } });
     }
-  }, [router]);
+  }, [router, rootNavigationState?.key]);
 
   const backgroundGlow = useMemo(
     () => (
