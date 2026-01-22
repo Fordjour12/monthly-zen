@@ -4,6 +4,7 @@ import { Stack, SplashScreen } from "expo-router";
 import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -45,16 +46,17 @@ export default function Layout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <KeyboardProvider>
-          <AppThemeProvider>
-            <HeroUINativeProvider>
-              <Stack>
-                {/* Auth Protected Routes */}
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
-                <Stack.Screen name="modal" options={{ presentation: "modal" }} />
+        <BottomSheetModalProvider>
+          <KeyboardProvider>
+            <AppThemeProvider>
+              <HeroUINativeProvider>
+                <Stack>
+                  {/* Auth Protected Routes */}
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
+                  <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
+                  <Stack.Screen name="modal" options={{ presentation: "modal" }} />
 
-                {/* Onboarding Routes
+                  {/* Onboarding Routes
 
     <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
 
@@ -78,10 +80,11 @@ export default function Layout() {
                 </Stack.Protected>
 
                 */}
-              </Stack>
-            </HeroUINativeProvider>
-          </AppThemeProvider>
-        </KeyboardProvider>
+                </Stack>
+              </HeroUINativeProvider>
+            </AppThemeProvider>
+          </KeyboardProvider>
+        </BottomSheetModalProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

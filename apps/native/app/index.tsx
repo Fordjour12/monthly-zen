@@ -21,7 +21,7 @@ import {
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from "@gorhom/bottom-sheet";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -64,7 +64,7 @@ export default function PlannerAiRelayOnly() {
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const settingsSheetRef = useRef<BottomSheet>(null);
+  const settingsSheetRef = useRef<BottomSheetModal>(null);
 
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
@@ -304,7 +304,7 @@ export default function PlannerAiRelayOnly() {
 
   const openSettings = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    settingsSheetRef.current?.expand();
+    settingsSheetRef.current?.present();
   };
 
   return (
@@ -506,9 +506,8 @@ export default function PlannerAiRelayOnly() {
           </View>
         </View>
       </KeyboardAvoidingView>
-      <BottomSheet
+      <BottomSheetModal
         ref={settingsSheetRef}
-        index={-1}
         snapPoints={settingsSnapPoints}
         enablePanDownToClose
         backdropComponent={renderSettingsBackdrop}
@@ -543,7 +542,7 @@ export default function PlannerAiRelayOnly() {
             />
           </View>
         </BottomSheetView>
-      </BottomSheet>
+      </BottomSheetModal>
     </Container>
   );
 }
