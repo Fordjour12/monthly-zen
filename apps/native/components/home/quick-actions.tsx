@@ -9,6 +9,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useRouter } from "expo-router";
 import Animated, { FadeInRight } from "react-native-reanimated";
+import { useSemanticColors } from "@/utils/theme";
 
 interface QuickAction {
   icon: any;
@@ -18,15 +19,42 @@ interface QuickAction {
 }
 
 const actions: QuickAction[] = [
-  { icon: PlusSignIcon, label: "Add Task", route: "/planners/create", color: "bg-blue-500" },
-  { icon: AiMagicIcon, label: "Generate", route: "/planners/create", color: "bg-purple-500" },
-  { icon: Calendar01Icon, label: "Calendar", route: "/calendar", color: "bg-emerald-500" },
-  { icon: Analytics01Icon, label: "Insights", route: "/coaching", color: "bg-orange-500" },
-  { icon: Location01Icon, label: "Explore", route: "/explore", color: "bg-pink-500" },
+  {
+    icon: PlusSignIcon,
+    label: "Add Task",
+    route: "/planners/create",
+    color: "bg-blue-500",
+  },
+  {
+    icon: AiMagicIcon,
+    label: "Generate",
+    route: "/planners/create",
+    color: "bg-purple-500",
+  },
+  {
+    icon: Calendar01Icon,
+    label: "Calendar",
+    route: "/calendar",
+    color: "bg-emerald-500",
+  },
+  {
+    icon: Analytics01Icon,
+    label: "Insights",
+    route: "/coaching",
+    color: "bg-orange-500",
+  },
+  {
+    icon: Location01Icon,
+    label: "Explore",
+    route: "/explore",
+    color: "bg-pink-500",
+  },
 ];
 
 export function QuickActions() {
   const router = useRouter();
+
+  const colors = useSemanticColors();
 
   return (
     <View className="mb-8">
@@ -49,7 +77,7 @@ export function QuickActions() {
               className="items-center mr-6"
             >
               <View className="w-16 h-16 rounded-[22px] bg-surface border border-border/50 items-center justify-center mb-2 shadow-sm">
-                <HugeiconsIcon icon={action.icon} size={24} color="var(--foreground)" />
+                <HugeiconsIcon icon={action.icon} size={24} color={colors.foreground} />
               </View>
               <Text className="text-[11px] font-sans-semibold text-muted-foreground uppercase tracking-tighter">
                 {action.label}

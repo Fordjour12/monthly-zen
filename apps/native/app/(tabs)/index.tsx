@@ -177,7 +177,7 @@ export default function Home() {
               </TouchableOpacity>
             </View>
           ) : (
-            conversations.map((conversation) => {
+            conversations.slice(0, 4).map((conversation) => {
               const isLast = lastConversationRef.current === conversation.id;
               return (
                 <TouchableOpacity

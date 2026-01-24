@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, Dimensions, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,8 +22,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
-
-const { width, height } = Dimensions.get("window");
 
 const AnimatedView = Animated.View;
 
@@ -132,6 +130,14 @@ export default function WelcomeScreen() {
 
       <View className="flex-1 px-8 pt-16 pb-12 justify-between min-h-screen">
         <View>
+          <AnimatedView style={contentAnimatedStyle} className="mb-6">
+            <View className="self-start px-3 py-1 rounded-full bg-surface border border-border/60">
+              <Text className="text-xs font-sans-semibold text-muted-foreground tracking-widest">
+                STEP 1 OF 3
+              </Text>
+            </View>
+          </AnimatedView>
+
           {/* Logo Section */}
           <AnimatedView style={logoAnimatedStyle} className="items-center mb-10">
             <View className="size-24 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
@@ -152,6 +158,37 @@ export default function WelcomeScreen() {
             <Text className="text-xl font-sans text-muted-foreground leading-8">
               AI-powered planning designed for clarity, peace of mind, and meaningful progress.
             </Text>
+            <Text className="text-sm font-sans-medium text-accent mt-4">
+              Your first month plan in 60 seconds.
+            </Text>
+          </AnimatedView>
+
+          <AnimatedView style={contentAnimatedStyle} className="mb-8">
+            <View className="rounded-2xl border border-border/60 bg-surface/60 p-5">
+              <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-widest">
+                What you'll do next
+              </Text>
+              <View className="mt-4 gap-y-3">
+                <View className="flex-row items-start gap-x-3">
+                  <View className="size-2 rounded-full bg-accent mt-2" />
+                  <Text className="text-sm font-sans text-foreground flex-1">
+                    Share your monthly focus and a few resolutions.
+                  </Text>
+                </View>
+                <View className="flex-row items-start gap-x-3">
+                  <View className="size-2 rounded-full bg-accent mt-2" />
+                  <Text className="text-sm font-sans text-foreground flex-1">
+                    Pick a coach vibe and how intense your plan feels.
+                  </Text>
+                </View>
+                <View className="flex-row items-start gap-x-3">
+                  <View className="size-2 rounded-full bg-accent mt-2" />
+                  <Text className="text-sm font-sans text-foreground flex-1">
+                    We generate your first month and open the plan chat.
+                  </Text>
+                </View>
+              </View>
+            </View>
           </AnimatedView>
 
           {/* Features Grid */}
