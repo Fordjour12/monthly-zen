@@ -38,6 +38,12 @@ const updatePreferencesSchema = z.object({
 });
 
 export const preferencesRouter = {
+  hello: protectedProcedure.handler(async ({ context }) => {
+    return {
+      sucess: true,
+      data: "Hello world",
+    };
+  }),
   get: protectedProcedure.handler(async ({ context }) => {
     const userId = context.session.user.id;
     const preferences = await db.getUserPreferences(userId);

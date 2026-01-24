@@ -40,6 +40,7 @@ import {
   type TaskComplexity,
   type WeekendPreference,
 } from "@/stores/onboarding-store";
+import { useShallow } from "zustand/react/shallow";
 
 const COACH_TONES = [
   { key: "encouraging", label: "Encouraging" },
@@ -130,26 +131,28 @@ export default function GoalsScreen() {
     setTaskComplexity,
     setWeekendPreference,
     setStepIndex,
-  } = useOnboardingStore((state) => ({
-    mainGoal: state.mainGoal,
-    resolutions: state.resolutions,
-    selectedCoachId: state.selectedCoachId,
-    coachName: state.coachName,
-    coachTone: state.coachTone,
-    fixedCommitments: state.fixedCommitments,
-    taskComplexity: state.taskComplexity,
-    weekendPreference: state.weekendPreference,
-    stepIndex: state.stepIndex,
-    setMainGoal: state.setMainGoal,
-    addResolution: state.addResolution,
-    removeResolution: state.removeResolution,
-    setCoachProfile: state.setCoachProfile,
-    addCommitment: state.addCommitment,
-    removeCommitment: state.removeCommitment,
-    setTaskComplexity: state.setTaskComplexity,
-    setWeekendPreference: state.setWeekendPreference,
-    setStepIndex: state.setStepIndex,
-  }));
+  } = useOnboardingStore(
+    useShallow((state) => ({
+      mainGoal: state.mainGoal,
+      resolutions: state.resolutions,
+      selectedCoachId: state.selectedCoachId,
+      coachName: state.coachName,
+      coachTone: state.coachTone,
+      fixedCommitments: state.fixedCommitments,
+      taskComplexity: state.taskComplexity,
+      weekendPreference: state.weekendPreference,
+      stepIndex: state.stepIndex,
+      setMainGoal: state.setMainGoal,
+      addResolution: state.addResolution,
+      removeResolution: state.removeResolution,
+      setCoachProfile: state.setCoachProfile,
+      addCommitment: state.addCommitment,
+      removeCommitment: state.removeCommitment,
+      setTaskComplexity: state.setTaskComplexity,
+      setWeekendPreference: state.setWeekendPreference,
+      setStepIndex: state.setStepIndex,
+    })),
+  );
   const selectedCoach = COACH_PROFILES.find((coach) => coach.id === selectedCoachId);
 
   // Modal State
@@ -350,7 +353,7 @@ export default function GoalsScreen() {
                 </Card>
               ) : (
                 <View className="gap-y-3">
-                  {resolutions.map((res, idx) => (
+                  {resolutions.map((res: Resolution, idx) => (
                     <Animated.View key={idx} entering={FadeInDown}>
                       <Card className="p-4 flex-row items-center justify-between border-none bg-surface/50">
                         <View className="flex-row items-center gap-x-3 flex-1">

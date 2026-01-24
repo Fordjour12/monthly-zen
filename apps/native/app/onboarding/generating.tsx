@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
-import { orpc } from "@/utils/orpc";
+import { useUpdatePreferences } from "@/hooks/usePreferences";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   AiChat01Icon,
@@ -40,6 +40,7 @@ export default function GeneratingScreen() {
   const colors = useSemanticColors();
   const { completeOnboarding } = useAuthStore();
   const params = useLocalSearchParams();
+  const updatePreferences = useUpdatePreferences();
 
   const mainGoal = params.mainGoal as string;
   const coachName = params.coachName as string;
@@ -90,7 +91,7 @@ export default function GeneratingScreen() {
 
     const savePreferences = async () => {
       try {
-        await orpc.preferences.update.call({
+        await updatePreferences.mutateAsync({
           coachName,
           coachTone,
           taskComplexity,
@@ -283,7 +284,7 @@ export default function GeneratingScreen() {
                     <Text className="text-lg font-sans-semibold text-primary-foreground">
                       Open Plan Chat
                     </Text>
-                    <HugeiconsIcon icon={RocketIcon} size={20} color={colors.foreground} />
+                    <HugeiconsIcon icon={RocketIcon} size={20} color={colors.background} />
                   </View>
                 </Button>
               </Animated.View>
