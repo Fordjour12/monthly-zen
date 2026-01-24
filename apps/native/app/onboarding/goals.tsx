@@ -41,7 +41,7 @@ const COACH_TONES = [
   { key: "friendly", label: "Friendly" },
 ];
 
-const ONBOARDING_STEPS = ["Resolutions", "Coach", "Commitments", "Goal"];
+const ONBOARDING_STEPS = ["Pillars", "Coach", "Blocks", "Goal"];
 
 const GOAL_EXAMPLES = [
   "Launch my portfolio site",
@@ -128,6 +128,7 @@ export default function GoalsScreen() {
   );
   const [weekendPreference, setWeekendPreference] = useState<"Work" | "Rest" | "Mixed">("Mixed");
   const [stepIndex, setStepIndex] = useState(0);
+  const selectedCoach = COACH_PROFILES.find((coach) => coach.id === selectedCoachId);
 
   // Modal State
   const [showResModal, setShowResModal] = useState(false);
@@ -157,7 +158,9 @@ export default function GoalsScreen() {
         params: {
           mainGoal,
           resolutions: JSON.stringify(resolutions),
-          fixedCommitmentsJson: JSON.stringify({ commitments: fixedCommitments }),
+          fixedCommitmentsJson: JSON.stringify({
+            commitments: fixedCommitments,
+          }),
           coachName,
           coachTone,
           taskComplexity,
@@ -209,7 +212,11 @@ export default function GoalsScreen() {
       >
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingHorizontal: 32, paddingTop: 24, paddingBottom: 120 }}
+          contentContainerStyle={{
+            paddingHorizontal: 24,
+            paddingTop: 24,
+            paddingBottom: 120,
+          }}
           stickyHeaderIndices={[0]}
           showsVerticalScrollIndicator={false}
         >
@@ -369,12 +376,12 @@ export default function GoalsScreen() {
                 </Text>
               </View>
 
-              <Card className="p-6 border-none bg-surface/50">
+              <Card className="p-3 border-none bg-surface/50">
                 <View className="mb-6">
                   <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3">
                     Choose your coach
                   </Text>
-                  <View className="flex-row flex-wrap">
+                  <View className="flex-row flex-wrap gap-.3">
                     {COACH_PROFILES.map((coach, index) => (
                       <TouchableOpacity
                         key={coach.id}
@@ -405,45 +412,19 @@ export default function GoalsScreen() {
                   </View>
                 </View>
 
-                <View className="mb-6">
-                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-2 ml-1">
-                    Companion Name
+                <View className="bg-background/70 rounded-2xl border border-border/60 p-4">
+                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase">
+                    Selected companion
                   </Text>
-                  <TextField>
-                    <TextField.Input
-                      placeholder="e.g. Alex"
-                      value={coachName}
-                      onChangeText={setCoachName}
-                      className="text-base font-sans"
-                    />
-                  </TextField>
-                </View>
-
-                <View>
-                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3 ml-1">
-                    Fine-tune the tone
+                  <Text className="text-base font-sans-semibold text-foreground mt-2">
+                    {selectedCoach?.title}
                   </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {COACH_TONES.map((tone) => (
-                      <TouchableOpacity
-                        key={tone.key}
-                        onPress={() => setCoachTone(tone.key)}
-                        className={`px-4 py-2.5 rounded-xl border ${
-                          coachTone === tone.key
-                            ? "bg-accent border-accent"
-                            : "bg-background border-border"
-                        }`}
-                      >
-                        <Text
-                          className={`text-sm font-sans-medium ${
-                            coachTone === tone.key ? "text-primary-foreground" : "text-foreground"
-                          }`}
-                        >
-                          {tone.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <Text className="text-sm font-sans-medium text-muted-foreground mt-1">
+                    {coachName} · {COACH_TONES.find((tone) => tone.key === coachTone)?.label}
+                  </Text>
+                  <Text className="text-xs font-sans text-muted-foreground mt-3">
+                    {selectedCoach?.pitch}
+                  </Text>
                 </View>
               </Card>
             </Animated.View>
@@ -802,7 +783,10 @@ export default function GoalsScreen() {
               <View className="flex-row items-center justify-between bg-background rounded-2xl p-4 border border-border">
                 <TouchableOpacity
                   onPress={() =>
-                    setNewRes({ ...newRes, targetCount: Math.max(1, newRes.targetCount - 1) })
+                    setNewRes({
+                      ...newRes,
+                      targetCount: Math.max(1, newRes.targetCount - 1),
+                    })
                   }
                   className="w-10 h-10 rounded-xl bg-surface items-center justify-center"
                 >
@@ -812,7 +796,12 @@ export default function GoalsScreen() {
                   {newRes.targetCount}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => setNewRes({ ...newRes, targetCount: newRes.targetCount + 1 })}
+                  onPress={() =>
+                    setNewRes({
+                      ...newRes,
+                      targetCount: newRes.targetCount + 1,
+                    })
+                  }
                   className="w-10 h-10 rounded-xl bg-surface items-center justify-center"
                 >
                   <Text className="text-2xl font-sans text-foreground">+</Text>

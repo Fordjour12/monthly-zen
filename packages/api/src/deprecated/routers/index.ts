@@ -9,7 +9,7 @@ import { calendarRouter } from "./calendar";
 import { coachingRouter } from "./coaching";
 import { habitsRouter } from "./habits";
 import { resolutionsRouter } from "./resolutions";
-import { preferencesRouter } from "./preferences";
+import { preferencesRouter } from "../../routers/preferences";
 
 export const appRouter = {
   healthCheck: publicProcedure.handler(() => {
