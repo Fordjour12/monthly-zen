@@ -57,9 +57,7 @@ export default function Layout() {
 
                   {/* Onboarding Routes */}
                   <Stack.Protected guard={isLoggedIn && !hasCompletedOnboarding}>
-                    <Stack.Screen name="onboarding/welcome" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding/goals" options={{ headerShown: false }} />
-                    <Stack.Screen name="onboarding/generating" options={{ headerShown: false }} />
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                   </Stack.Protected>
 
                   {/* Public Routes */}

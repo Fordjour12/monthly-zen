@@ -89,6 +89,7 @@ export default (ctx: ConfigContext): ExpoConfig => {
         monochromeImage: "./assets/images/android-icon-monochrome.png",
       },
       edgeToEdgeEnabled: true,
+      softwareKeyboardLayoutMode: "resize",
       package: getBundleIdentifier(),
     },
     ios: {

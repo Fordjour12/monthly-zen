@@ -143,7 +143,7 @@ export default function WelcomeScreen() {
             <View className="size-24 rounded-3xl bg-accent items-center justify-center shadow-2xl shadow-accent/40 rotate-12">
               <View className="-rotate-12">
                 <Image
-                  source={require("../../../assets/images/android-icon-foreground.png")}
+                  source={require("../../assets/images/android-icon-foreground.png")}
                   className="size-24"
                 />
               </View>
@@ -212,7 +212,7 @@ export default function WelcomeScreen() {
         </View>
 
         {/* Action Button Section */}
-        <AnimatedView style={contentAnimatedStyle} className="gap-y-4">
+        <AnimatedView style={contentAnimatedStyle} className="gap-y-4 mt-3">
           <Button
             size="lg"
             className="h-16 rounded-2xl"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,8 +22,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
-import { useMutation } from "@tanstack/react-query";
-import { orpc } from "@/utils/orpc";
 
 const STEPS = [
   { id: 0, label: "Saving your resolutions..." },
@@ -43,72 +41,33 @@ export default function GeneratingScreen() {
   const params = useLocalSearchParams();
 
   const mainGoal = params.mainGoal as string;
-  const resolutions = params.resolutions ? JSON.parse(params.resolutions as string) : [];
-  const coachName = params.coachName as string;
   const coachTone = params.coachTone as "encouraging" | "direct" | "analytical" | "friendly";
   const taskComplexity = params.taskComplexity as "Simple" | "Balanced" | "Ambitious";
-  const weekendPreference = params.weekendPreference as "Work" | "Rest" | "Mixed";
-  const focusAreas = (params.focusAreas as string) || "personal";
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sampleTasks = [
+    `Define what success looks like for “${mainGoal}.”`,
+    "Block two deep-focus sessions this week.",
+    "Close the week with a 10-minute review.",
+  ];
+
   // Animation values
   const pulseScale = useSharedValue(1);
   const rotation = useSharedValue(0);
 
-  const generatePlanMutation = useMutation({
-    mutationFn: async () => {
-      setError(null);
-      setCurrentStep(0);
-
-      // Step 1: Save yearly resolutions
-      if (resolutions.length > 0) {
-        await orpc.resolutions.createBatch.call({
-          resolutions: resolutions.map((r: any) => ({
-            text: r.title,
-            category: r.category,
-            resolutionType: "yearly" as const,
-            priority: 2,
-          })),
-        });
-      }
-
-      // Step 2: Save AI companion & preferences
-      setCurrentStep(1);
-      await orpc.preferences.update.call({
-        coachName,
-        coachTone,
-        goalsText: mainGoal,
-        taskComplexity,
-        weekendPreference,
-        focusAreas,
-      });
-
-      // Step 3: Generate monthly plan
-      setCurrentStep(2);
-      await orpc.plan.generate.call({
-        goalsText: mainGoal,
-        taskComplexity,
-        focusAreas,
-        weekendPreference,
-        fixedCommitmentsJson: { commitments: [] },
-      });
-
-      // Step 4: Complete
-      setCurrentStep(3);
-    },
-    onSuccess: () => {
-      setIsComplete(true);
-    },
-    onError: (err: Error) => {
-      setError(err.message);
-    },
-  });
-
   useEffect(() => {
-    generatePlanMutation.mutate();
+    setError(null);
+    setCurrentStep(0);
+
+    const timers = [
+      setTimeout(() => setCurrentStep(1), 800),
+      setTimeout(() => setCurrentStep(2), 1600),
+      setTimeout(() => setCurrentStep(3), 2400),
+      setTimeout(() => setIsComplete(true), 2800),
+    ];
 
     // Pulse animation for the AI icon
     pulseScale.value = withRepeat(
@@ -126,11 +85,12 @@ export default function GeneratingScreen() {
       -1,
       false,
     );
+    return () => timers.forEach((timer) => clearTimeout(timer));
   }, []);
 
   const handleContinue = async () => {
     await completeOnboarding();
-    router.replace("/(tabs)");
+    router.replace("/chat");
   };
 
   const aiIconStyle = useAnimatedStyle(() => ({
@@ -147,6 +107,14 @@ export default function GeneratingScreen() {
   return (
     <Container className="bg-background">
       <View className="flex-1 px-8 items-center justify-center">
+        <View className="self-start mb-8">
+          <View className="px-3 py-1 rounded-full bg-surface border border-border/60">
+            <Text className="text-xs font-sans-semibold text-muted-foreground tracking-widest">
+              STEP 3 OF 3
+            </Text>
+          </View>
+        </View>
+
         {/* Animated Icon Container */}
         <Animated.View
           entering={FadeIn.duration(1000)}
@@ -180,10 +148,10 @@ export default function GeneratingScreen() {
                 <Button
                   size="lg"
                   className="h-14 rounded-xl w-full"
-                  onPress={() => generatePlanMutation.mutate()}
+                  onPress={() => router.replace("/onboarding/goals")}
                 >
                   <Text className="text-lg font-sans-semibold text-danger-foreground">
-                    Try Again
+                    Back to edit
                   </Text>
                 </Button>
               </Card>
@@ -191,11 +159,70 @@ export default function GeneratingScreen() {
           ) : (
             <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-[60px]">
               {isComplete
-                ? "Everything is set. Your path to clarity and focus starts now."
+                ? "Everything is set. Next up: your plan chat for final tweaks."
                 : STEPS[currentStep]?.label || "Preparing..."}
             </Text>
           )}
         </Animated.View>
+
+        {!error && (
+          <View className="w-full mt-8 gap-y-3">
+            <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-widest">
+              What's happening
+            </Text>
+            {STEPS.map((step, index) => {
+              const isDone = isComplete || index < currentStep;
+              const isActive = index === currentStep && !isComplete;
+
+              return (
+                <View key={step.id} className="flex-row items-center gap-x-3">
+                  <View
+                    className={`size-6 rounded-full items-center justify-center border ${
+                      isDone
+                        ? "bg-accent border-accent"
+                        : isActive
+                          ? "border-accent"
+                          : "border-border"
+                    }`}
+                  >
+                    {isDone && (
+                      <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} color="white" />
+                    )}
+                  </View>
+                  <Text
+                    className={`text-sm font-sans-medium ${
+                      isDone ? "text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {step.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {isComplete && !error && (
+          <Animated.View entering={FadeInDown.duration(600)} className="w-full mt-10">
+            <Card className="p-5 border-none bg-surface/50">
+              <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-widest">
+                Plan snapshot
+              </Text>
+              <Text className="text-lg font-sans-semibold text-foreground mt-2">{mainGoal}</Text>
+              <Text className="text-sm font-sans text-muted-foreground mt-2">
+                Coach tone: {coachTone} · Complexity: {taskComplexity}
+              </Text>
+              <View className="mt-4 gap-y-2">
+                {sampleTasks.map((task) => (
+                  <View key={task} className="flex-row items-start gap-x-2">
+                    <View className="size-2 rounded-full bg-accent mt-2" />
+                    <Text className="text-sm font-sans text-foreground flex-1">{task}</Text>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </Animated.View>
+        )}
 
         {/* Progress Bar or Button */}
         {!error && (
@@ -209,7 +236,7 @@ export default function GeneratingScreen() {
                 >
                   <View className="flex-row items-center justify-center gap-x-2">
                     <Text className="text-lg font-sans-semibold text-primary-foreground">
-                      Enter Zen Mode
+                      Open Plan Chat
                     </Text>
                     <HugeiconsIcon icon={RocketIcon} size={20} color={colors.foreground} />
                   </View>
@@ -226,6 +253,16 @@ export default function GeneratingScreen() {
                     AI is crafting...
                   </Text>
                 </View>
+                <Pressable onPress={() => router.replace("/onboarding/goals")} className="mt-4">
+                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase tracking-widest text-center">
+                    Back to edit
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => router.replace("/onboarding/goals")} className="mt-2">
+                  <Text className="text-xs font-sans-medium text-muted-foreground text-center">
+                    Cancel setup
+                  </Text>
+                </Pressable>
               </View>
             )}
           </View>
