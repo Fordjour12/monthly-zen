@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
-import type { CoachTone } from "@monthly-zen/db";
+import type { CoachTone, FixedCommitmentsJson, ResolutionsJson } from "@monthly-zen/db";
 
 export type UpdatePreferencesInput = {
   coachName?: string;
@@ -17,9 +17,10 @@ export type UpdatePreferencesInput = {
   goalsText?: string;
   taskComplexity?: "Simple" | "Balanced" | "Ambitious";
   focusAreas?: string;
+  resolutionsJson?: ResolutionsJson;
   weekendPreference?: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number;
-  fixedCommitmentsJson?: any;
+  fixedCommitmentsJson?: FixedCommitmentsJson;
 };
 
 export function usePreferences() {

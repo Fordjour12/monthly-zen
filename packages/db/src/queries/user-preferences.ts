@@ -1,7 +1,11 @@
 import { db } from "../index";
 import { eq } from "drizzle-orm";
 import { userGoalsAndPreferences } from "../schema";
-import type { CoachTone } from "../schema/user-goals-and-preferences";
+import type {
+  CoachTone,
+  FixedCommitmentsJson,
+  ResolutionsJson,
+} from "../schema/user-goals-and-preferences";
 
 export interface UserPreferencesData {
   id: number;
@@ -14,9 +18,10 @@ export interface UserPreferencesData {
   goalsText: string;
   taskComplexity: "Simple" | "Balanced" | "Ambitious";
   focusAreas: string;
+  resolutionsJson: ResolutionsJson;
   weekendPreference: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number | null;
-  fixedCommitmentsJson: any;
+  fixedCommitmentsJson: FixedCommitmentsJson;
   updatedAt: Date;
 }
 
@@ -53,9 +58,12 @@ export async function createOrUpdatePreferences(
       goalsText: data.goalsText || "",
       taskComplexity: (data.taskComplexity as any) || "Balanced",
       focusAreas: data.focusAreas || "personal",
+      resolutionsJson: (data.resolutionsJson as ResolutionsJson) || { resolutions: [] },
       weekendPreference: (data.weekendPreference as any) || "Mixed",
       preferredTaskDuration: data.preferredTaskDuration || 45,
-      fixedCommitmentsJson: (data.fixedCommitmentsJson as any) || { commitments: [] },
+      fixedCommitmentsJson: (data.fixedCommitmentsJson as FixedCommitmentsJson) || {
+        commitments: [],
+      },
       coachName: data.coachName || "Coach",
       coachTone: (data.coachTone as CoachTone) || "encouraging",
       workingHoursStart: data.workingHoursStart || "09:00",

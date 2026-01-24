@@ -3,6 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Container } from "@/components/ui/container";
 import { useAuthStore } from "@/stores/auth-store";
+import { orpc } from "@/utils/orpc";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import {
   AiChat01Icon,
@@ -41,8 +42,33 @@ export default function GeneratingScreen() {
   const params = useLocalSearchParams();
 
   const mainGoal = params.mainGoal as string;
+  const coachName = params.coachName as string;
   const coachTone = params.coachTone as "encouraging" | "direct" | "analytical" | "friendly";
   const taskComplexity = params.taskComplexity as "Simple" | "Balanced" | "Ambitious";
+  const focusAreas = params.focusAreas as string;
+  const weekendPreference = params.weekendPreference as "Work" | "Rest" | "Mixed";
+  const rawResolutions = params.resolutions as string;
+  const rawCommitments = params.fixedCommitmentsJson as string;
+
+  const parsedResolutions = (() => {
+    if (!rawResolutions) return [];
+    try {
+      const parsed = JSON.parse(rawResolutions);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const parsedCommitments = (() => {
+    if (!rawCommitments) return { commitments: [] };
+    try {
+      const parsed = JSON.parse(rawCommitments);
+      return parsed && typeof parsed === "object" ? parsed : { commitments: [] };
+    } catch {
+      return { commitments: [] };
+    }
+  })();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
@@ -61,6 +87,25 @@ export default function GeneratingScreen() {
   useEffect(() => {
     setError(null);
     setCurrentStep(0);
+
+    const savePreferences = async () => {
+      try {
+        await orpc.preferences.update.mutate({
+          coachName,
+          coachTone,
+          taskComplexity,
+          weekendPreference,
+          focusAreas,
+          resolutionsJson: { resolutions: parsedResolutions },
+          fixedCommitmentsJson: parsedCommitments,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to save preferences";
+        setError(message);
+      }
+    };
+
+    savePreferences();
 
     const timers = [
       setTimeout(() => setCurrentStep(1), 800),

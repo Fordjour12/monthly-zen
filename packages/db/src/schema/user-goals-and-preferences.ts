@@ -23,6 +23,16 @@ export type FixedCommitmentsJson = {
   commitments: FixedCommitment[];
 };
 
+export type PlanningResolution = {
+  title: string;
+  category: string;
+  targetCount: number;
+};
+
+export type ResolutionsJson = {
+  resolutions: PlanningResolution[];
+};
+
 // Coach tone enum
 export const COACH_TONES = ["encouraging", "direct", "analytical", "friendly"] as const;
 export type CoachTone = (typeof COACH_TONES)[number];
@@ -37,6 +47,10 @@ export const userGoalsAndPreferences = pgTable("user_goals_and_preferences", {
   // Core Goal Architecture
   goalsText: text("goals_text").notNull().default(""),
   focusAreas: varchar("focus_areas", { length: 255 }).notNull().default("personal"),
+  resolutionsJson: jsonb("resolutions_json")
+    .notNull()
+    .$type<ResolutionsJson>()
+    .default({ resolutions: [] }),
 
   // Tactical Preferences
   taskComplexity: complexityEnum("task_complexity").notNull().default("Balanced"),
