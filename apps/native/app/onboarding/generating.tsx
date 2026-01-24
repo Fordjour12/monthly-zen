@@ -202,7 +202,7 @@ export default function GeneratingScreen() {
               </Card>
             </Animated.View>
           ) : (
-            <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-[60px]">
+            <Text className="text-lg font-sans text-muted-foreground text-center leading-7 px-4 min-h-14">
               {isComplete
                 ? "Everything is set. Next up: your plan chat for final tweaks."
                 : STEPS[currentStep]?.label || "Preparing..."}
