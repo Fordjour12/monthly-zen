@@ -110,7 +110,7 @@ export default function GeneratingScreen() {
         <View className="self-start mb-8">
           <View className="px-3 py-1 rounded-full bg-surface border border-border/60">
             <Text className="text-xs font-sans-semibold text-muted-foreground tracking-widest">
-              STEP 3 OF 3
+              STEP 4 OF 4
             </Text>
           </View>
         </View>

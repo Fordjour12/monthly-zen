@@ -41,7 +41,7 @@ const COACH_TONES = [
   { key: "friendly", label: "Friendly" },
 ];
 
-const ONBOARDING_STEPS = ["Resolutions", "Coach", "Goal"];
+const ONBOARDING_STEPS = ["Resolutions", "Coach", "Commitments", "Goal"];
 
 const GOAL_EXAMPLES = [
   "Launch my portfolio site",
@@ -199,7 +199,7 @@ export default function GoalsScreen() {
 
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
-  const canContinue = stepIndex === 2 ? Boolean(mainGoal.trim()) : true;
+  const canContinue = stepIndex === 3 ? Boolean(mainGoal.trim()) : true;
 
   return (
     <Container className="bg-background">
@@ -359,96 +359,98 @@ export default function GoalsScreen() {
           )}
 
           {stepIndex === 1 && (
-            <View>
-              <Animated.View entering={FadeInDown.delay(500).duration(600)} className="mb-6">
-                <View className="flex-row items-center gap-x-2 mb-4">
-                  <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
-                    <HugeiconsIcon icon={AiChat01Icon} size={16} color={colors.accent} />
-                  </View>
-                  <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
-                    AI Companion
+            <Animated.View entering={FadeInDown.delay(500).duration(600)} className="mb-6">
+              <View className="flex-row items-center gap-x-2 mb-4">
+                <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
+                  <HugeiconsIcon icon={AiChat01Icon} size={16} color={colors.accent} />
+                </View>
+                <Text className="text-sm font-sans-semibold text-foreground uppercase tracking-wider">
+                  AI Companion
+                </Text>
+              </View>
+
+              <Card className="p-6 border-none bg-surface/50">
+                <View className="mb-6">
+                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3">
+                    Choose your coach
                   </Text>
+                  <View className="flex-row flex-wrap">
+                    {COACH_PROFILES.map((coach, index) => (
+                      <TouchableOpacity
+                        key={coach.id}
+                        onPress={() => {
+                          setSelectedCoachId(coach.id);
+                          setCoachName(coach.name);
+                          setCoachTone(coach.tone);
+                        }}
+                        className={`w-1/2 rounded-2xl border p-4 ${
+                          index % 2 === 0 ? "pr-2" : "pl-2"
+                        } ${index < 2 ? "mb-3" : ""} ${
+                          selectedCoachId === coach.id
+                            ? "bg-accent/15 border-accent"
+                            : "bg-background border-border"
+                        }`}
+                      >
+                        <Text className="text-sm font-sans-semibold text-foreground">
+                          {coach.title}
+                        </Text>
+                        <Text className="text-xs font-sans-medium text-muted-foreground mt-1">
+                          {coach.name}
+                        </Text>
+                        <Text className="text-xs font-sans text-muted-foreground mt-2">
+                          {coach.pitch}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
 
-                <Card className="p-6 border-none bg-surface/50">
-                  <View className="mb-6">
-                    <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3">
-                      Choose your coach
-                    </Text>
-                    <View className="flex-row flex-wrap">
-                      {COACH_PROFILES.map((coach, index) => (
-                        <TouchableOpacity
-                          key={coach.id}
-                          onPress={() => {
-                            setSelectedCoachId(coach.id);
-                            setCoachName(coach.name);
-                            setCoachTone(coach.tone);
-                          }}
-                          className={`w-1/2 rounded-2xl border p-4 ${
-                            index % 2 === 0 ? "pr-2" : "pl-2"
-                          } ${index < 2 ? "mb-3" : ""} ${
-                            selectedCoachId === coach.id
-                              ? "bg-accent/15 border-accent"
-                              : "bg-background border-border"
+                <View className="mb-6">
+                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-2 ml-1">
+                    Companion Name
+                  </Text>
+                  <TextField>
+                    <TextField.Input
+                      placeholder="e.g. Alex"
+                      value={coachName}
+                      onChangeText={setCoachName}
+                      className="text-base font-sans"
+                    />
+                  </TextField>
+                </View>
+
+                <View>
+                  <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3 ml-1">
+                    Fine-tune the tone
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {COACH_TONES.map((tone) => (
+                      <TouchableOpacity
+                        key={tone.key}
+                        onPress={() => setCoachTone(tone.key)}
+                        className={`px-4 py-2.5 rounded-xl border ${
+                          coachTone === tone.key
+                            ? "bg-accent border-accent"
+                            : "bg-background border-border"
+                        }`}
+                      >
+                        <Text
+                          className={`text-sm font-sans-medium ${
+                            coachTone === tone.key ? "text-primary-foreground" : "text-foreground"
                           }`}
                         >
-                          <Text className="text-sm font-sans-semibold text-foreground">
-                            {coach.title}
-                          </Text>
-                          <Text className="text-xs font-sans-medium text-muted-foreground mt-1">
-                            {coach.name}
-                          </Text>
-                          <Text className="text-xs font-sans text-muted-foreground mt-2">
-                            {coach.pitch}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                          {tone.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
+                </View>
+              </Card>
+            </Animated.View>
+          )}
 
-                  <View className="mb-6">
-                    <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-2 ml-1">
-                      Companion Name
-                    </Text>
-                    <TextField>
-                      <TextField.Input
-                        placeholder="e.g. Alex"
-                        value={coachName}
-                        onChangeText={setCoachName}
-                        className="text-base font-sans"
-                      />
-                    </TextField>
-                  </View>
-
-                  <View>
-                    <Text className="text-xs font-sans-semibold text-muted-foreground uppercase mb-3 ml-1">
-                      Fine-tune the tone
-                    </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {COACH_TONES.map((tone) => (
-                        <TouchableOpacity
-                          key={tone.key}
-                          onPress={() => setCoachTone(tone.key)}
-                          className={`px-4 py-2.5 rounded-xl border ${
-                            coachTone === tone.key
-                              ? "bg-accent border-accent"
-                              : "bg-background border-border"
-                          }`}
-                        >
-                          <Text
-                            className={`text-sm font-sans-medium ${
-                              coachTone === tone.key ? "text-primary-foreground" : "text-foreground"
-                            }`}
-                          >
-                            {tone.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </Card>
-              </Animated.View>
-
+          {stepIndex === 2 && (
+            <View>
               <Animated.View entering={FadeInDown.delay(600).duration(600)} className="mb-8">
                 <View className="flex-row items-center justify-between mb-4">
                   <View className="flex-row items-center gap-x-2">
@@ -638,7 +640,7 @@ export default function GoalsScreen() {
             </View>
           )}
 
-          {stepIndex === 2 && (
+          {stepIndex === 3 && (
             <Animated.View entering={FadeInDown.delay(300).duration(600)} className="mb-8">
               <View className="flex-row items-center gap-x-2 mb-4">
                 <View className="w-8 h-8 rounded-lg bg-accent/10 items-center justify-center">
