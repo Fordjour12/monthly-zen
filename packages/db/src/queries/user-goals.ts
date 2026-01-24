@@ -4,7 +4,6 @@ import { userGoalsAndPreferences, user } from "../schema";
 
 export interface CreateGoalPreferenceInput {
   userId: string;
-  goalsText: string;
   taskComplexity: "Simple" | "Balanced" | "Ambitious";
   focusAreas: string;
   weekendPreference: "Work" | "Rest" | "Mixed";
@@ -23,7 +22,7 @@ export async function createGoalPreference(input: CreateGoalPreferenceInput) {
     .insert(userGoalsAndPreferences)
     .values({
       userId: input.userId,
-      goalsText: input.goalsText,
+      goalsText: "",
       taskComplexity: input.taskComplexity,
       focusAreas: input.focusAreas,
       weekendPreference: input.weekendPreference,
@@ -79,7 +78,7 @@ export async function upsertGoalPreference(
     .insert(userGoalsAndPreferences)
     .values({
       userId,
-      goalsText: input.goalsText,
+      goalsText: "",
       taskComplexity: input.taskComplexity,
       focusAreas: input.focusAreas,
       weekendPreference: input.weekendPreference,
@@ -89,7 +88,7 @@ export async function upsertGoalPreference(
     .onConflictDoUpdate({
       target: userGoalsAndPreferences.userId,
       set: {
-        goalsText: input.goalsText,
+        goalsText: "",
         taskComplexity: input.taskComplexity,
         focusAreas: input.focusAreas,
         weekendPreference: input.weekendPreference,

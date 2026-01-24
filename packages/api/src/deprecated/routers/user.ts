@@ -18,7 +18,6 @@ export const userRouter = {
   updatePreferences: protectedProcedure
     .input(
       z.object({
-        goalsText: z.string().min(1),
         taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]),
         focusAreas: z.string().min(1),
         weekendPreference: z.enum(["Work", "Rest", "Mixed"]),

@@ -90,7 +90,7 @@ export default function GeneratingScreen() {
 
     const savePreferences = async () => {
       try {
-        await orpc.preferences.update.mutate({
+        await orpc.preferences.update.call({
           coachName,
           coachTone,
           taskComplexity,

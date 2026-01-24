@@ -69,7 +69,6 @@ export default function ProfileDynamicScreen() {
   const [profileName, setProfileName] = useState(user?.name || "");
 
   // Goal Preferences State
-  const [goalsText, setGoalsText] = useState("");
   const [taskComplexity, setTaskComplexity] = useState<"Simple" | "Balanced" | "Ambitious">(
     "Balanced",
   );
@@ -87,7 +86,6 @@ export default function ProfileDynamicScreen() {
   // Sync preference state when data arrives
   useEffect(() => {
     if (preferences) {
-      setGoalsText(preferences.goalsText || "");
       setTaskComplexity(preferences.taskComplexity || "Balanced");
       setFocusAreas(preferences.focusAreas || "");
       setWeekendPreference(preferences.weekendPreference || "Mixed");
@@ -122,7 +120,6 @@ export default function ProfileDynamicScreen() {
     } else if (isEditPreferences) {
       updatePreferences.mutate(
         {
-          goalsText,
           taskComplexity,
           focusAreas,
           weekendPreference,
@@ -150,7 +147,6 @@ export default function ProfileDynamicScreen() {
     isEditProfile,
     isEditPreferences,
     profileName,
-    goalsText,
     taskComplexity,
     focusAreas,
     weekendPreference,
@@ -430,26 +426,7 @@ export default function ProfileDynamicScreen() {
                   </View>
                 </Section>
 
-                {/* 3. Primary Directive */}
-                <Section icon={Target01Icon} title="Primary Directive">
-                  <View className="bg-surface rounded-[32px] border border-border/50 p-6 mb-4">
-                    <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-3 ml-1">
-                      Monthly Vision
-                    </Text>
-                    <TextInput
-                      className="text-foreground text-sm font-sans-medium leading-6"
-                      value={goalsText}
-                      onChangeText={setGoalsText}
-                      placeholder="Describe your master plan for this cycle..."
-                      placeholderTextColor="var(--muted-foreground)/50"
-                      multiline
-                      numberOfLines={4}
-                      style={{ minHeight: 100, textAlignVertical: "top" }}
-                    />
-                  </View>
-                </Section>
-
-                {/* 4. Operating Habitat */}
+                {/* 3. Operating Habitat */}
                 <Section icon={Compass01Icon} title="Operating Habitat">
                   <View className="bg-surface rounded-[24px] border border-border/50 px-5 py-5">
                     <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-2 ml-1">

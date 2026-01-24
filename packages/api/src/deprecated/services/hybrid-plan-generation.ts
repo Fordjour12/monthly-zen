@@ -94,7 +94,6 @@ export async function generatePlan(
 
     const preference = await db.createGoalPreference({
       userId: input.userId,
-      goalsText: input.goalsText,
       taskComplexity: input.taskComplexity,
       focusAreas: input.focusAreas,
       weekendPreference: input.weekendPreference,

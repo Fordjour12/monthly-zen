@@ -9,7 +9,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 
@@ -57,7 +56,6 @@ function RouteComponent() {
   );
 
   // Local State
-  const [goalsText, setGoalsText] = useState("");
   const [taskComplexity, setTaskComplexity] = useState("Balanced");
   const [focusAreas, setFocusAreas] = useState("");
   const [weekendPreference, setWeekendPreference] = useState("Rest");
@@ -66,7 +64,6 @@ function RouteComponent() {
   // Populate form
   useEffect(() => {
     if (preferencesQuery.data) {
-      setGoalsText(preferencesQuery.data.goalsText);
       setTaskComplexity(preferencesQuery.data.taskComplexity);
       setFocusAreas(preferencesQuery.data.focusAreas);
       setWeekendPreference(preferencesQuery.data.weekendPreference);
@@ -76,7 +73,6 @@ function RouteComponent() {
   const handleSavePreferences = (e: React.FormEvent) => {
     e.preventDefault();
     updatePreferencesMutation.mutate({
-      goalsText,
       taskComplexity: taskComplexity as any,
       focusAreas,
       weekendPreference: weekendPreference as any,
@@ -133,19 +129,6 @@ function RouteComponent() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSavePreferences} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="goals">Default Goals</Label>
-                <Textarea
-                  id="goals"
-                  value={goalsText}
-                  onChange={(e) => setGoalsText(e.target.value)}
-                  placeholder="e.g. Focus on deep work and fitness..."
-                  rows={4}
-                />
-              </div>
-
-              <Separator />
-
               <div className="space-y-4">
                 <Label>Default Complexity</Label>
                 <RadioGroup

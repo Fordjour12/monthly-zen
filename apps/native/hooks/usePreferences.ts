@@ -6,7 +6,24 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
-import type { CoachTone, FixedCommitmentsJson, ResolutionsJson } from "@monthly-zen/db";
+type CoachTone = "encouraging" | "direct" | "analytical" | "friendly";
+
+type FixedCommitmentsJson = {
+  commitments: Array<{
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    description: string;
+  }>;
+};
+
+type ResolutionsJson = {
+  resolutions: Array<{
+    title: string;
+    category: string;
+    targetCount: number;
+  }>;
+};
 
 export type UpdatePreferencesInput = {
   coachName?: string;
@@ -14,7 +31,6 @@ export type UpdatePreferencesInput = {
   workingHoursStart?: string;
   workingHoursEnd?: string;
   defaultFocusArea?: string;
-  goalsText?: string;
   taskComplexity?: "Simple" | "Balanced" | "Ambitious";
   focusAreas?: string;
   resolutionsJson?: ResolutionsJson;

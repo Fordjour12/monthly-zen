@@ -29,7 +29,6 @@ const updatePreferencesSchema = z.object({
   workingHoursStart: z.string().optional(),
   workingHoursEnd: z.string().optional(),
   defaultFocusArea: z.string().optional(),
-  goalsText: z.string().optional(),
   taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]).optional(),
   focusAreas: z.string().optional(),
   resolutionsJson: resolutionsSchema.optional(),
