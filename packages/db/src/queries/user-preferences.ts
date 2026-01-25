@@ -65,6 +65,21 @@ export async function createOrUpdatePreferences(
   transaction?: DbTransaction,
 ) {
   const run = async (executor: DbTransaction) => {
+    const updateSet = Object.fromEntries(
+      Object.entries({
+        taskComplexity: data.taskComplexity,
+        weekendPreference: data.weekendPreference,
+        preferredTaskDuration: data.preferredTaskDuration,
+        fixedCommitmentsJson: data.fixedCommitmentsJson as FixedCommitmentsJson | undefined,
+        coachName: data.coachName,
+        coachTone: data.coachTone,
+        workingHoursStart: data.workingHoursStart,
+        workingHoursEnd: data.workingHoursEnd,
+        defaultFocusArea: data.defaultFocusArea,
+        updatedAt: new Date(),
+      }).filter(([, value]) => value !== undefined),
+    ) as Partial<Omit<UserPreferencesData, "id" | "userId" | "createdAt">>;
+
     const [preferences] = await executor
       .insert(userPreferences)
       .values({
@@ -83,18 +98,7 @@ export async function createOrUpdatePreferences(
       })
       .onConflictDoUpdate({
         target: userPreferences.userId,
-        set: {
-          taskComplexity: data.taskComplexity,
-          weekendPreference: data.weekendPreference,
-          preferredTaskDuration: data.preferredTaskDuration,
-          fixedCommitmentsJson: data.fixedCommitmentsJson as FixedCommitmentsJson,
-          coachName: data.coachName,
-          coachTone: data.coachTone,
-          workingHoursStart: data.workingHoursStart,
-          workingHoursEnd: data.workingHoursEnd,
-          defaultFocusArea: data.defaultFocusArea,
-          updatedAt: new Date(),
-        },
+        set: updateSet,
       })
       .returning();
 

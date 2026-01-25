@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 import * as db from "@monthly-zen/db";
-import { collectChatCompletion } from "../lib/openrouter";
+import { collectChatCompletion, type OpenRouterMessage } from "../lib/openrouter";
 
 const DEFAULT_SYSTEM_PROMPT =
   "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
@@ -186,14 +186,26 @@ async function runPlanGeneration({
     const monthYear = new Date().toISOString().slice(0, 10);
     const prompt = buildPrompt(input, monthYear);
     const model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
+    const timeoutMsRaw = Number.parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "60000", 10);
+    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 60000;
+    const messages: OpenRouterMessage[] = [
+      { role: "system", content: process.env.OPENROUTER_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ];
 
-    const { content } = await collectChatCompletion({
-      model,
-      messages: [
-        { role: "system", content: process.env.OPENROUTER_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT },
-        { role: "user", content: prompt },
-      ],
-    });
+    let content: string;
+    try {
+      ({ content } = await collectChatCompletion({
+        model,
+        messages,
+        timeoutMs,
+      }));
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error("Plan generation timed out. Please try again.");
+      }
+      throw error;
+    }
 
     const parsed = jsonExtraction(content);
     const aiResponse = {

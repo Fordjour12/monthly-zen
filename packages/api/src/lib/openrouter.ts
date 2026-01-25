@@ -20,6 +20,8 @@ export type StreamChatOptions = {
   temperature?: number;
   maxTokens?: number;
   includeUsage?: boolean;
+  timeoutMs?: number;
+  signal?: AbortSignal;
 };
 
 let openRouterClient: OpenRouter | null = null;
@@ -48,7 +50,8 @@ export async function streamChatCompletion(
     maxTokens: options.maxTokens,
     stream: true,
     streamOptions: options.includeUsage ? { includeUsage: true } : undefined,
-  });
+    signal: options.signal,
+  } as Parameters<typeof client.chat.send>[0]);
 
   return stream as AsyncIterable<OpenRouterStreamChunk>;
 }
@@ -56,26 +59,67 @@ export async function streamChatCompletion(
 export async function collectChatCompletion(
   options: StreamChatOptions,
 ): Promise<{ content: string; finishReason?: string | null }> {
-  const stream = await streamChatCompletion(options);
-  let content = "";
-  let finishReason: string | null | undefined;
+  const { timeoutMs, signal, ...streamOptions } = options;
+  const controller = timeoutMs ? new AbortController() : null;
 
-  for await (const chunk of stream) {
-    if (chunk.error?.message) {
-      throw new Error(chunk.error.message);
-    }
-
-    const choice = chunk.choices?.[0];
-    const delta = choice?.delta?.content;
-    if (delta) {
-      content += delta;
-    }
-
-    if (choice?.finish_reason && choice.finish_reason !== "error") {
-      finishReason = choice.finish_reason;
-      break;
+  if (signal && controller) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+    } else {
+      signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
     }
   }
 
-  return { content, finishReason };
+  const stream = await streamChatCompletion({
+    ...streamOptions,
+    signal: controller?.signal ?? signal,
+  });
+  let content = "";
+  let finishReason: string | null | undefined;
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise =
+    timeoutMs && timeoutMs > 0
+      ? new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            controller?.abort();
+            const error = new Error("OpenRouter request timed out");
+            error.name = "TimeoutError";
+            reject(error);
+          }, timeoutMs);
+        })
+      : null;
+
+  const consumeStream = async () => {
+    for await (const chunk of stream) {
+      if (chunk.error?.message) {
+        throw new Error(chunk.error.message);
+      }
+
+      const choice = chunk.choices?.[0];
+      const delta = choice?.delta?.content;
+      if (delta) {
+        content += delta;
+      }
+
+      if (choice?.finish_reason && choice.finish_reason !== "error") {
+        finishReason = choice.finish_reason;
+        break;
+      }
+    }
+
+    return { content, finishReason };
+  };
+
+  try {
+    if (timeoutPromise) {
+      return await Promise.race([consumeStream(), timeoutPromise]);
+    }
+
+    return await consumeStream();
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
