@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import * as SecureStore from "expo-secure-store";
 import { authClient } from "@/lib/auth-client";
-import { client } from "@/utils/orpc";
+import { orpc } from "@/utils/orpc";
 
 interface User {
   id: string;
@@ -28,6 +28,7 @@ interface AuthState {
   completeOnboarding: () => Promise<void>;
   setHasHydrated: (value: boolean) => void;
   syncOnboarding: () => Promise<void>;
+  syncSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -92,7 +93,13 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           await authClient.signOut();
-          set({ isLoggedIn: false, user: null, isLoading: false, hasCompletedOnboarding: false });
+          set({
+            isLoggedIn: false,
+            user: null,
+            isLoading: false,
+            hasCompletedOnboarding: false,
+            onboardingSyncedToServer: false,
+          });
         } catch {
           set({ error: "Failed to sign out", isLoading: false });
         }
@@ -104,7 +111,7 @@ export const useAuthStore = create<AuthState>()(
 
         // Step 2: Sync to server in background
         try {
-          await client.user.completeOnboarding();
+          await orpc.user.completeOnboarding.call({});
           set({ onboardingSyncedToServer: true });
         } catch {
           // Retry later on app foreground
@@ -116,11 +123,42 @@ export const useAuthStore = create<AuthState>()(
         const { hasCompletedOnboarding } = useAuthStore.getState();
         if (hasCompletedOnboarding) {
           try {
-            await client.user.completeOnboarding();
+            await orpc.user.completeOnboarding.call({});
             set({ onboardingSyncedToServer: true });
           } catch {
             set({ onboardingSyncedToServer: false });
           }
+        }
+      },
+
+      syncSession: async () => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const session = await authClient.getSession();
+          const user = session.data?.user as User | undefined;
+
+          if (!user) {
+            set({
+              isLoggedIn: false,
+              user: null,
+              isLoading: false,
+              hasCompletedOnboarding: false,
+              onboardingSyncedToServer: false,
+            });
+            return;
+          }
+
+          set({ isLoggedIn: true, user, isLoading: false, _hasHydrated: true });
+        } catch {
+          set({
+            isLoggedIn: false,
+            user: null,
+            isLoading: false,
+            hasCompletedOnboarding: false,
+            onboardingSyncedToServer: false,
+            error: "Failed to refresh session",
+          });
         }
       },
 
@@ -138,6 +176,7 @@ export const useAuthStore = create<AuthState>()(
       onRehydrateStorage: () => {
         return (state) => {
           state?.setHasHydrated(true);
+          state?.syncSession();
         };
       },
     },

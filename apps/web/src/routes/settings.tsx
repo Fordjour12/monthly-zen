@@ -32,14 +32,14 @@ function RouteComponent() {
   const queryClient = useQueryClient();
 
   // Queries
-  const preferencesQuery = useQuery(orpc.user.getPreferences.queryOptions());
+  const preferencesQuery = useQuery(orpc.preferences.get.queryOptions());
 
   // Mutations
   const updatePreferencesMutation = useMutation(
-    orpc.user.updatePreferences.mutationOptions({
+    orpc.preferences.update.mutationOptions({
       onSuccess: () => {
         toast.success("Preferences saved successfully");
-        queryClient.invalidateQueries(orpc.user.getPreferences.queryKey());
+        queryClient.invalidateQueries(orpc.preferences.get.queryKey());
       },
       onError: (error) => {
         toast.error(error.message || "Failed to save preferences");
