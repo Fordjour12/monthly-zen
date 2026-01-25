@@ -229,32 +229,34 @@ export async function replaceYearlyResolutionsForUser(
   const startOfYear = new Date(year, 0, 1);
   const endOfYear = new Date(year, 11, 31, 23, 59, 59);
 
-  await db
-    .delete(yearlyResolutions)
-    .where(
-      and(
-        eq(yearlyResolutions.userId, userId),
-        eq(yearlyResolutions.resolutionType, "yearly"),
-        gte(yearlyResolutions.startDate, startOfYear),
-        lte(yearlyResolutions.startDate, endOfYear),
-      ),
-    );
+  return db.transaction(async (tx) => {
+    await tx
+      .delete(yearlyResolutions)
+      .where(
+        and(
+          eq(yearlyResolutions.userId, userId),
+          eq(yearlyResolutions.resolutionType, "yearly"),
+          gte(yearlyResolutions.startDate, startOfYear),
+          lte(yearlyResolutions.startDate, endOfYear),
+        ),
+      );
 
-  if (resolutions.length === 0) return [];
+    if (resolutions.length === 0) return [];
 
-  const created = await db
-    .insert(yearlyResolutions)
-    .values(
-      resolutions.map((resolution) => ({
-        userId,
-        text: resolution.title,
-        category: resolution.category || "other",
-        resolutionType: "yearly",
-        priority: 2,
-        startDate: startOfYear,
-      })),
-    )
-    .returning();
+    const created = await tx
+      .insert(yearlyResolutions)
+      .values(
+        resolutions.map((resolution) => ({
+          userId,
+          text: resolution.title,
+          category: resolution.category || "other",
+          resolutionType: "yearly",
+          priority: 2,
+          startDate: startOfYear,
+        })),
+      )
+      .returning();
 
-  return created;
+    return created;
+  });
 }
