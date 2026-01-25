@@ -16,18 +16,9 @@ import {
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
-import type { ChatMessage } from "@/storage/chatStore";
-import {
-  addMessage,
-  getMessages,
-  newId,
-  setLastConversationId,
-  updateConversation,
-  updateMessage,
-} from "@/storage/chatStore";
-import { throttle } from "@/storage/throttle";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
+import { useToast } from "heroui-native";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -49,18 +40,11 @@ type Message = {
   meta?: string;
 };
 
-type OpenRouterChunk = {
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-};
-
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
-const SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+type ServerStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; finishReason?: string }
+  | { type: "error"; message: string }
+  | { type: "usage"; usage: unknown };
 
 type PlannerAiStreamTestProps = {
   planId?: number;
@@ -70,6 +54,7 @@ type PlannerAiStreamTestProps = {
 export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
+  const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [input, setInput] = useState("");
@@ -99,62 +84,79 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const streamingMessageId = useRef<string | null>(null);
   const hasSeededPlan = useRef(false);
 
-  const persistAssistantContentThrottled = useMemo(
-    () =>
-      throttle((targetConversationId: string, messageId: string, content: string) => {
-        updateMessage(targetConversationId, messageId, { content });
-        updateConversation(targetConversationId, {
-          updatedAt: Date.now(),
-          lastMessagePreview: content.slice(0, 120),
-        });
-      }, 500),
-    [],
-  );
+  const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
 
-  const storedToLocalMessage = useMemo(
-    () =>
-      (stored: ChatMessage): Message => ({
-        id: stored.id,
-        role: stored.role,
-        content: stored.content,
-        meta: typeof stored.meta?.label === "string" ? stored.meta.label : undefined,
-      }),
-    [],
-  );
+  const loadConversationMessages = async () => {
+    if (!conversationId || !serverUrl) return;
+
+    const res = await fetch(`${serverUrl}/api/conversations/${conversationId}/messages`, {
+      credentials: "include",
+    });
+
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      messages?: Array<{
+        id: string;
+        role: "system" | "user" | "assistant";
+        content: string;
+      }>;
+    };
+
+    if (!Array.isArray(data.messages)) return;
+    if (data.messages.length === 0) {
+      setMessages(defaultMessages);
+      return;
+    }
+
+    setMessages(
+      data.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      })),
+    );
+  };
 
   const planQuery = useQuery({
     ...orpc.plan.getById.queryOptions({ planId: planId ?? 0, input: { planId: planId ?? 0 } }),
     enabled: Boolean(planId),
   });
 
-  useEffect(() => {
+  const saveDraftMutation = useMutation(orpc.plan.saveDraftFromConversation.mutationOptions());
+
+  const handleSaveDraft = async () => {
     if (!conversationId) return;
-    setLastConversationId(conversationId);
-
-    const storedMessages = getMessages(conversationId);
-    if (storedMessages.length > 0) {
-      setMessages(storedMessages.map(storedToLocalMessage));
-      return;
-    }
-
-    const now = Date.now();
-    const seeded = defaultMessages.map((message, idx) => {
-      const id = newId(message.role);
-      const stored: ChatMessage = {
-        id,
+    try {
+      const result = (await saveDraftMutation.mutateAsync({
         conversationId,
-        role: message.role,
-        content: message.content,
-        createdAt: now + idx,
-        status: "final",
-        meta: message.meta ? { label: message.meta } : undefined,
-      };
-      addMessage(stored);
-      return stored;
-    });
+      })) as { success: boolean; draftKey?: string; error?: string };
 
-    setMessages(seeded.map(storedToLocalMessage));
-  }, [conversationId, defaultMessages, storedToLocalMessage]);
+      if (!result.success || !result.draftKey) {
+        toast.show({
+          variant: "danger",
+          label: "Save failed",
+          description: result.error || "Could not create draft",
+        });
+        return;
+      }
+
+      toast.show({
+        variant: "success",
+        label: "Draft created",
+        description: "Review and confirm when you’re ready.",
+      });
+
+      router.push(`/draft/${result.draftKey}` as any as never);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not create draft";
+      toast.show({ variant: "danger", label: "Save failed", description: message });
+    }
+  };
+
+  useEffect(() => {
+    void loadConversationMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
 
   useEffect(() => {
     return () => {
@@ -205,18 +207,6 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     [],
   );
 
-  const buildChatMessages = (history: Message[]) => {
-    const cleanedHistory = history
-      .filter((message) => message.role !== "system")
-      .map((message) => ({
-        role: message.role,
-        content: message.content.trim(),
-      }))
-      .filter((message) => message.content.length > 0);
-
-    return [{ role: "system", content: SYSTEM_PROMPT }, ...cleanedHistory];
-  };
-
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
     if (!streamingMessageId.current) return;
     setMessages((prev) =>
@@ -231,62 +221,25 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isStreaming) return;
+    if (!conversationId || !serverUrl) {
+      toast.show({
+        variant: "danger",
+        label: "Chat unavailable",
+        description: "Missing conversationId or server URL",
+      });
+      return;
+    }
 
     Haptics.selectionAsync();
-    const now = Date.now();
-    const userMessageId = conversationId ? newId("user") : `user-${now}`;
+
     const userMessage: Message = {
-      id: userMessageId,
+      id: `local-user-${Date.now()}`,
       role: "user",
       content: content.trim(),
     };
 
-    if (conversationId) {
-      addMessage({
-        id: userMessageId,
-        conversationId,
-        role: "user",
-        content: userMessage.content,
-        createdAt: now,
-        status: "final",
-      });
-      updateConversation(conversationId, {
-        updatedAt: now,
-        lastMessagePreview: userMessage.content.slice(0, 120),
-      });
-    }
-
-    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
-          meta: "Config",
-        },
-      ]);
-      setInput("");
-      return;
-    }
-
-    const assistantId = conversationId ? newId("assistant") : `assistant-${now}`;
+    const assistantId = `local-assistant-${Date.now()}`;
     streamingMessageId.current = assistantId;
-
-    if (conversationId) {
-      addMessage({
-        id: assistantId,
-        conversationId,
-        role: "assistant",
-        content: "",
-        createdAt: now + 1,
-        status: "streaming",
-        meta: { label: "Streaming" },
-      });
-      updateConversation(conversationId, { updatedAt: Date.now() });
-    }
 
     setMessages((prev) => [
       ...prev,
@@ -301,20 +254,13 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setInput("");
     setIsStreaming(true);
 
-    const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
-    const payload = JSON.stringify({
-      model,
-      stream: true,
-      messages: buildChatMessages([...messages, userMessage]),
-    });
+    const payload = JSON.stringify({ message: userMessage.content });
 
-    const eventSource = new EventSource(OPENROUTER_URL, {
+    const eventSource = new EventSource(`${serverUrl}/api/conversations/${conversationId}/stream`, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-Title": "Monthly Zen (Native)",
       },
       body: payload,
       pollingInterval: 0,
@@ -333,48 +279,24 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       const trimmed = data.trim();
       if (!trimmed) return;
 
-      if (trimmed === "[DONE]") {
-        closeStream();
-        return;
-      }
-
       try {
-        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
-        if (parsed.error?.message) {
-          if (conversationId && streamingMessageId.current) {
-            updateMessage(conversationId, streamingMessageId.current, {
-              status: "error",
-              content: `Error: ${parsed.error.message}`,
-            });
-            updateConversation(conversationId, { updatedAt: Date.now() });
-          }
-          updateStreamingMessage(`Error: ${parsed.error.message}`);
+        const parsed = JSON.parse(trimmed) as ServerStreamEvent;
+
+        if (parsed.type === "error") {
+          updateStreamingMessage(`Error: ${parsed.message}`);
           closeStream();
+          void loadConversationMessages();
           return;
         }
 
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          updateStreamingMessage((prev) => {
-            const next = prev + delta;
-            if (conversationId && streamingMessageId.current) {
-              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
-            }
-            return next;
-          });
+        if (parsed.type === "delta") {
+          updateStreamingMessage((prev) => prev + parsed.text);
+          return;
         }
 
-        const finishReason = parsed.choices?.[0]?.finish_reason;
-        if (finishReason) {
-          updateStreamingMessage((prev) => {
-            const next = `${prev}\n\n[${finishReason}]`;
-            if (conversationId && streamingMessageId.current) {
-              updateMessage(conversationId, streamingMessageId.current, { status: "final" });
-              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
-            }
-            return next;
-          });
+        if (parsed.type === "done") {
           closeStream();
+          void loadConversationMessages();
         }
       } catch (error) {
         console.error("Failed to parse SSE event", error);
@@ -525,6 +447,22 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                         >
                           {message.content || (isStreaming ? "..." : "")}
                         </Text>
+
+                        {message.role === "assistant" &&
+                          Boolean(conversationId) &&
+                          message.content.trim().length > 0 && (
+                            <View className="mt-3">
+                              <TouchableOpacity
+                                onPress={handleSaveDraft}
+                                disabled={saveDraftMutation.isPending}
+                                className="self-start px-3 py-2 rounded-full bg-background/60 border border-border/40"
+                              >
+                                <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                                  {saveDraftMutation.isPending ? "Saving..." : "Save Plan"}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
                       </View>
                     )}
                   </Animated.View>

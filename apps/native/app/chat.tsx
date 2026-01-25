@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import PlannerAiStreamTest from "./test/ai-stream";
-import { createConversation } from "@/storage/chatStore";
 
 export default function Chat() {
   const router = useRouter();
@@ -20,20 +19,44 @@ export default function Chat() {
 
   useEffect(() => {
     if (didEnsureConversation.current) return;
-    if (conversationId) {
-      didEnsureConversation.current = true;
-      return;
-    }
+    const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+    if (!serverUrl) return;
 
-    const created = createConversation("Planner Chat");
-    router.replace({
-      pathname: "/chat",
-      params: {
-        conversationId: created.id,
-        ...(typeof planIdParam === "string" ? { planId: planIdParam } : {}),
-      },
-    });
-    didEnsureConversation.current = true;
+    const ensure = async () => {
+      if (conversationId) {
+        await fetch(`${serverUrl}/api/conversations`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ id: conversationId, title: "Planner Chat" }),
+        }).catch(() => {});
+
+        didEnsureConversation.current = true;
+        return;
+      }
+
+      const res = await fetch(`${serverUrl}/api/conversations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: "Planner Chat" }),
+      });
+
+      if (!res.ok) return;
+      const data = (await res.json()) as { id?: string };
+      if (!data.id) return;
+
+      router.replace({
+        pathname: "/chat",
+        params: {
+          conversationId: data.id,
+          ...(typeof planIdParam === "string" ? { planId: planIdParam } : {}),
+        },
+      });
+      didEnsureConversation.current = true;
+    };
+
+    void ensure();
   }, [conversationId, planIdParam, router]);
 
   if (!conversationId) return null;

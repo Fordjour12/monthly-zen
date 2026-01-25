@@ -47,6 +47,22 @@ const planByIdSchema = z.object({
   planId: z.number().int().positive(),
 });
 
+const saveDraftFromConversationSchema = z.object({
+  conversationId: z.string().min(1),
+  monthYear: z.string().optional(),
+});
+
+const getDraftSchema = z.object({
+  draftKey: z.string().min(1),
+});
+
+const currentMonthYear = () => {
+  const now = new Date();
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
+};
+
 const jsonExtraction = (input: string) => {
   const trimmed = input.trim();
   try {
@@ -294,5 +310,53 @@ export const planRouter = {
     }
 
     return { success: true, data: plan };
+  }),
+
+  saveDraftFromConversation: protectedProcedure
+    .input(saveDraftFromConversationSchema)
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id;
+      const message = await db.getLatestAssistantMessage(userId, input.conversationId);
+
+      if (!message || !message.content.trim()) {
+        return { success: false, error: "No assistant response to save" };
+      }
+
+      const preferences =
+        (await db.getUserPreferences(userId)) ?? (await db.createOrUpdatePreferences(userId, {}));
+
+      if (!preferences) {
+        return { success: false, error: "Unable to load user preferences" };
+      }
+
+      const monthYear = input.monthYear ?? currentMonthYear();
+
+      const planData = {
+        source: "conversation" as const,
+        conversationId: input.conversationId,
+        assistantMessageId: message.id,
+        content: message.content,
+      };
+
+      const { draftKey } = await db.createDraft(
+        userId,
+        planData,
+        preferences.id,
+        monthYear,
+        "Saved from chat",
+      );
+
+      return { success: true, draftKey };
+    }),
+
+  getDraft: protectedProcedure.input(getDraftSchema).handler(async ({ input, context }) => {
+    const userId = context.session.user.id;
+    const draft = await db.getDraft(userId, input.draftKey);
+
+    if (!draft) {
+      return { success: false, error: "Draft not found" };
+    }
+
+    return { success: true, data: draft };
   }),
 };
