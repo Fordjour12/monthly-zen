@@ -1,8 +1,7 @@
 import { db } from "../index";
 import { eq } from "drizzle-orm";
-import { userGoals, userPreferences } from "../schema";
+import { userPreferences } from "../schema";
 import type { CoachTone, FixedCommitmentsJson } from "../schema/user-preferences";
-import type { ResolutionsJson } from "../schema/user-goals";
 
 type DbTransaction = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 
@@ -14,13 +13,11 @@ export interface UserPreferencesData {
   workingHoursStart: string;
   workingHoursEnd: string;
   defaultFocusArea?: string | null;
-  goalsText: string;
   taskComplexity: "Simple" | "Balanced" | "Ambitious";
-  focusAreas: string;
-  resolutionsJson: ResolutionsJson;
   weekendPreference: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number | null;
   fixedCommitmentsJson: FixedCommitmentsJson;
+  createdAt: Date;
   updatedAt: Date;
 }
 
@@ -38,13 +35,10 @@ export async function getUserPreferences(userId: string) {
       weekendPreference: userPreferences.weekendPreference,
       preferredTaskDuration: userPreferences.preferredTaskDuration,
       fixedCommitmentsJson: userPreferences.fixedCommitmentsJson,
+      createdAt: userPreferences.createdAt,
       updatedAt: userPreferences.updatedAt,
-      goalsText: userGoals.goalsText,
-      focusAreas: userGoals.focusAreas,
-      resolutionsJson: userGoals.resolutionsJson,
     })
     .from(userPreferences)
-    .leftJoin(userGoals, eq(userGoals.userId, userPreferences.userId))
     .where(eq(userPreferences.userId, userId));
 
   return preferences;
@@ -54,45 +48,15 @@ export async function updateUserPreferences(
   userId: string,
   updates: Partial<Omit<UserPreferencesData, "id" | "userId" | "updatedAt">>,
 ) {
-  const { goalsText, focusAreas, resolutionsJson, ...preferenceUpdates } = updates;
-  const shouldUpdateGoals =
-    goalsText !== undefined || focusAreas !== undefined || resolutionsJson !== undefined;
-
   const [preferences] = await db
     .update(userPreferences)
-    .set({ ...preferenceUpdates, updatedAt: new Date() })
+    .set({ ...updates, updatedAt: new Date() })
     .where(eq(userPreferences.userId, userId))
     .returning();
 
-  if (shouldUpdateGoals) {
-    await db
-      .insert(userGoals)
-      .values({
-        userId,
-        goalsText: goalsText ?? "",
-        focusAreas: focusAreas ?? "personal",
-        resolutionsJson: (resolutionsJson as ResolutionsJson) || { resolutions: [] },
-        inputSavedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: userGoals.userId,
-        set: {
-          ...(goalsText !== undefined ? { goalsText } : {}),
-          ...(focusAreas !== undefined ? { focusAreas } : {}),
-          ...(resolutionsJson !== undefined
-            ? { resolutionsJson: resolutionsJson as ResolutionsJson }
-            : {}),
-          inputSavedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-  }
-
   if (!preferences) return preferences;
 
-  const merged = await getUserPreferences(userId);
-  return merged || preferences;
+  return preferences;
 }
 
 export async function createOrUpdatePreferences(
@@ -134,33 +98,7 @@ export async function createOrUpdatePreferences(
       })
       .returning();
 
-    const [goals] = await executor
-      .insert(userGoals)
-      .values({
-        userId,
-        goalsText: data.goalsText || "",
-        focusAreas: data.focusAreas || "personal",
-        resolutionsJson: (data.resolutionsJson as ResolutionsJson) || { resolutions: [] },
-        inputSavedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: userGoals.userId,
-        set: {
-          goalsText: data.goalsText,
-          focusAreas: data.focusAreas,
-          resolutionsJson: data.resolutionsJson as ResolutionsJson,
-          inputSavedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    return {
-      ...preferences,
-      goalsText: goals?.goalsText ?? "",
-      focusAreas: goals?.focusAreas ?? "personal",
-      resolutionsJson: goals?.resolutionsJson ?? { resolutions: [] },
-    };
+    return preferences;
   };
 
   if (transaction) {

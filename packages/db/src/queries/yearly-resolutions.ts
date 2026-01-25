@@ -1,7 +1,13 @@
 import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 
 import { db } from "../index";
-import { planTasks, type PlanningResolution, yearlyResolutions } from "../schema";
+import { planTasks, yearlyResolutions } from "../schema";
+
+type PlanningResolution = {
+  title: string;
+  category: string;
+  targetCount: number;
+};
 
 type DbTransaction = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
 

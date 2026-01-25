@@ -14,16 +14,6 @@ const fixedCommitmentsSchema = z.object({
   ),
 });
 
-const resolutionsSchema = z.object({
-  resolutions: z.array(
-    z.object({
-      title: z.string().min(1),
-      category: z.string().min(1),
-      targetCount: z.number().int().min(1),
-    }),
-  ),
-});
-
 const updatePreferencesSchema = z.object({
   coachName: z.string().min(1).max(50).optional(),
   coachTone: z.enum(["encouraging", "direct", "analytical", "friendly"]).optional(),
@@ -31,8 +21,6 @@ const updatePreferencesSchema = z.object({
   workingHoursEnd: z.string().optional(),
   defaultFocusArea: z.string().optional(),
   taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]).optional(),
-  focusAreas: z.string().optional(),
-  resolutionsJson: resolutionsSchema.optional(),
   weekendPreference: z.enum(["Work", "Rest", "Mixed"]).optional(),
   preferredTaskDuration: z.number().optional(),
   fixedCommitmentsJson: fixedCommitmentsSchema.optional(),
@@ -59,22 +47,11 @@ export const preferencesRouter = {
     logger.info({
       event: "preferences.update.start",
       userId,
-      resolutionsCount: input.resolutionsJson?.resolutions.length ?? 0,
     });
 
     try {
       const preferences = await db.db.transaction(async (tx) => {
         const updated = await db.createOrUpdatePreferences(userId, input, tx);
-
-        if (input.resolutionsJson) {
-          await db.replaceYearlyResolutionsForUser(
-            userId,
-            input.resolutionsJson.resolutions,
-            undefined,
-            tx,
-          );
-        }
-
         return updated;
       });
 

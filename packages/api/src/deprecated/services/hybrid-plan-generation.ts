@@ -92,10 +92,8 @@ export async function generatePlan(
       return { success: false, error: "Generation quota exceeded. Please request more tokens." };
     }
 
-    const preference = await db.createGoalPreference({
-      userId: input.userId,
+    const preference = await db.createOrUpdatePreferences(input.userId, {
       taskComplexity: input.taskComplexity,
-      focusAreas: input.focusAreas,
       weekendPreference: input.weekendPreference,
       fixedCommitmentsJson: input.fixedCommitmentsJson,
     });
@@ -310,18 +308,19 @@ function buildPrompt(
   currentDate: Date,
   monthYear: string,
   resolutions?: {
-    id: number;
-    title: string;
-    category: string;
-    targetCount: number;
-    progress: number;
+    text: string;
+    category: string | null;
+    progressPercent: number;
   }[],
 ): string {
   // Format resolutions for the prompt
   const resolutionsText =
     resolutions && resolutions.length > 0
       ? resolutions
-          .map((r) => `- ${r.title} (${r.category}): ${r.progress}/${r.targetCount} completed)`)
+          .map(
+            (r) =>
+              `- ${r.text} (${r.category ?? "other"}): ${Math.round(r.progressPercent)}% complete`,
+          )
           .join("\n")
       : "No resolutions set for this year";
 

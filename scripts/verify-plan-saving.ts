@@ -6,7 +6,6 @@ import {
 } from "../packages/db/src/queries/monthly-plans";
 import { db } from "../packages/db/src";
 import { user } from "../packages/db/src/schema/auth";
-import { userGoals } from "../packages/db/src/schema/user-goals";
 import { userPreferences } from "../packages/db/src/schema/user-preferences";
 
 async function main() {
@@ -40,13 +39,6 @@ async function main() {
       fixedCommitmentsJson: { commitments: [] },
     })
     .returning();
-
-  await db.insert(userGoals).values({
-    userId: mockUserId,
-    goalsText: "Test Goal",
-    focusAreas: "Coding",
-    inputSavedAt: new Date(),
-  });
 
   const mockPlanData = {
     monthly_summary: "Confirmed Draft Plan",

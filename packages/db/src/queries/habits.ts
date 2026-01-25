@@ -165,7 +165,6 @@ function calculateStatsFromLogs(
   today: string,
 ): { currentStreak: number; longestStreak: number; completionRate: number } {
   const completionDates = new Set(logDates);
-  const totalCompletions = completionDates.size;
 
   // Calculate streak
   const { currentStreak, longestStreak } = calculateStreaks(completionDates, targetDays, today);

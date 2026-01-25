@@ -174,15 +174,16 @@ async function runPlanGeneration({
     const preferences = await db.createOrUpdatePreferences(userId, {
       coachName: input.coachName,
       coachTone: input.coachTone,
-      goalsText: input.mainGoal,
-      focusAreas: input.focusAreas,
       taskComplexity: input.taskComplexity,
       weekendPreference: input.weekendPreference,
-      resolutionsJson: input.resolutionsJson,
       fixedCommitmentsJson: input.fixedCommitmentsJson,
     });
 
-    const monthYear = new Date().toISOString().split("T")[0];
+    if (!preferences) {
+      throw new Error("Failed to save user preferences");
+    }
+
+    const monthYear = new Date().toISOString().slice(0, 10);
     const prompt = buildPrompt(input, monthYear);
     const model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
 
@@ -199,7 +200,7 @@ async function runPlanGeneration({
       rawContent: content,
       metadata: {
         contentLength: content.length,
-        format: parsed ? "json" : "text",
+        format: parsed ? ("json" as const) : ("text" as const),
       },
     };
 
@@ -240,6 +241,10 @@ export const planRouter = {
       }
 
       const job = await db.createPlanGenerationJob({ userId, requestPayload: input });
+
+      if (!job) {
+        return { success: false, error: "Failed to start generation" };
+      }
 
       void runPlanGeneration({ jobId: job.id, userId, input });
 

@@ -1,8 +1,6 @@
 export * from "./auth";
 export * from "./enums";
 export * from "./user-preferences";
-export * from "./user-goals";
-export type { PlanningResolution, ResolutionsJson } from "./user-goals";
 export * from "./monthly-plans";
 export * from "./plan-tasks";
 export * from "./yearly-resolutions";
