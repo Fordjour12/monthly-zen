@@ -29,6 +29,7 @@ interface AuthState {
   setHasHydrated: (value: boolean) => void;
   syncOnboarding: () => Promise<void>;
   syncSession: () => Promise<void>;
+  syncOnboardingStatus: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -128,6 +129,15 @@ export const useAuthStore = create<AuthState>()(
           } catch {
             set({ onboardingSyncedToServer: false });
           }
+        }
+      },
+
+      syncOnboardingStatus: async () => {
+        try {
+          const result = await orpc.user.getOnboardingStatus.call({});
+          set({ hasCompletedOnboarding: result.hasCompletedOnboarding });
+        } catch {
+          set({ hasCompletedOnboarding: false });
         }
       },
 

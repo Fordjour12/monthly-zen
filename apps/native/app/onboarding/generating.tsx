@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Container } from "@/components/ui/container";
@@ -9,9 +9,9 @@ import {
   AiChat01Icon,
   CheckmarkCircle01Icon,
   SparklesIcon,
-  RocketIcon,
+  MailOpen01Icon,
 } from "@hugeicons/core-free-icons";
-import { Button, Card } from "heroui-native";
+import { Button, Card, useToast } from "heroui-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -23,6 +23,9 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
+import { orpc } from "@/utils/orpc";
 
 const STEPS = [
   { id: 0, label: "Saving your resolutions..." },
@@ -41,6 +44,7 @@ export default function GeneratingScreen() {
   const { completeOnboarding } = useAuthStore();
   const params = useLocalSearchParams();
   const updatePreferences = useUpdatePreferences();
+  const { toast } = useToast();
 
   const mainGoal = params.mainGoal as string;
   const coachName = params.coachName as string;
@@ -74,9 +78,12 @@ export default function GeneratingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<number | null>(null);
+  const [planId, setPlanId] = useState<number | null>(null);
+  const hasNotified = useRef(false);
 
   const sampleTasks = [
-    `Define what success looks like for “${mainGoal}.”`,
+    `Define what success looks like for "${mainGoal}."`,
     "Block two deep-focus sessions this week.",
     "Close the week with a 10-minute review.",
   ];
@@ -85,11 +92,40 @@ export default function GeneratingScreen() {
   const pulseScale = useSharedValue(1);
   const rotation = useSharedValue(0);
 
+  const startGenerationMutation = useMutation(
+    orpc.plan.startFirstGeneration.mutationOptions({
+      onSuccess: (result) => {
+        if (result.success) {
+          setJobId(result.jobId);
+        } else {
+          setError(result.error || "Failed to start generation");
+        }
+      },
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : "Failed to start generation";
+        setError(message);
+      },
+    }),
+  );
+
+  const statusQuery = useQuery({
+    ...orpc.plan.getGenerationStatus.queryOptions({ jobId: jobId ?? 0 }),
+    enabled: jobId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.data?.status;
+      if (!status || status === "completed" || status === "failed") {
+        return false;
+      }
+      return 1500;
+    },
+  });
+
   useEffect(() => {
     setError(null);
     setCurrentStep(0);
+    setIsComplete(false);
 
-    const savePreferences = async () => {
+    const saveAndGenerate = async () => {
       try {
         await updatePreferences.mutateAsync({
           coachName,
@@ -100,19 +136,29 @@ export default function GeneratingScreen() {
           resolutionsJson: { resolutions: parsedResolutions },
           fixedCommitmentsJson: parsedCommitments,
         });
+
+        startGenerationMutation.mutate({
+          mainGoal,
+          coachName,
+          coachTone,
+          taskComplexity,
+          focusAreas,
+          weekendPreference,
+          resolutionsJson: { resolutions: parsedResolutions },
+          fixedCommitmentsJson: parsedCommitments,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to save preferences";
         setError(message);
       }
     };
 
-    savePreferences();
+    saveAndGenerate();
 
     const timers = [
       setTimeout(() => setCurrentStep(1), 800),
       setTimeout(() => setCurrentStep(2), 1600),
       setTimeout(() => setCurrentStep(3), 2400),
-      setTimeout(() => setIsComplete(true), 2800),
     ];
 
     // Pulse animation for the AI icon
@@ -131,11 +177,70 @@ export default function GeneratingScreen() {
       -1,
       false,
     );
+
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
     return () => timers.forEach((timer) => clearTimeout(timer));
   }, []);
 
+  useEffect(() => {
+    if (statusQuery.data && !statusQuery.data.success) {
+      setError(statusQuery.data.error || "Generation failed");
+      return;
+    }
+
+    const status = statusQuery.data?.data?.status;
+    if (status === "failed") {
+      setError(statusQuery.data?.data?.errorMessage || "Generation failed");
+      return;
+    }
+
+    if (status === "completed") {
+      const nextPlanId = statusQuery.data?.data?.planId ?? null;
+      if (nextPlanId) {
+        setPlanId(nextPlanId);
+      }
+      setIsComplete(true);
+    }
+  }, [statusQuery.data?.data?.status]);
+
+  useEffect(() => {
+    if (!isComplete || hasNotified.current) return;
+
+    hasNotified.current = true;
+    toast.show({
+      title: "Your plan is ready",
+      description: "Open the plan chat to refine or tweak it.",
+    });
+
+    const notify = async () => {
+      const permissions = await Notifications.requestPermissionsAsync();
+      if (permissions.status === "granted") {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Your monthly plan is ready",
+            body: "Tap to open your plan chat and refine it.",
+          },
+          trigger: null,
+        });
+      }
+    };
+
+    notify();
+  }, [isComplete, toast]);
+
   const handleContinue = async () => {
     await completeOnboarding();
+    if (planId) {
+      router.replace({ pathname: "/chat", params: { planId: String(planId) } });
+      return;
+    }
     router.replace("/chat");
   };
 
@@ -284,7 +389,7 @@ export default function GeneratingScreen() {
                     <Text className="text-lg font-sans-semibold text-primary-foreground">
                       Open Plan Chat
                     </Text>
-                    <HugeiconsIcon icon={RocketIcon} size={20} color={colors.background} />
+                    <HugeiconsIcon icon={MailOpen01Icon} size={20} color={colors.background} />
                   </View>
                 </Button>
               </Animated.View>
