@@ -133,6 +133,7 @@ export default function GeneratingScreen() {
           taskComplexity,
           weekendPreference,
           fixedCommitmentsJson: parsedCommitments,
+          resolutionsJson: { resolutions: parsedResolutions },
         });
 
         startGenerationMutation.mutate({

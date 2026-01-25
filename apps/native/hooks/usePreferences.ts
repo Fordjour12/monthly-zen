@@ -17,6 +17,14 @@ type FixedCommitmentsJson = {
   }>;
 };
 
+type ResolutionsJson = {
+  resolutions: Array<{
+    title: string;
+    category: string;
+    targetCount: number;
+  }>;
+};
+
 export type UpdatePreferencesInput = {
   coachName?: string;
   coachTone?: CoachTone;
@@ -27,6 +35,7 @@ export type UpdatePreferencesInput = {
   weekendPreference?: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number;
   fixedCommitmentsJson?: FixedCommitmentsJson;
+  resolutionsJson?: ResolutionsJson;
 };
 
 export function useHelloPreference() {
