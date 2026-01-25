@@ -78,10 +78,12 @@ export default function Home() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const conversation = createConversation("Planner Chat");
     setLastConversationId(conversation.id);
-    /*  router.push({
+    lastConversationRef.current = conversation.id;
+    loadConversations();
+    router.push({
       pathname: "/chat",
       params: { conversationId: conversation.id },
-    });*/
+    });
   };
 
   const openConversation = (conversationId: string) => {
