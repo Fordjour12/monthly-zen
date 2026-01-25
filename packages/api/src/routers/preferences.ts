@@ -1,6 +1,7 @@
-import { z } from "zod";
-import { protectedProcedure } from "../index";
 import * as db from "@monthly-zen/db";
+import { z } from "zod";
+
+import { protectedProcedure } from "../index";
 
 const fixedCommitmentsSchema = z.object({
   commitments: z.array(
@@ -47,6 +48,11 @@ export const preferencesRouter = {
   update: protectedProcedure.input(updatePreferencesSchema).handler(async ({ input, context }) => {
     const userId = context.session.user.id;
     const preferences = await db.createOrUpdatePreferences(userId, input);
+
+    if (input.resolutionsJson) {
+      await db.replaceYearlyResolutionsForUser(userId, input.resolutionsJson.resolutions);
+    }
+
     return { success: true, data: preferences };
   }),
 };

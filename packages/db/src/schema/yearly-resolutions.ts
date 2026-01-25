@@ -12,8 +12,8 @@ import {
 import { user } from "./auth";
 import { resolutionTypeEnum } from "./enums";
 
-export const monthlyResolutions = pgTable(
-  "monthly_resolutions",
+export const yearlyResolutions = pgTable(
+  "yearly_resolutions",
   {
     id: serial("id").primaryKey(),
     userId: text("user_id")
@@ -23,7 +23,7 @@ export const monthlyResolutions = pgTable(
     // Resolution content
     text: text("text").notNull(),
     category: varchar("category", { length: 50 }),
-    resolutionType: resolutionTypeEnum("resolution_type").default("monthly").notNull(),
+    resolutionType: resolutionTypeEnum("resolution_type").default("yearly").notNull(),
     priority: integer("priority").default(2), // 1=high, 2=medium, 3=low
 
     // Timeline
@@ -43,9 +43,9 @@ export const monthlyResolutions = pgTable(
   (table) => [index("resolution_userId_idx").on(table.userId)],
 );
 
-export const resolutionsRelations = relations(monthlyResolutions, ({ one }) => ({
+export const resolutionsRelations = relations(yearlyResolutions, ({ one }) => ({
   user: one(user, {
-    fields: [monthlyResolutions.userId],
+    fields: [yearlyResolutions.userId],
     references: [user.id],
   }),
 }));

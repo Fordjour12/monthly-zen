@@ -11,5 +11,5 @@ export * from "./coaching";
 export * from "./habits";
 export * from "./reminders";
 export * from "./pattern-detection";
-export * from "./monthly-resolutions";
+export * from "./yearly-resolutions";
 export * from "./user-preferences";
