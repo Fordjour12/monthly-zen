@@ -23,7 +23,14 @@ export const unstable_settings = {
 };
 
 export default function Layout() {
-  const { isLoggedIn, hasCompletedOnboarding, _hasHydrated, syncOnboarding } = useAuthStore();
+  const {
+    isLoggedIn,
+    hasCompletedOnboarding,
+    _hasHydrated,
+    syncOnboarding,
+    syncSession,
+    syncOnboardingStatus,
+  } = useAuthStore();
 
   useEffect(() => {
     if (_hasHydrated && !isWeb) {
@@ -34,9 +41,16 @@ export default function Layout() {
   // Sync onboarding status on app start
   useEffect(() => {
     if (_hasHydrated) {
-      syncOnboarding();
+      syncSession();
     }
   }, [_hasHydrated]);
+
+  useEffect(() => {
+    if (_hasHydrated && isLoggedIn) {
+      syncOnboardingStatus();
+      syncOnboarding();
+    }
+  }, [_hasHydrated, isLoggedIn]);
 
   if (!_hasHydrated && !isWeb) {
     return null;

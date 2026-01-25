@@ -4,7 +4,7 @@ import { protectedProcedure, publicProcedure } from "../index";
 import { planRouter } from "./plan";
 import { quotaRouter } from "./quota";
 import { tasksRouter } from "./tasks";
-import { userRouter } from "./user";
+import { userRouter } from "../../routers/user";
 import { calendarRouter } from "./calendar";
 import { coachingRouter } from "./coaching";
 import { habitsRouter } from "./habits";

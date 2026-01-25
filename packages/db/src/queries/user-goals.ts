@@ -1,6 +1,6 @@
 import { db } from "../index";
 import { eq, desc } from "drizzle-orm";
-import { userGoalsAndPreferences, user } from "../schema";
+import { userGoals, userPreferences, user } from "../schema";
 
 export interface CreateGoalPreferenceInput {
   userId: string;
@@ -18,36 +18,107 @@ export interface CreateGoalPreferenceInput {
 }
 
 export async function createGoalPreference(input: CreateGoalPreferenceInput) {
-  const [preference] = await db
-    .insert(userGoalsAndPreferences)
-    .values({
-      userId: input.userId,
-      goalsText: "",
-      taskComplexity: input.taskComplexity,
-      focusAreas: input.focusAreas,
-      weekendPreference: input.weekendPreference,
-      fixedCommitmentsJson: input.fixedCommitmentsJson as any,
-    })
-    .returning();
+  return db.transaction(async (tx) => {
+    const [preference] = await tx
+      .insert(userPreferences)
+      .values({
+        userId: input.userId,
+        taskComplexity: input.taskComplexity,
+        weekendPreference: input.weekendPreference,
+        fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+      })
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: {
+          taskComplexity: input.taskComplexity,
+          weekendPreference: input.weekendPreference,
+          fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-  return preference;
+    const [goals] = await tx
+      .insert(userGoals)
+      .values({
+        userId: input.userId,
+        goalsText: "",
+        focusAreas: input.focusAreas,
+        inputSavedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userGoals.userId,
+        set: {
+          focusAreas: input.focusAreas,
+          inputSavedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return {
+      ...preference,
+      goalsText: goals?.goalsText ?? "",
+      focusAreas: goals?.focusAreas ?? "personal",
+      resolutionsJson: goals?.resolutionsJson ?? { resolutions: [] },
+      inputSavedAt: goals?.inputSavedAt ?? new Date(),
+    };
+  });
 }
 
 export async function getGoalPreferenceById(id: number) {
   const [preference] = await db
-    .select()
-    .from(userGoalsAndPreferences)
-    .where(eq(userGoalsAndPreferences.id, id));
+    .select({
+      id: userPreferences.id,
+      userId: userPreferences.userId,
+      taskComplexity: userPreferences.taskComplexity,
+      weekendPreference: userPreferences.weekendPreference,
+      fixedCommitmentsJson: userPreferences.fixedCommitmentsJson,
+      coachName: userPreferences.coachName,
+      coachTone: userPreferences.coachTone,
+      workingHoursStart: userPreferences.workingHoursStart,
+      workingHoursEnd: userPreferences.workingHoursEnd,
+      defaultFocusArea: userPreferences.defaultFocusArea,
+      preferredTaskDuration: userPreferences.preferredTaskDuration,
+      createdAt: userPreferences.createdAt,
+      updatedAt: userPreferences.updatedAt,
+      goalsText: userGoals.goalsText,
+      focusAreas: userGoals.focusAreas,
+      resolutionsJson: userGoals.resolutionsJson,
+      inputSavedAt: userGoals.inputSavedAt,
+    })
+    .from(userPreferences)
+    .leftJoin(userGoals, eq(userGoals.userId, userPreferences.userId))
+    .where(eq(userPreferences.id, id));
 
   return preference;
 }
 
 export async function getLatestGoalPreference(userId: string) {
   const [preference] = await db
-    .select()
-    .from(userGoalsAndPreferences)
-    .where(eq(userGoalsAndPreferences.userId, userId))
-    .orderBy(desc(userGoalsAndPreferences.inputSavedAt))
+    .select({
+      id: userPreferences.id,
+      userId: userPreferences.userId,
+      taskComplexity: userPreferences.taskComplexity,
+      weekendPreference: userPreferences.weekendPreference,
+      fixedCommitmentsJson: userPreferences.fixedCommitmentsJson,
+      coachName: userPreferences.coachName,
+      coachTone: userPreferences.coachTone,
+      workingHoursStart: userPreferences.workingHoursStart,
+      workingHoursEnd: userPreferences.workingHoursEnd,
+      defaultFocusArea: userPreferences.defaultFocusArea,
+      preferredTaskDuration: userPreferences.preferredTaskDuration,
+      createdAt: userPreferences.createdAt,
+      updatedAt: userPreferences.updatedAt,
+      goalsText: userGoals.goalsText,
+      focusAreas: userGoals.focusAreas,
+      resolutionsJson: userGoals.resolutionsJson,
+      inputSavedAt: userGoals.inputSavedAt,
+    })
+    .from(userPreferences)
+    .leftJoin(userGoals, eq(userGoals.userId, userPreferences.userId))
+    .where(eq(userPreferences.userId, userId))
+    .orderBy(desc(userGoals.inputSavedAt))
     .limit(1);
 
   return preference;
@@ -57,48 +128,88 @@ export async function updateGoalPreference(
   userId: string,
   input: Omit<CreateGoalPreferenceInput, "userId">,
 ) {
-  const [preference] = await db
-    .update(userGoalsAndPreferences)
-    .set({
-      ...input,
-      inputSavedAt: new Date(),
-    })
-    .where(eq(userGoalsAndPreferences.userId, userId))
-    .returning();
+  return db.transaction(async (tx) => {
+    const [preference] = await tx
+      .update(userPreferences)
+      .set({
+        taskComplexity: input.taskComplexity,
+        weekendPreference: input.weekendPreference,
+        fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+        updatedAt: new Date(),
+      })
+      .where(eq(userPreferences.userId, userId))
+      .returning();
 
-  return preference;
+    const [goals] = await tx
+      .update(userGoals)
+      .set({
+        focusAreas: input.focusAreas,
+        inputSavedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(userGoals.userId, userId))
+      .returning();
+
+    return {
+      ...preference,
+      goalsText: goals?.goalsText ?? "",
+      focusAreas: goals?.focusAreas ?? "personal",
+      resolutionsJson: goals?.resolutionsJson ?? { resolutions: [] },
+      inputSavedAt: goals?.inputSavedAt ?? new Date(),
+    };
+  });
 }
 
 export async function upsertGoalPreference(
   userId: string,
   input: Omit<CreateGoalPreferenceInput, "userId">,
 ) {
-  // Use upsert to avoid read-then-write pattern
-  const [preference] = await db
-    .insert(userGoalsAndPreferences)
-    .values({
-      userId,
-      goalsText: "",
-      taskComplexity: input.taskComplexity,
-      focusAreas: input.focusAreas,
-      weekendPreference: input.weekendPreference,
-      fixedCommitmentsJson: input.fixedCommitmentsJson as any,
-      inputSavedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: userGoalsAndPreferences.userId,
-      set: {
-        goalsText: "",
+  return db.transaction(async (tx) => {
+    const [preference] = await tx
+      .insert(userPreferences)
+      .values({
+        userId,
         taskComplexity: input.taskComplexity,
-        focusAreas: input.focusAreas,
         weekendPreference: input.weekendPreference,
         fixedCommitmentsJson: input.fixedCommitmentsJson as any,
-        inputSavedAt: new Date(),
-      },
-    })
-    .returning();
+      })
+      .onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: {
+          taskComplexity: input.taskComplexity,
+          weekendPreference: input.weekendPreference,
+          fixedCommitmentsJson: input.fixedCommitmentsJson as any,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-  return preference;
+    const [goals] = await tx
+      .insert(userGoals)
+      .values({
+        userId,
+        goalsText: "",
+        focusAreas: input.focusAreas,
+        inputSavedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userGoals.userId,
+        set: {
+          focusAreas: input.focusAreas,
+          inputSavedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return {
+      ...preference,
+      goalsText: goals?.goalsText ?? "",
+      focusAreas: goals?.focusAreas ?? "personal",
+      resolutionsJson: goals?.resolutionsJson ?? { resolutions: [] },
+      inputSavedAt: goals?.inputSavedAt ?? new Date(),
+    };
+  });
 }
 
 export async function updateUserProfile(userId: string, input: { name?: string; image?: string }) {

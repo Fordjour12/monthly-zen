@@ -33,6 +33,14 @@ import {
 import { Button, TextField, Card } from "heroui-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useSemanticColors } from "@/utils/theme";
+import {
+  useOnboardingStore,
+  type FixedCommitment,
+  type Resolution,
+  type TaskComplexity,
+  type WeekendPreference,
+} from "@/stores/onboarding-store";
+import { useShallow } from "zustand/react/shallow";
 
 const COACH_TONES = [
   { key: "encouraging", label: "Encouraging" },
@@ -92,19 +100,6 @@ const RESOLUTION_CATEGORIES = [
   { key: "other", label: "Other", icon: MoreHorizontalIcon },
 ];
 
-interface Resolution {
-  title: string;
-  category: string;
-  targetCount: number;
-}
-
-interface FixedCommitment {
-  dayOfWeek: string;
-  startTime: string;
-  endTime: string;
-  description: string;
-}
-
 /**
  * Premium Onboarding Goals screen.
  * Features:
@@ -117,17 +112,47 @@ export default function GoalsScreen() {
   const colors = useSemanticColors();
 
   // State
-  const [mainGoal, setMainGoal] = useState("");
-  const [resolutions, setResolutions] = useState<Resolution[]>([]);
-  const [selectedCoachId, setSelectedCoachId] = useState("friendly");
-  const [coachName, setCoachName] = useState("Sunny");
-  const [coachTone, setCoachTone] = useState("friendly");
-  const [fixedCommitments, setFixedCommitments] = useState<FixedCommitment[]>([]);
-  const [taskComplexity, setTaskComplexity] = useState<"Simple" | "Balanced" | "Ambitious">(
-    "Balanced",
+  const {
+    mainGoal,
+    resolutions,
+    selectedCoachId,
+    coachName,
+    coachTone,
+    fixedCommitments,
+    taskComplexity,
+    weekendPreference,
+    stepIndex,
+    setMainGoal,
+    addResolution: addResolutionToStore,
+    removeResolution: removeResolutionFromStore,
+    setCoachProfile,
+    addCommitment: addCommitmentToStore,
+    removeCommitment: removeCommitmentFromStore,
+    setTaskComplexity,
+    setWeekendPreference,
+    setStepIndex,
+  } = useOnboardingStore(
+    useShallow((state) => ({
+      mainGoal: state.mainGoal,
+      resolutions: state.resolutions,
+      selectedCoachId: state.selectedCoachId,
+      coachName: state.coachName,
+      coachTone: state.coachTone,
+      fixedCommitments: state.fixedCommitments,
+      taskComplexity: state.taskComplexity,
+      weekendPreference: state.weekendPreference,
+      stepIndex: state.stepIndex,
+      setMainGoal: state.setMainGoal,
+      addResolution: state.addResolution,
+      removeResolution: state.removeResolution,
+      setCoachProfile: state.setCoachProfile,
+      addCommitment: state.addCommitment,
+      removeCommitment: state.removeCommitment,
+      setTaskComplexity: state.setTaskComplexity,
+      setWeekendPreference: state.setWeekendPreference,
+      setStepIndex: state.setStepIndex,
+    })),
   );
-  const [weekendPreference, setWeekendPreference] = useState<"Work" | "Rest" | "Mixed">("Mixed");
-  const [stepIndex, setStepIndex] = useState(0);
   const selectedCoach = COACH_PROFILES.find((coach) => coach.id === selectedCoachId);
 
   // Modal State
@@ -173,19 +198,19 @@ export default function GoalsScreen() {
 
   const addResolution = () => {
     if (newRes.title.trim()) {
-      setResolutions([...resolutions, { ...newRes }]);
+      addResolutionToStore({ ...newRes });
       setNewRes({ title: "", category: "personal", targetCount: 12 });
       setShowResModal(false);
     }
   };
 
   const removeResolution = (index: number) => {
-    setResolutions(resolutions.filter((_, i) => i !== index));
+    removeResolutionFromStore(index);
   };
 
   const addCommitment = () => {
     if (newCommitment.description.trim()) {
-      setFixedCommitments([...fixedCommitments, { ...newCommitment }]);
+      addCommitmentToStore({ ...newCommitment });
       setNewCommitment({
         dayOfWeek: "Monday",
         startTime: "09:00",
@@ -197,7 +222,7 @@ export default function GoalsScreen() {
   };
 
   const removeCommitment = (index: number) => {
-    setFixedCommitments(fixedCommitments.filter((_, i) => i !== index));
+    removeCommitmentFromStore(index);
   };
 
   const isFirstStep = stepIndex === 0;
@@ -328,7 +353,7 @@ export default function GoalsScreen() {
                 </Card>
               ) : (
                 <View className="gap-y-3">
-                  {resolutions.map((res, idx) => (
+                  {resolutions.map((res: Resolution, idx) => (
                     <Animated.View key={idx} entering={FadeInDown}>
                       <Card className="p-4 flex-row items-center justify-between border-none bg-surface/50">
                         <View className="flex-row items-center gap-x-3 flex-1">
@@ -386,9 +411,11 @@ export default function GoalsScreen() {
                       <TouchableOpacity
                         key={coach.id}
                         onPress={() => {
-                          setSelectedCoachId(coach.id);
-                          setCoachName(coach.name);
-                          setCoachTone(coach.tone);
+                          setCoachProfile({
+                            id: coach.id,
+                            name: coach.name,
+                            tone: coach.tone,
+                          });
                         }}
                         className={`w-1/2 rounded-2xl border p-4 ${
                           index % 2 === 0 ? "pr-2" : "pl-2"
@@ -495,7 +522,7 @@ export default function GoalsScreen() {
                   {["Simple", "Balanced", "Ambitious"].map((type) => (
                     <TouchableOpacity
                       key={type}
-                      onPress={() => setTaskComplexity(type as any)}
+                      onPress={() => setTaskComplexity(type as TaskComplexity)}
                       className={`flex-1 p-3 rounded-xl border items-center ${
                         taskComplexity === type
                           ? "bg-accent border-accent"
@@ -530,7 +557,7 @@ export default function GoalsScreen() {
                   {["Work", "Rest", "Mixed"].map((pref) => (
                     <TouchableOpacity
                       key={pref}
-                      onPress={() => setWeekendPreference(pref as any)}
+                      onPress={() => setWeekendPreference(pref as WeekendPreference)}
                       className={`flex-1 py-2.5 px-4 rounded-xl border items-center ${
                         weekendPreference === pref
                           ? "bg-accent border-accent"
@@ -673,7 +700,7 @@ export default function GoalsScreen() {
           <View className="flex-row items-center justify-between">
             {!isFirstStep ? (
               <TouchableOpacity
-                onPress={() => setStepIndex((prev) => Math.max(prev - 1, 0))}
+                onPress={() => setStepIndex(Math.max(stepIndex - 1, 0))}
                 className="px-4 py-3"
               >
                 <Text className="text-sm font-sans-semibold text-muted-foreground">Back</Text>
@@ -690,7 +717,7 @@ export default function GoalsScreen() {
                   handleNext();
                   return;
                 }
-                setStepIndex((prev) => Math.min(prev + 1, ONBOARDING_STEPS.length - 1));
+                setStepIndex(Math.min(stepIndex + 1, ONBOARDING_STEPS.length - 1));
               }}
               isDisabled={!canContinue}
             >

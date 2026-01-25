@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm";
 import { pgTable, serial, text, integer, date, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { userGoalsAndPreferences } from "./user-goals-and-preferences";
+import { userPreferences } from "./user-preferences";
 
 export const monthlyPlans = pgTable("monthly_plans", {
   id: serial("id").primaryKey(),
@@ -9,7 +9,7 @@ export const monthlyPlans = pgTable("monthly_plans", {
     .references(() => user.id)
     .notNull(),
   preferenceId: integer("preference_id")
-    .references(() => userGoalsAndPreferences.id)
+    .references(() => userPreferences.id)
     .notNull(),
 
   monthYear: date("month_year").notNull(),
@@ -35,8 +35,8 @@ export const plansRelations = relations(monthlyPlans, ({ one }) => ({
     fields: [monthlyPlans.userId],
     references: [user.id],
   }),
-  preferences: one(userGoalsAndPreferences, {
+  preferences: one(userPreferences, {
     fields: [monthlyPlans.preferenceId],
-    references: [userGoalsAndPreferences.id],
+    references: [userPreferences.id],
   }),
 }));

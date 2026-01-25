@@ -243,19 +243,16 @@ export async function replaceYearlyResolutionsForUser(
 
     if (resolutions.length === 0) return [];
 
-    const created = await tx
-      .insert(yearlyResolutions)
-      .values(
-        resolutions.map((resolution) => ({
-          userId,
-          text: resolution.title,
-          category: resolution.category || "other",
-          resolutionType: "yearly",
-          priority: 2,
-          startDate: startOfYear,
-        })),
-      )
-      .returning();
+    const values = resolutions.map((resolution) => ({
+      userId,
+      text: resolution.title,
+      category: resolution.category || "other",
+      resolutionType: "yearly" as const,
+      priority: 2,
+      startDate: startOfYear,
+    })) satisfies Array<typeof yearlyResolutions.$inferInsert>;
+
+    const created = await tx.insert(yearlyResolutions).values(values).returning();
 
     return created;
   });

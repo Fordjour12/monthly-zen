@@ -5,6 +5,7 @@ export * from "./user-goals";
 export * from "./calendar";
 export * from "./progress";
 export * from "./plan-generation";
+export * from "./plan-generation-jobs";
 export * from "./quota";
 export * from "./tasks";
 export * from "./coaching";

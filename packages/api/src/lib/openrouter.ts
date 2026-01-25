@@ -52,3 +52,30 @@ export async function streamChatCompletion(
 
   return stream as AsyncIterable<OpenRouterStreamChunk>;
 }
+
+export async function collectChatCompletion(
+  options: StreamChatOptions,
+): Promise<{ content: string; finishReason?: string | null }> {
+  const stream = await streamChatCompletion(options);
+  let content = "";
+  let finishReason: string | null | undefined;
+
+  for await (const chunk of stream) {
+    if (chunk.error?.message) {
+      throw new Error(chunk.error.message);
+    }
+
+    const choice = chunk.choices?.[0];
+    const delta = choice?.delta?.content;
+    if (delta) {
+      content += delta;
+    }
+
+    if (choice?.finish_reason && choice.finish_reason !== "error") {
+      finishReason = choice.finish_reason;
+      break;
+    }
+  }
+
+  return { content, finishReason };
+}

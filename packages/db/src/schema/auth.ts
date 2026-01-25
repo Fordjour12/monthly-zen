@@ -74,14 +74,19 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-import { userGoalsAndPreferences } from "./user-goals-and-preferences";
+import { userGoals } from "./user-goals";
+import { userPreferences } from "./user-preferences";
 
 export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
-  preferences: one(userGoalsAndPreferences, {
+  preferences: one(userPreferences, {
     fields: [user.id],
-    references: [userGoalsAndPreferences.userId],
+    references: [userPreferences.userId],
+  }),
+  goals: one(userGoals, {
+    fields: [user.id],
+    references: [userGoals.userId],
   }),
 }));
 

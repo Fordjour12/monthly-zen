@@ -16,6 +16,8 @@ import {
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
+import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -50,7 +52,11 @@ const DEFAULT_MODEL = "google/gemini-2.5-flash";
 const SYSTEM_PROMPT =
   "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
 
-export default function PlannerAiStreamTest() {
+type PlannerAiStreamTestProps = {
+  planId?: number;
+};
+
+export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
@@ -58,23 +64,34 @@ export default function PlannerAiStreamTest() {
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "system-1",
-      role: "system",
-      content: "Public streaming mode. Sends requests directly to OpenRouter.",
-      meta: "Public Test",
-    },
-    {
-      id: "assistant-1",
-      role: "assistant",
-      content: "Describe your month goals and I will stream the response.",
-      meta: "Monthly Zen",
-    },
-  ]);
+  const defaultMessages = useMemo<Message[]>(
+    () => [
+      {
+        id: "system-1",
+        role: "system",
+        content: "Public streaming mode. Sends requests directly to OpenRouter.",
+        meta: "Public Test",
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        content: "Describe your month goals and I will stream the response.",
+        meta: "Monthly Zen",
+      },
+    ],
+    [],
+  );
+
+  const [messages, setMessages] = useState<Message[]>(defaultMessages);
 
   const streamingAbort = useRef<EventSource | null>(null);
   const streamingMessageId = useRef<string | null>(null);
+  const hasSeededPlan = useRef(false);
+
+  const planQuery = useQuery({
+    ...orpc.plan.getById.queryOptions({ planId: planId ?? 0 }),
+    enabled: Boolean(planId),
+  });
 
   useEffect(() => {
     return () => {
@@ -82,6 +99,41 @@ export default function PlannerAiStreamTest() {
       streamingAbort.current?.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!planId || hasSeededPlan.current) return;
+
+    if (planQuery.data?.success && planQuery.data.data) {
+      const plan = planQuery.data.data as {
+        id: number;
+        rawAiResponse?: string | null;
+        aiResponseRaw?: unknown;
+        monthlySummary?: string | null;
+      };
+      const responseText =
+        plan.rawAiResponse?.trim() ||
+        (plan.aiResponseRaw ? JSON.stringify(plan.aiResponseRaw, null, 2) : "");
+      const intro = plan.monthlySummary?.trim()
+        ? `Plan summary: ${plan.monthlySummary}`
+        : "Your onboarding plan is ready. Ask for edits or refinements.";
+
+      hasSeededPlan.current = true;
+      setMessages([
+        {
+          id: "system-plan",
+          role: "system",
+          content: intro,
+          meta: "Plan Ready",
+        },
+        {
+          id: `assistant-plan-${plan.id}`,
+          role: "assistant",
+          content: responseText || "Plan generated. Ask me to refine it.",
+          meta: "Monthly Plan",
+        },
+      ]);
+    }
+  }, [planId, planQuery.data?.success, planQuery.data?.data]);
 
   const backgroundGlow = useMemo(
     () => (

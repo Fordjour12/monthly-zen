@@ -6,7 +6,8 @@ import {
 } from "../packages/db/src/queries/monthly-plans";
 import { db } from "../packages/db/src";
 import { user } from "../packages/db/src/schema/auth";
-import { userGoalsAndPreferences } from "../packages/db/src/schema/user-goals-and-preferences";
+import { userGoals } from "../packages/db/src/schema/user-goals";
+import { userPreferences } from "../packages/db/src/schema/user-preferences";
 
 async function main() {
   console.log("Starting verification of DRAFT -> PLAN flow...");
@@ -31,16 +32,21 @@ async function main() {
 
   // Create preferences
   const [pref] = await db
-    .insert(userGoalsAndPreferences)
+    .insert(userPreferences)
     .values({
       userId: mockUserId,
-      goalsText: "Test Goal",
       taskComplexity: "Balanced",
-      focusAreas: "Coding",
       weekendPreference: "Rest",
-      fixedCommitmentsJson: {},
+      fixedCommitmentsJson: { commitments: [] },
     })
     .returning();
+
+  await db.insert(userGoals).values({
+    userId: mockUserId,
+    goalsText: "Test Goal",
+    focusAreas: "Coding",
+    inputSavedAt: new Date(),
+  });
 
   const mockPlanData = {
     monthly_summary: "Confirmed Draft Plan",
