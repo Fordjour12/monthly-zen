@@ -70,9 +70,8 @@ export default function Home() {
 
     const exists = listConversations().some((conversation) => conversation.id === lastId);
     if (exists) {
+      router.replace({ pathname: "/chat", params: { conversationId: lastId } });
       didAutoOpen.current = true;
-      // should be set to /chat
-      // router.replace({ pathname: "/", params: { conversationId: lastId } });
     }
   }, [router, rootNavigationState?.key]);
 

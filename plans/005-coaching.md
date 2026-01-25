@@ -19,13 +19,13 @@ Each coach includes a name + short “sell” line describing how they help.
 
 ## Onboarding screens
 
-### `apps/native/app/(tabs)/onboarding/welcome.tsx`
+### `apps/native/app/onboarding/index.tsx`
 
 - Add lightweight step indicator (1 of 3).
 - Add “What you’ll do next” preview to show journey length + purpose.
 - Add one line of social proof or outcome promise (e.g., “Your first month plan in 60 seconds”).
 
-### `apps/native/app/(tabs)/onboarding/goals.tsx`
+### `apps/native/app/onboarding/goals.tsx`
 
 - Split the long form into sections/stepper: Goal → Resolutions → Coach.
 - Add sticky mini-progress label at top.
@@ -33,7 +33,7 @@ Each coach includes a name + short “sell” line describing how they help.
 - Add helper copy under “Task Complexity” and “Weekend Preference” (e.g., “Simple = 3–5 tasks/week”).
 - Add a compact “Preview” card before “Finalize My Plan.”
 
-### `apps/native/app/(tabs)/onboarding/generating.tsx`
+### `apps/native/app/onboarding/generating.tsx`
 
 - Show “What’s happening” checklist with step checkmarks as they complete.
 - Add a graceful cancel/back-to-edit option.

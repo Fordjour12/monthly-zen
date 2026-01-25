@@ -3,6 +3,8 @@ import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db } from "../index";
 import { planTasks, type PlanningResolution, yearlyResolutions } from "../schema";
 
+type DbTransaction = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
+
 export interface CreateResolutionInput {
   userId: string;
   text: string;
@@ -225,12 +227,13 @@ export async function replaceYearlyResolutionsForUser(
   userId: string,
   resolutions: PlanningResolution[],
   year: number = new Date().getFullYear(),
+  transaction?: DbTransaction,
 ) {
   const startOfYear = new Date(year, 0, 1);
   const endOfYear = new Date(year, 11, 31, 23, 59, 59);
 
-  return db.transaction(async (tx) => {
-    await tx
+  const run = async (executor: DbTransaction) => {
+    await executor
       .delete(yearlyResolutions)
       .where(
         and(
@@ -252,8 +255,14 @@ export async function replaceYearlyResolutionsForUser(
       startDate: startOfYear,
     })) satisfies Array<typeof yearlyResolutions.$inferInsert>;
 
-    const created = await tx.insert(yearlyResolutions).values(values).returning();
+    const created = await executor.insert(yearlyResolutions).values(values).returning();
 
     return created;
-  });
+  };
+
+  if (transaction) {
+    return run(transaction);
+  }
+
+  return db.transaction(async (tx) => run(tx));
 }

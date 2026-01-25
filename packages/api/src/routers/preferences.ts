@@ -55,12 +55,42 @@ export const preferencesRouter = {
 
   update: protectedProcedure.input(updatePreferencesSchema).handler(async ({ input, context }) => {
     const userId = context.session.user.id;
-    const preferences = await db.createOrUpdatePreferences(userId, input);
+    const logger = context.logger ?? console;
+    logger.info({
+      event: "preferences.update.start",
+      userId,
+      resolutionsCount: input.resolutionsJson?.resolutions.length ?? 0,
+    });
 
-    if (input.resolutionsJson) {
-      await db.replaceYearlyResolutionsForUser(userId, input.resolutionsJson.resolutions);
+    try {
+      const preferences = await db.db.transaction(async (tx) => {
+        const updated = await db.createOrUpdatePreferences(userId, input, tx);
+
+        if (input.resolutionsJson) {
+          await db.replaceYearlyResolutionsForUser(
+            userId,
+            input.resolutionsJson.resolutions,
+            undefined,
+            tx,
+          );
+        }
+
+        return updated;
+      });
+
+      logger.info({
+        event: "preferences.update.success",
+        userId,
+      });
+
+      return { success: true, data: preferences };
+    } catch (error) {
+      logger.error({
+        event: "preferences.update.failure",
+        userId,
+        error,
+      });
+      throw error;
     }
-
-    return { success: true, data: preferences };
   }),
 };

@@ -4,6 +4,8 @@ import { userGoals, userPreferences } from "../schema";
 import type { CoachTone, FixedCommitmentsJson } from "../schema/user-preferences";
 import type { ResolutionsJson } from "../schema/user-goals";
 
+type DbTransaction = Parameters<typeof db.transaction>[0] extends (tx: infer T) => any ? T : never;
+
 export interface UserPreferencesData {
   id: number;
   userId: string;
@@ -96,9 +98,10 @@ export async function updateUserPreferences(
 export async function createOrUpdatePreferences(
   userId: string,
   data: Partial<Omit<UserPreferencesData, "id" | "userId" | "updatedAt">>,
+  transaction?: DbTransaction,
 ) {
-  return db.transaction(async (tx) => {
-    const [preferences] = await tx
+  const run = async (executor: DbTransaction) => {
+    const [preferences] = await executor
       .insert(userPreferences)
       .values({
         userId,
@@ -131,7 +134,7 @@ export async function createOrUpdatePreferences(
       })
       .returning();
 
-    const [goals] = await tx
+    const [goals] = await executor
       .insert(userGoals)
       .values({
         userId,
@@ -158,5 +161,11 @@ export async function createOrUpdatePreferences(
       focusAreas: goals?.focusAreas ?? "personal",
       resolutionsJson: goals?.resolutionsJson ?? { resolutions: [] },
     };
-  });
+  };
+
+  if (transaction) {
+    return run(transaction);
+  }
+
+  return db.transaction(async (tx) => run(tx));
 }
