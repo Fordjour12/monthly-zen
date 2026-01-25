@@ -16,6 +16,16 @@ import {
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
+import type { ChatMessage } from "@/storage/chatStore";
+import {
+  addMessage,
+  getMessages,
+  newId,
+  setLastConversationId,
+  updateConversation,
+  updateMessage,
+} from "@/storage/chatStore";
+import { throttle } from "@/storage/throttle";
 import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
 
@@ -54,9 +64,10 @@ const SYSTEM_PROMPT =
 
 type PlannerAiStreamTestProps = {
   planId?: number;
+  conversationId?: string;
 };
 
-export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps) {
+export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
@@ -88,10 +99,62 @@ export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps
   const streamingMessageId = useRef<string | null>(null);
   const hasSeededPlan = useRef(false);
 
+  const persistAssistantContentThrottled = useMemo(
+    () =>
+      throttle((targetConversationId: string, messageId: string, content: string) => {
+        updateMessage(targetConversationId, messageId, { content });
+        updateConversation(targetConversationId, {
+          updatedAt: Date.now(),
+          lastMessagePreview: content.slice(0, 120),
+        });
+      }, 500),
+    [],
+  );
+
+  const storedToLocalMessage = useMemo(
+    () =>
+      (stored: ChatMessage): Message => ({
+        id: stored.id,
+        role: stored.role,
+        content: stored.content,
+        meta: typeof stored.meta?.label === "string" ? stored.meta.label : undefined,
+      }),
+    [],
+  );
+
   const planQuery = useQuery({
-    ...orpc.plan.getById.queryOptions({ planId: planId ?? 0 }),
+    ...orpc.plan.getById.queryOptions({ planId: planId ?? 0, input: { planId: planId ?? 0 } }),
     enabled: Boolean(planId),
   });
+
+  useEffect(() => {
+    if (!conversationId) return;
+    setLastConversationId(conversationId);
+
+    const storedMessages = getMessages(conversationId);
+    if (storedMessages.length > 0) {
+      setMessages(storedMessages.map(storedToLocalMessage));
+      return;
+    }
+
+    const now = Date.now();
+    const seeded = defaultMessages.map((message, idx) => {
+      const id = newId(message.role);
+      const stored: ChatMessage = {
+        id,
+        conversationId,
+        role: message.role,
+        content: message.content,
+        createdAt: now + idx,
+        status: "final",
+        meta: message.meta ? { label: message.meta } : undefined,
+      };
+      addMessage(stored);
+      return stored;
+    });
+
+    setMessages(seeded.map(storedToLocalMessage));
+  }, [conversationId, defaultMessages, storedToLocalMessage]);
 
   useEffect(() => {
     return () => {
@@ -170,11 +233,28 @@ export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps
     if (!content.trim() || isStreaming) return;
 
     Haptics.selectionAsync();
+    const now = Date.now();
+    const userMessageId = conversationId ? newId("user") : `user-${now}`;
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: userMessageId,
       role: "user",
       content: content.trim(),
     };
+
+    if (conversationId) {
+      addMessage({
+        id: userMessageId,
+        conversationId,
+        role: "user",
+        content: userMessage.content,
+        createdAt: now,
+        status: "final",
+      });
+      updateConversation(conversationId, {
+        updatedAt: now,
+        lastMessagePreview: userMessage.content.slice(0, 120),
+      });
+    }
 
     const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -192,8 +272,21 @@ export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps
       return;
     }
 
-    const assistantId = `assistant-${Date.now()}`;
+    const assistantId = conversationId ? newId("assistant") : `assistant-${now}`;
     streamingMessageId.current = assistantId;
+
+    if (conversationId) {
+      addMessage({
+        id: assistantId,
+        conversationId,
+        role: "assistant",
+        content: "",
+        createdAt: now + 1,
+        status: "streaming",
+        meta: { label: "Streaming" },
+      });
+      updateConversation(conversationId, { updatedAt: Date.now() });
+    }
 
     setMessages((prev) => [
       ...prev,
@@ -248,6 +341,13 @@ export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps
       try {
         const parsed = JSON.parse(trimmed) as OpenRouterChunk;
         if (parsed.error?.message) {
+          if (conversationId && streamingMessageId.current) {
+            updateMessage(conversationId, streamingMessageId.current, {
+              status: "error",
+              content: `Error: ${parsed.error.message}`,
+            });
+            updateConversation(conversationId, { updatedAt: Date.now() });
+          }
           updateStreamingMessage(`Error: ${parsed.error.message}`);
           closeStream();
           return;
@@ -255,12 +355,25 @@ export default function PlannerAiStreamTest({ planId }: PlannerAiStreamTestProps
 
         const delta = parsed.choices?.[0]?.delta?.content;
         if (delta) {
-          updateStreamingMessage((prev) => prev + delta);
+          updateStreamingMessage((prev) => {
+            const next = prev + delta;
+            if (conversationId && streamingMessageId.current) {
+              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
+            }
+            return next;
+          });
         }
 
         const finishReason = parsed.choices?.[0]?.finish_reason;
         if (finishReason) {
-          updateStreamingMessage((prev) => `${prev}\n\n[${finishReason}]`);
+          updateStreamingMessage((prev) => {
+            const next = `${prev}\n\n[${finishReason}]`;
+            if (conversationId && streamingMessageId.current) {
+              updateMessage(conversationId, streamingMessageId.current, { status: "final" });
+              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
+            }
+            return next;
+          });
           closeStream();
         }
       } catch (error) {

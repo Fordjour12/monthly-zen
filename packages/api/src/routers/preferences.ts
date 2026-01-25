@@ -40,8 +40,10 @@ const updatePreferencesSchema = z.object({
 
 export const preferencesRouter = {
   hello: protectedProcedure.handler(async ({ context }) => {
+    const userId = context.session.user.id;
+    console.log(`[Preferences Hello] request received for user ${userId}`);
     return {
-      sucess: true,
+      success: true,
       data: "Hello world",
     };
   }),

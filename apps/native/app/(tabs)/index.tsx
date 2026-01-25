@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { BlurView } from "expo-blur";
 import { Stack, useFocusEffect, useRootNavigationState, useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -25,6 +26,18 @@ import {
   listConversations,
   setLastConversationId,
 } from "@/storage/chatStore";
+
+const styles = StyleSheet.create({
+  backgroundGlow: {
+    position: "absolute",
+    top: -96,
+    right: 32,
+    width: 160,
+    height: 160,
+    borderRadius: 9999,
+    overflow: "hidden",
+  },
+});
 
 export default function Home() {
   const router = useRouter();
@@ -65,7 +78,9 @@ export default function Home() {
 
   const backgroundGlow = useMemo(
     () => (
-      <View className="absolute -top-24 right-8 h-40 w-40 rounded-full bg-accent/10 blur-3xl" />
+      <BlurView intensity={30} tint="default" style={styles.backgroundGlow}>
+        <View className="flex-1 bg-accent/10" />
+      </BlurView>
     ),
     [],
   );
@@ -216,14 +231,17 @@ export default function Home() {
                         <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
                           {isLast ? "Last Opened" : "Conversation"}
                         </Text>
-                        <TouchableOpacity
-                          onPress={() => handleDelete(conversation.id)}
+                        <Pressable
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            handleDelete(conversation.id);
+                          }}
                           className="px-3 py-1 rounded-full bg-background/70 border border-border/40"
                         >
                           <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
                             Delete
                           </Text>
-                        </TouchableOpacity>
+                        </Pressable>
                       </View>
                     </View>
                   </View>
