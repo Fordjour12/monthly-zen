@@ -1,6 +1,7 @@
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+
 import { db } from "../index";
-import { eq, desc, and, isNull, gte, lte, sql } from "drizzle-orm";
-import { monthlyResolutions, planTasks } from "../schema";
+import { planTasks, type PlanningResolution, yearlyResolutions } from "../schema";
 
 export interface CreateResolutionInput {
   userId: string;
@@ -15,12 +16,12 @@ export interface CreateResolutionInput {
 
 export async function createResolution(input: CreateResolutionInput) {
   const [resolution] = await db
-    .insert(monthlyResolutions)
+    .insert(yearlyResolutions)
     .values({
       userId: input.userId,
       text: input.text,
       category: input.category || "other",
-      resolutionType: input.resolutionType || "monthly",
+      resolutionType: input.resolutionType || "yearly",
       priority: input.priority || 2,
       targetDate: input.targetDate,
       isRecurring: input.isRecurring || false,
@@ -32,13 +33,13 @@ export async function createResolution(input: CreateResolutionInput) {
 }
 
 export async function getResolutionsByUser(userId: string, includeArchived = false) {
-  const condition = eq(monthlyResolutions.userId, userId);
+  const condition = eq(yearlyResolutions.userId, userId);
 
   const resolutions = await db
     .select()
-    .from(monthlyResolutions)
-    .where(and(condition, includeArchived ? undefined : isNull(monthlyResolutions.archivedAt)))
-    .orderBy(desc(monthlyResolutions.createdAt));
+    .from(yearlyResolutions)
+    .where(and(condition, includeArchived ? undefined : isNull(yearlyResolutions.archivedAt)))
+    .orderBy(desc(yearlyResolutions.createdAt));
 
   return resolutions;
 }
@@ -46,8 +47,8 @@ export async function getResolutionsByUser(userId: string, includeArchived = fal
 export async function getResolutionById(id: number) {
   const [resolution] = await db
     .select()
-    .from(monthlyResolutions)
-    .where(eq(monthlyResolutions.id, id));
+    .from(yearlyResolutions)
+    .where(eq(yearlyResolutions.id, id));
 
   return resolution;
 }
@@ -58,17 +59,17 @@ export async function getYearlyResolutions(userId: string, year: number) {
 
   const resolutions = await db
     .select()
-    .from(monthlyResolutions)
+    .from(yearlyResolutions)
     .where(
       and(
-        eq(monthlyResolutions.userId, userId),
-        eq(monthlyResolutions.resolutionType, "yearly"),
-        gte(monthlyResolutions.startDate, startOfYear),
-        lte(monthlyResolutions.startDate, endOfYear),
-        isNull(monthlyResolutions.archivedAt),
+        eq(yearlyResolutions.userId, userId),
+        eq(yearlyResolutions.resolutionType, "yearly"),
+        gte(yearlyResolutions.startDate, startOfYear),
+        lte(yearlyResolutions.startDate, endOfYear),
+        isNull(yearlyResolutions.archivedAt),
       ),
     )
-    .orderBy(monthlyResolutions.priority);
+    .orderBy(yearlyResolutions.priority);
 
   return resolutions;
 }
@@ -109,9 +110,9 @@ export async function updateResolution(
   }
 
   const [resolution] = await db
-    .update(monthlyResolutions)
+    .update(yearlyResolutions)
     .set(updateData)
-    .where(eq(monthlyResolutions.id, id))
+    .where(eq(yearlyResolutions.id, id))
     .returning();
 
   return resolution;
@@ -119,16 +120,16 @@ export async function updateResolution(
 
 export async function archiveResolution(id: number) {
   const [resolution] = await db
-    .update(monthlyResolutions)
+    .update(yearlyResolutions)
     .set({ archivedAt: new Date(), updatedAt: new Date() })
-    .where(eq(monthlyResolutions.id, id))
+    .where(eq(yearlyResolutions.id, id))
     .returning();
 
   return resolution;
 }
 
 export async function deleteResolution(id: number) {
-  await db.delete(monthlyResolutions).where(eq(monthlyResolutions.id, id));
+  await db.delete(yearlyResolutions).where(eq(yearlyResolutions.id, id));
 }
 
 export async function linkTaskToResolution(taskId: number, resolutionId: number) {
@@ -162,7 +163,7 @@ export async function getResolutionsWithTasks(userId: string) {
   // Fetch all resolutions and linked tasks in a single query with aggregation
   const result = await db
     .select({
-      resolution: monthlyResolutions,
+      resolution: yearlyResolutions,
       linkedTasks: sql<
         Array<{
           id: number;
@@ -182,13 +183,13 @@ export async function getResolutionsWithTasks(userId: string) {
         '[]'::json
       )`,
     })
-    .from(monthlyResolutions)
+    .from(yearlyResolutions)
     .leftJoin(
       planTasks,
-      sql`${planTasks.resolutionIds} @> ${JSON.stringify([monthlyResolutions.id])}`,
+      sql`${planTasks.resolutionIds} @> ${JSON.stringify([yearlyResolutions.id])}`,
     )
-    .where(eq(monthlyResolutions.userId, userId))
-    .groupBy(monthlyResolutions.id);
+    .where(eq(yearlyResolutions.userId, userId))
+    .groupBy(yearlyResolutions.id);
 
   // Calculate progress for each resolution
   const resolutionsWithTasks = result.map((row) => {
@@ -218,4 +219,41 @@ export async function getResolutionsWithProgress(userId: string, year: number) {
       progressPercent: await calculateResolutionProgress(r.id),
     })),
   );
+}
+
+export async function replaceYearlyResolutionsForUser(
+  userId: string,
+  resolutions: PlanningResolution[],
+  year: number = new Date().getFullYear(),
+) {
+  const startOfYear = new Date(year, 0, 1);
+  const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+
+  return db.transaction(async (tx) => {
+    await tx
+      .delete(yearlyResolutions)
+      .where(
+        and(
+          eq(yearlyResolutions.userId, userId),
+          eq(yearlyResolutions.resolutionType, "yearly"),
+          gte(yearlyResolutions.startDate, startOfYear),
+          lte(yearlyResolutions.startDate, endOfYear),
+        ),
+      );
+
+    if (resolutions.length === 0) return [];
+
+    const values = resolutions.map((resolution) => ({
+      userId,
+      text: resolution.title,
+      category: resolution.category || "other",
+      resolutionType: "yearly" as const,
+      priority: 2,
+      startDate: startOfYear,
+    })) satisfies Array<typeof yearlyResolutions.$inferInsert>;
+
+    const created = await tx.insert(yearlyResolutions).values(values).returning();
+
+    return created;
+  });
 }

@@ -7,5 +7,14 @@ export default function Chat() {
   const parsedPlanId = planIdParam ? Number(planIdParam) : null;
   const planId = Number.isNaN(parsedPlanId) ? null : parsedPlanId;
 
-  return <PlannerAiStreamTest planId={planId ?? undefined} />;
+  const conversationId = Array.isArray(params.conversationId)
+    ? params.conversationId[0]
+    : params.conversationId;
+
+  return (
+    <PlannerAiStreamTest
+      planId={planId ?? undefined}
+      conversationId={typeof conversationId === "string" ? conversationId : undefined}
+    />
+  );
 }
