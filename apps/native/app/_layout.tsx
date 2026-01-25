@@ -4,6 +4,7 @@ import { Stack, SplashScreen } from "expo-router";
 import { HeroUINativeProvider } from "heroui-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -22,7 +23,14 @@ export const unstable_settings = {
 };
 
 export default function Layout() {
-  const { isLoggedIn, hasCompletedOnboarding, _hasHydrated, syncOnboarding } = useAuthStore();
+  const {
+    isLoggedIn,
+    hasCompletedOnboarding,
+    _hasHydrated,
+    syncOnboarding,
+    syncSession,
+    syncOnboardingStatus,
+  } = useAuthStore();
 
   useEffect(() => {
     if (_hasHydrated && !isWeb) {
@@ -33,9 +41,16 @@ export default function Layout() {
   // Sync onboarding status on app start
   useEffect(() => {
     if (_hasHydrated) {
-      syncOnboarding();
+      syncSession();
     }
   }, [_hasHydrated]);
+
+  useEffect(() => {
+    if (_hasHydrated && isLoggedIn) {
+      syncOnboardingStatus();
+      syncOnboarding();
+    }
+  }, [_hasHydrated, isLoggedIn]);
 
   if (!_hasHydrated && !isWeb) {
     return null;
@@ -44,34 +59,30 @@ export default function Layout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <KeyboardProvider>
-          <AppThemeProvider>
-            <HeroUINativeProvider>
-              <Stack>
-                {/* Auth Protected Routes */}
-                <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="planners/create" options={{ headerShown: false }} />
-                  <Stack.Screen name="test/ai-stream" options={{ headerShown: false }} />
-                  <Stack.Screen name="modal" options={{ presentation: "modal" }} />
-                </Stack.Protected>
+        <BottomSheetModalProvider>
+          <KeyboardProvider>
+            <AppThemeProvider>
+              <HeroUINativeProvider>
+                <Stack>
+                  <Stack.Protected guard={isLoggedIn && hasCompletedOnboarding}>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  </Stack.Protected>
 
-                {/* Onboarding Routes*/}
-                <Stack.Protected guard={isLoggedIn && !hasCompletedOnboarding}>
-                  <Stack.Screen name="onboarding/welcome" options={{ headerShown: false }} />
-                  <Stack.Screen name="onboarding/goals" options={{ headerShown: false }} />
-                  <Stack.Screen name="onboarding/generating" options={{ headerShown: false }} />
-                </Stack.Protected>
+                  {/* Onboarding Routes */}
+                  <Stack.Protected guard={isLoggedIn && !hasCompletedOnboarding}>
+                    <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                  </Stack.Protected>
 
-                {/* Public Routes */}
-                <Stack.Protected guard={!isLoggedIn}>
-                  <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-                  <Stack.Screen name="sign-up" options={{ headerShown: false }} />
-                </Stack.Protected>
-              </Stack>
-            </HeroUINativeProvider>
-          </AppThemeProvider>
-        </KeyboardProvider>
+                  {/* Public Routes */}
+                  <Stack.Protected guard={!isLoggedIn}>
+                    <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+                    <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+                  </Stack.Protected>
+                </Stack>
+              </HeroUINativeProvider>
+            </AppThemeProvider>
+          </KeyboardProvider>
+        </BottomSheetModalProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

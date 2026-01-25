@@ -1,162 +1,125 @@
 import { OpenRouter } from "@openrouter/sdk";
 
-export interface OpenRouterConfig {
-  apiKey: string;
-  model: string;
-  temperature?: number;
-  maxTokens?: number;
-}
+export type OpenRouterMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
 
-export interface OpenRouterStreamChunk {
+export type OpenRouterStreamChunk = {
   choices?: Array<{
     delta?: { content?: string | null };
     finish_reason?: string | null;
   }>;
   error?: { message?: string };
-}
+  usage?: Record<string, number | null>;
+};
 
-export class OpenRouterService {
-  private client: OpenRouter;
-  private model: string;
-  private temperature: number;
-  private maxTokens: number;
+export type StreamChatOptions = {
+  model: string;
+  messages: OpenRouterMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  includeUsage?: boolean;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+};
 
-  constructor(config: OpenRouterConfig) {
-    this.client = new OpenRouter({
-      apiKey: config.apiKey,
-    });
-    this.model = config.model;
-    this.temperature = config.temperature || 0.7;
-    this.maxTokens = config.maxTokens || 4000;
-  }
+let openRouterClient: OpenRouter | null = null;
 
-  async generatePlan(prompt: string): Promise<{
-    rawContent: string;
-    metadata: { contentLength: number; format: "json" | "text" | "mixed" };
-  }> {
-    try {
-      console.log(`Calling OpenRouter with model: ${this.model}, prompt length: ${prompt.length}`);
-
-      const response = await this.client.chat.send({
-        model: this.model,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: this.temperature,
-        maxTokens: this.maxTokens,
-      });
-
-      console.log(
-        `OpenRouter response received, tokens used: ${response.usage?.totalTokens || "unknown"}`,
-      );
-
-      const choice = response.choices?.[0];
-      const content = choice?.message?.content;
-      if (!content) {
-        throw new Error("No content received from OpenRouter");
-      }
-
-      if (typeof content !== "string") {
-        throw new Error("Response content is not a string");
-      }
-
-      const format = this.detectResponseFormat(content);
-
-      console.log(`Response format detected: ${format}, content length: ${content.length}`);
-
-      return {
-        rawContent: content,
-        metadata: {
-          contentLength: content.length,
-          format,
-        },
-      };
-    } catch (error) {
-      console.error("OpenRouter API error:", error);
-
-      if (error instanceof Error) {
-        throw new Error(`OpenRouter API error: ${error.message}`);
-      }
-      throw new Error("Unknown error occurred while calling OpenRouter API");
-    }
-  }
-
-  async streamPlan(prompt: string): Promise<AsyncIterable<OpenRouterStreamChunk>> {
-    try {
-      console.log(
-        `Streaming OpenRouter with model: ${this.model}, prompt length: ${prompt.length}`,
-      );
-
-      const stream = await this.client.chat.send({
-        model: this.model,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: this.temperature,
-        maxTokens: this.maxTokens,
-        stream: true,
-      });
-
-      return stream as AsyncIterable<OpenRouterStreamChunk>;
-    } catch (error) {
-      console.error("OpenRouter stream error:", error);
-
-      if (error instanceof Error) {
-        throw new Error(`OpenRouter stream error: ${error.message}`);
-      }
-      throw new Error("Unknown error occurred while calling OpenRouter streaming API");
-    }
-  }
-
-  private detectResponseFormat(content: string): "json" | "text" | "mixed" {
-    const trimmed = content.trim();
-
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        JSON.parse(trimmed);
-        return "json";
-      } catch {
-        return "mixed";
-      }
-    }
-
-    if (trimmed.includes('"') && trimmed.includes(":") && trimmed.includes("{")) {
-      return "mixed";
-    }
-
-    return "text";
-  }
-}
-
-let openRouterService: OpenRouterService | null = null;
-
-export function getOpenRouterService(): OpenRouterService {
-  if (!openRouterService) {
+function getOpenRouterClient(): OpenRouter {
+  if (!openRouterClient) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error("OPENROUTER_API_KEY environment variable is not set");
     }
-
-    openRouterService = new OpenRouterService({
-      apiKey,
-      model: process.env.OPENROUTER_MODEL!,
-      temperature: process.env.OPENROUTER_TEMPERATURE
-        ? parseFloat(process.env.OPENROUTER_TEMPERATURE)
-        : undefined,
-      maxTokens: process.env.OPENROUTER_MAX_TOKENS
-        ? parseInt(process.env.OPENROUTER_MAX_TOKENS)
-        : undefined,
-    });
+    openRouterClient = new OpenRouter({ apiKey });
   }
-  return openRouterService;
+
+  return openRouterClient;
 }
 
-export function isConfigured(): boolean {
-  return !!process.env.OPENROUTER_API_KEY;
+export async function streamChatCompletion(
+  options: StreamChatOptions,
+): Promise<AsyncIterable<OpenRouterStreamChunk>> {
+  const client = getOpenRouterClient();
+
+  const stream = await client.chat.send({
+    model: options.model,
+    messages: options.messages,
+    temperature: options.temperature,
+    maxTokens: options.maxTokens,
+    stream: true,
+    streamOptions: options.includeUsage ? { includeUsage: true } : undefined,
+    signal: options.signal,
+  } as Parameters<typeof client.chat.send>[0]);
+
+  return stream as AsyncIterable<OpenRouterStreamChunk>;
+}
+
+export async function collectChatCompletion(
+  options: StreamChatOptions,
+): Promise<{ content: string; finishReason?: string | null }> {
+  const { timeoutMs, signal, ...streamOptions } = options;
+  const controller = timeoutMs ? new AbortController() : null;
+
+  if (signal && controller) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+    } else {
+      signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
+    }
+  }
+
+  const stream = await streamChatCompletion({
+    ...streamOptions,
+    signal: controller?.signal ?? signal,
+  });
+  let content = "";
+  let finishReason: string | null | undefined;
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise =
+    timeoutMs && timeoutMs > 0
+      ? new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => {
+            controller?.abort();
+            const error = new Error("OpenRouter request timed out");
+            error.name = "TimeoutError";
+            reject(error);
+          }, timeoutMs);
+        })
+      : null;
+
+  const consumeStream = async () => {
+    for await (const chunk of stream) {
+      if (chunk.error?.message) {
+        throw new Error(chunk.error.message);
+      }
+
+      const choice = chunk.choices?.[0];
+      const delta = choice?.delta?.content;
+      if (delta) {
+        content += delta;
+      }
+
+      if (choice?.finish_reason && choice.finish_reason !== "error") {
+        finishReason = choice.finish_reason;
+        break;
+      }
+    }
+
+    return { content, finishReason };
+  };
+
+  try {
+    if (timeoutPromise) {
+      return await Promise.race([consumeStream(), timeoutPromise]);
+    }
+
+    return await consumeStream();
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }

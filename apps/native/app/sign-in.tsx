@@ -83,14 +83,12 @@ export default function SignInScreen() {
   };
 
   return (
-    <Container className="bg-background">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+    <Container className="bg-background" withScroll={false}>
+      <KeyboardAvoidingView behavior="height" style={{ flex: 1 }}>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View className="flex-1 px-8 justify-center pt-20">

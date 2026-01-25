@@ -5,6 +5,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Notification03Icon, Search01Icon, UserCircleIcon } from "@hugeicons/core-free-icons";
 import Animated, { FadeInUp } from "react-native-reanimated";
+import { useSemanticColors } from "@/utils/theme";
 
 export function HomeHeader() {
   const user = useAuthStore((state) => state.user);
@@ -16,6 +17,7 @@ export function HomeHeader() {
   else if (hour < 17) greeting = "Good afternoon";
 
   const firstName = user?.name?.split(" ")[0] || "there";
+  const colors = useSemanticColors();
 
   return (
     <Animated.View
@@ -35,14 +37,14 @@ export function HomeHeader() {
 
       <View className="flex-row items-center gap-x-3">
         <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border/50 items-center justify-center">
-          <HugeiconsIcon icon={Search01Icon} size={20} color="var(--foreground)" />
+          <HugeiconsIcon icon={Search01Icon} size={20} color={colors.foreground} />
         </TouchableOpacity>
         <TouchableOpacity className="w-10 h-10 rounded-full bg-surface border border-border/50 items-center justify-center">
-          <HugeiconsIcon icon={Notification03Icon} size={20} color="var(--foreground)" />
+          <HugeiconsIcon icon={Notification03Icon} size={20} color={colors.foreground} />
         </TouchableOpacity>
         <TouchableOpacity className="ml-1">
           <View className="w-10 h-10 rounded-full bg-accent items-center justify-center">
-            <HugeiconsIcon icon={UserCircleIcon} size={24} color="white" />
+            <HugeiconsIcon icon={UserCircleIcon} size={24} color={colors.foreground} />
           </View>
         </TouchableOpacity>
       </View>

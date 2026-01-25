@@ -4,9 +4,26 @@
  * Provides access to and management of user preferences for AI coaching and goals.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
-import type { CoachTone } from "@monthly-zen/db";
+type CoachTone = "encouraging" | "direct" | "analytical" | "friendly";
+
+type FixedCommitmentsJson = {
+  commitments: Array<{
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    description: string;
+  }>;
+};
+
+type ResolutionsJson = {
+  resolutions: Array<{
+    title: string;
+    category: string;
+    targetCount: number;
+  }>;
+};
 
 export type UpdatePreferencesInput = {
   coachName?: string;
@@ -14,28 +31,36 @@ export type UpdatePreferencesInput = {
   workingHoursStart?: string;
   workingHoursEnd?: string;
   defaultFocusArea?: string;
-  goalsText?: string;
   taskComplexity?: "Simple" | "Balanced" | "Ambitious";
   focusAreas?: string;
+  resolutionsJson?: ResolutionsJson;
   weekendPreference?: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number;
-  fixedCommitmentsJson?: any;
+  fixedCommitmentsJson?: FixedCommitmentsJson;
 };
 
+export function useHelloPreference() {
+  return useQuery(orpc.preferences.hello.queryOptions());
+}
+
 export function usePreferences() {
-  return useQuery({
-    queryKey: ["preferences"],
-    queryFn: () => orpc.preferences.get.query(),
-  });
+  return useQuery(
+    orpc.preferences.get.queryOptions({
+      context: {
+        cache: true,
+      },
+    }),
+  );
 }
 
 export function useUpdatePreferences() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (input: UpdatePreferencesInput) => orpc.preferences.update.mutate(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["preferences"] });
-    },
-  });
+  return useMutation(
+    orpc.preferences.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["preferences"] });
+      },
+    }),
+  );
 }

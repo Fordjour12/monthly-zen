@@ -22,5 +22,6 @@ export function getCategoryColor(key: string): string {
     productivity: "#06B6D4",
     other: "#6B7280",
   };
-  return colors[key] || colors.other;
+  const fallback = colors.other ?? "#6B7280";
+  return colors[key] ?? fallback;
 }

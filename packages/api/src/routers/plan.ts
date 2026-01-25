@@ -1,283 +1,298 @@
 import { z } from "zod";
-import { eventIterator } from "@orpc/server";
-import { protectedProcedure, publicProcedure } from "../index";
-import { generatePlan, confirmPlan } from "../services/hybrid-plan-generation";
-import {
-  streamPlanAiResponse,
-  planAiStreamEventSchema,
-  type PlanAiStreamEvent,
-} from "../services/plan-ai-stream";
-import { generateInputSchema } from "../services/plan-ai-schema";
-import {
-  getDraft,
-  deleteDraft,
-  getLatestDraft,
-  getCurrentMonthlyPlanWithTasks,
-  getMonthlyPlansByUser,
-  getMonthlyPlanWithTasks,
-  verifyPlanOwnership,
-} from "@monthly-zen/db";
-import { responseExtractor } from "@monthly-zen/response-parser";
 
-const confirmInputSchema = z.object({
-  draftKey: z.string().min(1, "Draft key is required"),
+import { protectedProcedure } from "../index";
+import * as db from "@monthly-zen/db";
+import { collectChatCompletion, type OpenRouterMessage } from "../lib/openrouter";
+
+const DEFAULT_SYSTEM_PROMPT =
+  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+
+const fixedCommitmentsSchema = z.object({
+  commitments: z.array(
+    z.object({
+      dayOfWeek: z.string(),
+      startTime: z.string(),
+      endTime: z.string(),
+      description: z.string(),
+    }),
+  ),
 });
 
-export const planRouter = {
-  aiStreamPublic: publicProcedure
-    .input(generateInputSchema)
-    .output(eventIterator(planAiStreamEventSchema, z.void()))
-    .handler(async function* ({ input }): AsyncGenerator<PlanAiStreamEvent> {
-      if (process.env.ALLOW_PUBLIC_AI_STREAM !== "true") {
-        throw new Error("Public AI streaming is disabled");
-      }
-
-      for await (const event of streamPlanAiResponse(input)) {
-        if (event.type === "error") {
-          yield event;
-          return;
-        }
-        if (event.type === "done") {
-          yield event;
-          return;
-        }
-        yield event;
-      }
+const resolutionsSchema = z.object({
+  resolutions: z.array(
+    z.object({
+      title: z.string().min(1),
+      category: z.string().min(1),
+      targetCount: z.number().int().min(1),
     }),
+  ),
+});
 
-  aiStream: protectedProcedure
-    .input(generateInputSchema)
-    .output(eventIterator(planAiStreamEventSchema, z.void()))
-    .handler(async function* ({ input }): AsyncGenerator<PlanAiStreamEvent> {
-      for await (const event of streamPlanAiResponse(input)) {
-        if (event.type === "error") {
-          yield event;
-          return;
-        }
-        if (event.type === "done") {
-          yield event;
-          return;
-        }
-        yield event;
-      }
-    }),
+const generationInputSchema = z.object({
+  mainGoal: z.string().min(1),
+  coachName: z.string().min(1).optional(),
+  coachTone: z.enum(["encouraging", "direct", "analytical", "friendly"]).optional(),
+  taskComplexity: z.enum(["Simple", "Balanced", "Ambitious"]),
+  focusAreas: z.string().min(1),
+  weekendPreference: z.enum(["Work", "Rest", "Mixed"]),
+  resolutionsJson: resolutionsSchema,
+  fixedCommitmentsJson: fixedCommitmentsSchema,
+});
 
-  generate: protectedProcedure.input(generateInputSchema).handler(async ({ input, context }) => {
+const generationStatusSchema = z.object({
+  jobId: z.number().int().positive(),
+});
+
+const planByIdSchema = z.object({
+  planId: z.number().int().positive(),
+});
+
+const jsonExtraction = (input: string) => {
+  const trimmed = input.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) return null;
     try {
-      const userId = context.session?.user?.id;
+      return JSON.parse(trimmed.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+};
 
-      if (!userId) {
-        throw new Error("Authentication required");
+const buildPrompt = (input: z.infer<typeof generationInputSchema>, monthYear: string) => {
+  const resolutionsText =
+    input.resolutionsJson.resolutions.length > 0
+      ? input.resolutionsJson.resolutions
+          .map(
+            (resolution) =>
+              `- ${resolution.title} (${resolution.category}): ${resolution.targetCount} sessions/year`,
+          )
+          .join("\n")
+      : "No resolutions set for this year";
+
+  const fixedCommitmentsText =
+    input.fixedCommitmentsJson.commitments.length > 0
+      ? input.fixedCommitmentsJson.commitments
+          .map(
+            (commitment) =>
+              `- ${commitment.dayOfWeek} from ${commitment.startTime} to ${commitment.endTime}: ${commitment.description}`,
+          )
+          .join("\n")
+      : "No fixed commitments";
+
+  const businessHoursStart = "09:00";
+  const businessHoursEnd = "18:00";
+  const currentDate = new Date();
+
+  return `Generate a monthly productivity plan with the following requirements:
+
+**User Goals:**
+${input.mainGoal}
+
+**Yearly Resolutions (Integrate these into your task planning):**
+${resolutionsText}
+
+**Preferences:**
+- Task Complexity: ${input.taskComplexity}
+- Focus Areas: ${input.focusAreas}
+- Weekend Preference: ${input.weekendPreference}
+
+**Fixed Commitments (IMPORTANT - Do NOT schedule tasks during these times):**
+${fixedCommitmentsText}
+
+**Context:**
+- Month: ${monthYear}
+- Plan Start Date: ${currentDate.toISOString()} (Start scheduling tasks from this date, NOT from the beginning of the month)
+- Typical business hours: ${businessHoursStart} - ${businessHoursEnd}
+
+**Output Format (Strict JSON):**
+{
+  "monthly_summary": "A clear overview of the plan and key objectives",
+  "weekly_breakdown": [
+    {
+      "week": 1,
+      "focus": "Main theme for this week",
+      "goals": ["Weekly goal 1", "Weekly goal 2"],
+      "daily_tasks": {
+        "Monday": [
+          {
+            "task_description": "Specific, actionable task",
+            "focus_area": "Category from user's focus areas",
+            "start_time": "ISO 8601 combined date and time (e.g., 2025-01-01T09:00:00Z)",
+            "end_time": "ISO 8601 combined date and time",
+            "difficulty_level": "simple|moderate|advanced",
+            "scheduling_reason": "Why this task is scheduled at this time"
+          }
+        ],
+        "Tuesday": [],
+        "Wednesday": [],
+        "Thursday": [],
+        "Friday": [],
+        "Saturday": [],
+        "Sunday": []
+      }
+    }
+  ]
+}
+
+**Scheduling Requirements (CRITICAL):**
+1. **START FROM CURRENT DATE**: Begin scheduling tasks from ${currentDate.toISOString().split("T")[0]}, NOT from the beginning of the month
+2. **RESPECT FIXED COMMITMENTS**: Absolutely DO NOT schedule any tasks during the user's fixed commitment time slots listed above
+3. For each scheduled task, verify start_time and end_time do NOT overlap with any fixed commitment
+4. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
+5. Respect the user's weekend preference (${input.weekendPreference})
+6. **PRIORITIZE RESOLUTIONS**: When generating tasks, actively work toward completing the user's yearly resolutions listed above. Each resolution should have at least 1-2 supporting tasks per week
+7. Focus primarily on these areas: ${input.focusAreas}
+8. Provide clear, actionable task descriptions with estimated durations
+9. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
+10. Spread tasks evenly throughout the week when possible
+
+**Task Complexity Guide:**
+- Simple: 3-5 shorter tasks per day, 30-60 minutes each
+- Balanced: 2-3 medium tasks per day, 1-2 hours each
+- Ambitious: 1-2 complex tasks per day, 2-4 hours each
+
+Please generate a complete monthly plan following this structure.`;
+};
+
+async function runPlanGeneration({
+  jobId,
+  userId,
+  input,
+}: {
+  jobId: number;
+  userId: string;
+  input: z.infer<typeof generationInputSchema>;
+}) {
+  await db.updatePlanGenerationJob(jobId, { status: "running" });
+
+  try {
+    const preferences = await db.createOrUpdatePreferences(userId, {
+      coachName: input.coachName,
+      coachTone: input.coachTone,
+      taskComplexity: input.taskComplexity,
+      weekendPreference: input.weekendPreference,
+      fixedCommitmentsJson: input.fixedCommitmentsJson,
+    });
+
+    if (!preferences) {
+      throw new Error("Failed to save user preferences");
+    }
+
+    const monthYear = new Date().toISOString().slice(0, 10);
+    const prompt = buildPrompt(input, monthYear);
+    const model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
+    const timeoutMsRaw = Number.parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "60000", 10);
+    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 60000;
+    const messages: OpenRouterMessage[] = [
+      { role: "system", content: process.env.OPENROUTER_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ];
+
+    let content: string;
+    try {
+      ({ content } = await collectChatCompletion({
+        model,
+        messages,
+        timeoutMs,
+      }));
+    } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        throw new Error("Plan generation timed out. Please try again.");
+      }
+      throw error;
+    }
+
+    const parsed = jsonExtraction(content);
+    const aiResponse = {
+      rawContent: content,
+      metadata: {
+        contentLength: content.length,
+        format: parsed ? ("json" as const) : ("text" as const),
+      },
+    };
+
+    const monthlySummary = parsed?.monthly_summary;
+    const planData = parsed || { raw: content };
+    const planId = await db.saveGeneratedPlan(
+      userId,
+      preferences.id,
+      monthYear,
+      prompt,
+      aiResponse,
+      planData,
+      monthlySummary,
+    );
+
+    await db.updatePlanGenerationJob(jobId, {
+      status: "completed",
+      responseText: content,
+      planId: planId || null,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to generate plan";
+    await db.updatePlanGenerationJob(jobId, {
+      status: "failed",
+      errorMessage: message,
+    });
+  }
+}
+
+export const planRouter = {
+  startFirstGeneration: protectedProcedure
+    .input(generationInputSchema)
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id;
+      const latestJob = await db.getLatestPlanGenerationJobByUser(userId);
+      if (latestJob && (latestJob.status === "pending" || latestJob.status === "running")) {
+        return { success: true, jobId: latestJob.id };
       }
 
-      const result = await generatePlan({ ...input, userId });
+      const job = await db.createPlanGenerationJob({ userId, requestPayload: input });
 
-      if (!result.success) {
-        throw new Error(result.error);
+      if (!job) {
+        return { success: false, error: "Failed to start generation" };
+      }
+
+      void runPlanGeneration({ jobId: job.id, userId, input });
+
+      return { success: true, jobId: job.id };
+    }),
+  getGenerationStatus: protectedProcedure
+    .input(generationStatusSchema)
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id;
+      const job = await db.getPlanGenerationJobById(input.jobId);
+
+      if (!job || job.userId !== userId) {
+        return { success: false, error: "Generation job not found" };
       }
 
       return {
         success: true,
         data: {
-          draftKey: result.draftKey,
-          planData: result.planData,
-          preferenceId: result.preferenceId,
-          generatedAt: result.generatedAt,
+          status: job.status,
+          planId: job.planId,
+          errorMessage: job.errorMessage,
         },
-        message: "Plan generated successfully. Review and save when ready.",
       };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
-    }
-  }),
-
-  confirm: protectedProcedure.input(confirmInputSchema).handler(async ({ input, context }) => {
-    try {
-      const userId = context.session?.user?.id;
-
-      if (!userId) {
-        throw new Error("Authentication required");
-      }
-
-      const result = await confirmPlan(userId, input.draftKey);
-
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-
-      return {
-        success: true,
-        data: { planId: result.planId },
-        message: "Plan saved successfully!",
-      };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
-    }
-  }),
-
-  getDraft: protectedProcedure
-    .input(z.object({ key: z.string() }))
-    .handler(async ({ input, context }) => {
-      try {
-        const userId = context.session?.user?.id;
-
-        if (!userId) {
-          throw new Error("Authentication required");
-        }
-
-        const draft = await getDraft(userId, input.key);
-
-        if (!draft) {
-          throw new Error("Draft not found or expired");
-        }
-
-        return {
-          success: true,
-          data: {
-            planData: draft.planData,
-            draftKey: draft.draftKey,
-            createdAt: draft.createdAt,
-            expiresAt: draft.expiresAt,
-          },
-        };
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
-      }
     }),
-
-  getLatestDraft: protectedProcedure.handler(async ({ context }) => {
-    try {
-      const userId = context.session?.user?.id;
-
-      if (!userId) {
-        throw new Error("Authentication required");
-      }
-
-      const draft = await getLatestDraft(userId);
-
-      return {
-        success: true,
-        data: draft
-          ? {
-              planData: draft.planData,
-              draftKey: draft.draftKey,
-              createdAt: draft.createdAt,
-              expiresAt: draft.expiresAt,
-            }
-          : null,
-        message: draft ? "Draft found" : "No draft found",
-      };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
+  getById: protectedProcedure.input(planByIdSchema).handler(async ({ input, context }) => {
+    const userId = context.session.user.id;
+    const ownership = await db.verifyPlanOwnership(input.planId, userId);
+    if (!ownership) {
+      return { success: false, error: "You do not have access to this plan" };
     }
-  }),
 
-  deleteDraft: protectedProcedure
-    .input(z.object({ key: z.string() }))
-    .handler(async ({ input, context }) => {
-      try {
-        const userId = context.session?.user?.id;
-
-        if (!userId) {
-          throw new Error("Authentication required");
-        }
-
-        await deleteDraft(userId, input.key);
-
-        return {
-          success: true,
-          message: "Draft discarded successfully",
-        };
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
-      }
-    }),
-
-  getCurrent: protectedProcedure.handler(async ({ context }) => {
-    try {
-      const userId = context.session?.user?.id;
-
-      if (!userId) {
-        throw new Error("Authentication required");
-      }
-
-      const currentDate = new Date();
-      const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-01`;
-
-      const planWithTasks = await getCurrentMonthlyPlanWithTasks(userId, currentMonth);
-
-      if (!planWithTasks) {
-        return { success: false, error: "No active plan found for current month" };
-      }
-
-      return { success: true, data: planWithTasks };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Failed to fetch current plan");
+    const plan = await db.getMonthlyPlanById(input.planId);
+    if (!plan) {
+      return { success: false, error: "Plan not found" };
     }
+
+    return { success: true, data: plan };
   }),
-
-  getPlans: protectedProcedure.handler(async ({ context }) => {
-    try {
-      const userId = context.session?.user?.id;
-
-      if (!userId) {
-        throw new Error("Authentication required");
-      }
-
-      const plans = await getMonthlyPlansByUser(userId);
-
-      return {
-        success: true,
-        data: plans.map((plan) => ({
-          id: plan.id,
-          monthYear: plan.monthYear,
-          summary: plan.monthlySummary,
-          status: plan.status,
-          generatedAt: plan.generatedAt,
-          confidence: plan.extractionConfidence,
-        })),
-      };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Failed to fetch plans");
-    }
-  }),
-
-  getPlanById: protectedProcedure
-    .input(z.object({ planId: z.number() }))
-    .handler(async ({ input, context }) => {
-      try {
-        const userId = context.session?.user?.id;
-
-        if (!userId) {
-          throw new Error("Authentication required");
-        }
-
-        const ownership = await verifyPlanOwnership(input.planId, userId);
-        if (!ownership) {
-          throw new Error("You do not have access to this plan");
-        }
-
-        const planWithTasks = await getMonthlyPlanWithTasks(input.planId);
-
-        if (!planWithTasks) {
-          throw new Error("Plan not found");
-        }
-
-        const parsedResponse = responseExtractor.extractAllStructuredData(
-          typeof planWithTasks.rawAiResponse === "string"
-            ? planWithTasks.rawAiResponse
-            : JSON.stringify(planWithTasks.aiResponseRaw),
-        );
-
-        return {
-          success: true,
-          data: {
-            plan: planWithTasks,
-            parsed: parsedResponse,
-          },
-        };
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Failed to fetch plan");
-      }
-    }),
 };

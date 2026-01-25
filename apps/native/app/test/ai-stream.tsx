@@ -15,8 +15,19 @@ import {
 } from "@hugeicons/core-free-icons";
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
-import { createParser, type ParsedEvent, type ReconnectInterval } from "eventsource-parser";
-import { authClient } from "@/lib/auth-client";
+import EventSource from "react-native-sse";
+import type { ChatMessage } from "@/storage/chatStore";
+import {
+  addMessage,
+  getMessages,
+  newId,
+  setLastConversationId,
+  updateConversation,
+  updateMessage,
+} from "@/storage/chatStore";
+import { throttle } from "@/storage/throttle";
+import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@/utils/orpc";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -38,12 +49,25 @@ type Message = {
   meta?: string;
 };
 
-type StreamEvent =
-  | { type: "delta"; text: string }
-  | { type: "done"; finishReason?: string }
-  | { type: "error"; message: string };
+type OpenRouterChunk = {
+  choices?: Array<{
+    delta?: { content?: string };
+    finish_reason?: string | null;
+  }>;
+  error?: { message?: string };
+};
 
-export default function PlannerAiStreamTest() {
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const SYSTEM_PROMPT =
+  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+
+type PlannerAiStreamTestProps = {
+  planId?: number;
+  conversationId?: string;
+};
+
+export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
   const insets = useSafeAreaInsets();
@@ -51,29 +75,128 @@ export default function PlannerAiStreamTest() {
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "system-1",
-      role: "system",
-      content: "Streaming test mode. This route hits plan.aiStreamPublic.",
-      meta: "Test Session",
-    },
-    {
-      id: "assistant-1",
-      role: "assistant",
-      content: "Describe your month goals and I will stream the response.",
-      meta: "Monthly Zen",
-    },
-  ]);
+  const defaultMessages = useMemo<Message[]>(
+    () => [
+      {
+        id: "system-1",
+        role: "system",
+        content: "Public streaming mode. Sends requests directly to OpenRouter.",
+        meta: "Public Test",
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        content: "Describe your month goals and I will stream the response.",
+        meta: "Monthly Zen",
+      },
+    ],
+    [],
+  );
 
-  const streamingAbort = useRef<AbortController | null>(null);
+  const [messages, setMessages] = useState<Message[]>(defaultMessages);
+
+  const streamingAbort = useRef<EventSource | null>(null);
   const streamingMessageId = useRef<string | null>(null);
+  const hasSeededPlan = useRef(false);
+
+  const persistAssistantContentThrottled = useMemo(
+    () =>
+      throttle((targetConversationId: string, messageId: string, content: string) => {
+        updateMessage(targetConversationId, messageId, { content });
+        updateConversation(targetConversationId, {
+          updatedAt: Date.now(),
+          lastMessagePreview: content.slice(0, 120),
+        });
+      }, 500),
+    [],
+  );
+
+  const storedToLocalMessage = useMemo(
+    () =>
+      (stored: ChatMessage): Message => ({
+        id: stored.id,
+        role: stored.role,
+        content: stored.content,
+        meta: typeof stored.meta?.label === "string" ? stored.meta.label : undefined,
+      }),
+    [],
+  );
+
+  const planQuery = useQuery({
+    ...orpc.plan.getById.queryOptions({ planId: planId ?? 0, input: { planId: planId ?? 0 } }),
+    enabled: Boolean(planId),
+  });
+
+  useEffect(() => {
+    if (!conversationId) return;
+    setLastConversationId(conversationId);
+
+    const storedMessages = getMessages(conversationId);
+    if (storedMessages.length > 0) {
+      setMessages(storedMessages.map(storedToLocalMessage));
+      return;
+    }
+
+    const now = Date.now();
+    const seeded = defaultMessages.map((message, idx) => {
+      const id = newId(message.role);
+      const stored: ChatMessage = {
+        id,
+        conversationId,
+        role: message.role,
+        content: message.content,
+        createdAt: now + idx,
+        status: "final",
+        meta: message.meta ? { label: message.meta } : undefined,
+      };
+      addMessage(stored);
+      return stored;
+    });
+
+    setMessages(seeded.map(storedToLocalMessage));
+  }, [conversationId, defaultMessages, storedToLocalMessage]);
 
   useEffect(() => {
     return () => {
-      streamingAbort.current?.abort();
+      streamingAbort.current?.removeAllEventListeners();
+      streamingAbort.current?.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!planId || hasSeededPlan.current) return;
+
+    if (planQuery.data?.success && planQuery.data.data) {
+      const plan = planQuery.data.data as {
+        id: number;
+        rawAiResponse?: string | null;
+        aiResponseRaw?: unknown;
+        monthlySummary?: string | null;
+      };
+      const responseText =
+        plan.rawAiResponse?.trim() ||
+        (plan.aiResponseRaw ? JSON.stringify(plan.aiResponseRaw, null, 2) : "");
+      const intro = plan.monthlySummary?.trim()
+        ? `Plan summary: ${plan.monthlySummary}`
+        : "Your onboarding plan is ready. Ask for edits or refinements.";
+
+      hasSeededPlan.current = true;
+      setMessages([
+        {
+          id: "system-plan",
+          role: "system",
+          content: intro,
+          meta: "Plan Ready",
+        },
+        {
+          id: `assistant-plan-${plan.id}`,
+          role: "assistant",
+          content: responseText || "Plan generated. Ask me to refine it.",
+          meta: "Monthly Plan",
+        },
+      ]);
+    }
+  }, [planId, planQuery.data?.success, planQuery.data?.data]);
 
   const backgroundGlow = useMemo(
     () => (
@@ -82,14 +205,16 @@ export default function PlannerAiStreamTest() {
     [],
   );
 
-  const buildPayload = (prompt: string) => {
-    return {
-      goalsText: prompt,
-      taskComplexity: "Balanced",
-      focusAreas: "Execution, fitness, learning",
-      weekendPreference: "Mixed",
-      fixedCommitmentsJson: { commitments: [] },
-    };
+  const buildChatMessages = (history: Message[]) => {
+    const cleanedHistory = history
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role,
+        content: message.content.trim(),
+      }))
+      .filter((message) => message.content.length > 0);
+
+    return [{ role: "system", content: SYSTEM_PROMPT }, ...cleanedHistory];
   };
 
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
@@ -108,14 +233,60 @@ export default function PlannerAiStreamTest() {
     if (!content.trim() || isStreaming) return;
 
     Haptics.selectionAsync();
+    const now = Date.now();
+    const userMessageId = conversationId ? newId("user") : `user-${now}`;
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: userMessageId,
       role: "user",
       content: content.trim(),
     };
 
-    const assistantId = `assistant-${Date.now()}`;
+    if (conversationId) {
+      addMessage({
+        id: userMessageId,
+        conversationId,
+        role: "user",
+        content: userMessage.content,
+        createdAt: now,
+        status: "final",
+      });
+      updateConversation(conversationId, {
+        updatedAt: now,
+        lastMessagePreview: userMessage.content.slice(0, 120),
+      });
+    }
+
+    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
+    if (!apiKey) {
+      setMessages((prev) => [
+        ...prev,
+        userMessage,
+        {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
+          meta: "Config",
+        },
+      ]);
+      setInput("");
+      return;
+    }
+
+    const assistantId = conversationId ? newId("assistant") : `assistant-${now}`;
     streamingMessageId.current = assistantId;
+
+    if (conversationId) {
+      addMessage({
+        id: assistantId,
+        conversationId,
+        role: "assistant",
+        content: "",
+        createdAt: now + 1,
+        status: "streaming",
+        meta: { label: "Streaming" },
+      });
+      updateConversation(conversationId, { updatedAt: Date.now() });
+    }
 
     setMessages((prev) => [
       ...prev,
@@ -130,68 +301,98 @@ export default function PlannerAiStreamTest() {
     setInput("");
     setIsStreaming(true);
 
-    const controller = new AbortController();
-    streamingAbort.current = controller;
+    const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
+    const payload = JSON.stringify({
+      model,
+      stream: true,
+      messages: buildChatMessages([...messages, userMessage]),
+    });
 
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SERVER_URL}/rpc/plan/aiStreamPublic`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authClient.getCookie() ? { Cookie: authClient.getCookie() } : {}),
-          },
-          body: JSON.stringify({ json: buildPayload(content.trim()), meta: [] }),
-          signal: controller.signal,
-        },
-      );
+    const eventSource = new EventSource(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "X-Title": "Monthly Zen (Native)",
+      },
+      body: payload,
+      pollingInterval: 0,
+    });
 
-      if (!response.ok || !response.body) {
-        const message = response.ok ? "Stream unavailable" : `Stream failed (${response.status})`;
-        throw new Error(message);
-      }
-
-      const decoder = new TextDecoder();
-      const reader = response.body.getReader();
-      const eventParser = createParser({
-        onEvent: (event: ParsedEvent | ReconnectInterval) => {
-          if (event.type !== "event") return;
-          if (!event.data) return;
-
-          try {
-            const parsed = JSON.parse(event.data) as StreamEvent;
-            if (parsed.type === "delta") {
-              updateStreamingMessage((prev) => prev + parsed.text);
-            } else if (parsed.type === "error") {
-              updateStreamingMessage(`Error: ${parsed.message}`);
-            } else if (parsed.type === "done") {
-              if (parsed.finishReason) {
-                updateStreamingMessage((prev) => `${prev}\n\n[${parsed.finishReason}]`);
-              }
-            }
-          } catch (error) {
-            console.error("Failed to parse SSE event", error);
-          }
-        },
-      });
-
-      let done = false;
-      while (!done) {
-        const result = await reader.read();
-        done = result.done;
-        if (result.value) {
-          eventParser.feed(decoder.decode(result.value, { stream: true }));
-        }
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Streaming failed";
-      updateStreamingMessage(`Error: ${message}`);
-    } finally {
+    const closeStream = () => {
+      eventSource.removeAllEventListeners();
+      eventSource.close();
       streamingAbort.current = null;
       streamingMessageId.current = null;
       setIsStreaming(false);
-    }
+    };
+
+    const handleMessage = (data: string | null) => {
+      if (!data) return;
+      const trimmed = data.trim();
+      if (!trimmed) return;
+
+      if (trimmed === "[DONE]") {
+        closeStream();
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
+        if (parsed.error?.message) {
+          if (conversationId && streamingMessageId.current) {
+            updateMessage(conversationId, streamingMessageId.current, {
+              status: "error",
+              content: `Error: ${parsed.error.message}`,
+            });
+            updateConversation(conversationId, { updatedAt: Date.now() });
+          }
+          updateStreamingMessage(`Error: ${parsed.error.message}`);
+          closeStream();
+          return;
+        }
+
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          updateStreamingMessage((prev) => {
+            const next = prev + delta;
+            if (conversationId && streamingMessageId.current) {
+              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
+            }
+            return next;
+          });
+        }
+
+        const finishReason = parsed.choices?.[0]?.finish_reason;
+        if (finishReason) {
+          updateStreamingMessage((prev) => {
+            const next = `${prev}\n\n[${finishReason}]`;
+            if (conversationId && streamingMessageId.current) {
+              updateMessage(conversationId, streamingMessageId.current, { status: "final" });
+              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
+            }
+            return next;
+          });
+          closeStream();
+        }
+      } catch (error) {
+        console.error("Failed to parse SSE event", error);
+      }
+    };
+
+    eventSource.addEventListener("message", (event) => {
+      handleMessage(event.data ?? null);
+    });
+
+    eventSource.addEventListener("error", (event) => {
+      const message =
+        event.type === "error" || event.type === "exception" ? event.message : "Streaming failed";
+      updateStreamingMessage(`Error: ${message}`);
+      closeStream();
+    });
+
+    streamingAbort.current = eventSource;
   };
 
   const handlePrompt = (prompt: string) => {
@@ -200,7 +401,10 @@ export default function PlannerAiStreamTest() {
   };
 
   const stopStreaming = () => {
-    streamingAbort.current?.abort();
+    streamingAbort.current?.removeAllEventListeners();
+    streamingAbort.current?.close();
+    streamingAbort.current = null;
+    streamingMessageId.current = null;
     setIsStreaming(false);
   };
 
@@ -224,7 +428,7 @@ export default function PlannerAiStreamTest() {
               <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
                 Planner
               </Text>
-              <Text className="text-xl font-sans-bold text-foreground">AI Stream Test</Text>
+              <Text className="text-xl font-sans-bold text-foreground">AI Stream (Public)</Text>
             </View>
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
               <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
@@ -246,7 +450,7 @@ export default function PlannerAiStreamTest() {
                       Streaming Monitor
                     </Text>
                     <Text className="text-[11px] font-sans text-muted-foreground">
-                      plan.aiStreamPublic
+                      openrouter.ai /chat/completions
                     </Text>
                   </View>
                 </View>
