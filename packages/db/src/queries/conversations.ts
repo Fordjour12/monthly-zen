@@ -122,3 +122,11 @@ export async function getLatestAssistantMessage(userId: string, conversationId: 
 
   return row ?? null;
 }
+
+export async function deleteConversation(userId: string, conversationId: string) {
+  const result = await db
+    .delete(conversations)
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+
+  return (result.rowCount ?? 0) > 0;
+}

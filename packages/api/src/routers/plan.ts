@@ -63,22 +63,6 @@ const currentMonthYear = () => {
   return `${year}-${month}-01`;
 };
 
-const jsonExtraction = (input: string) => {
-  const trimmed = input.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-    try {
-      return JSON.parse(trimmed.slice(start, end + 1));
-    } catch {
-      return null;
-    }
-  }
-};
-
 const buildPrompt = (input: z.infer<typeof generationInputSchema>, monthYear: string) => {
   const resolutionsText =
     input.resolutionsJson.resolutions.length > 0
@@ -223,31 +207,37 @@ async function runPlanGeneration({
       throw error;
     }
 
-    const parsed = jsonExtraction(content);
-    const aiResponse = {
-      rawContent: content,
-      metadata: {
-        contentLength: content.length,
-        format: parsed ? ("json" as const) : ("text" as const),
-      },
-    };
+    const conversation = await db.createConversation(userId, input.mainGoal || "Monthly Plan");
 
-    const monthlySummary = parsed?.monthly_summary;
-    const planData = parsed || { raw: content };
-    const planId = await db.saveGeneratedPlan(
-      userId,
-      preferences.id,
-      monthYear,
-      prompt,
-      aiResponse,
-      planData,
-      monthlySummary,
-    );
+    if (!conversation) {
+      throw new Error("Failed to create conversation");
+    }
+    const userSummary = `Goal: ${input.mainGoal}\nFocus areas: ${input.focusAreas}\nComplexity: ${input.taskComplexity}\nWeekend: ${input.weekendPreference}`;
+
+    await db.addMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: userSummary,
+      status: "final",
+    });
+
+    await db.addMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content,
+      status: "final",
+      meta: { label: "Onboarding Plan" },
+    });
+
+    await db.updateConversation(userId, conversation.id, {
+      lastMessagePreview: content.slice(0, 120),
+    });
 
     await db.updatePlanGenerationJob(jobId, {
       status: "completed",
       responseText: content,
-      planId: planId || null,
+      planId: null,
+      conversationId: conversation.id,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate plan";
@@ -293,6 +283,7 @@ export const planRouter = {
         data: {
           status: job.status,
           planId: job.planId,
+          conversationId: job.conversationId,
           errorMessage: job.errorMessage,
         },
       };

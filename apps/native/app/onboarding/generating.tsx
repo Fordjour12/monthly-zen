@@ -79,7 +79,7 @@ export default function GeneratingScreen() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
-  const [planId, setPlanId] = useState<number | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const hasNotified = useRef(false);
 
   const sampleTasks = [
@@ -202,9 +202,9 @@ export default function GeneratingScreen() {
     }
 
     if (status === "completed") {
-      const nextPlanId = statusQuery.data?.data?.planId ?? null;
-      if (nextPlanId) {
-        setPlanId(nextPlanId);
+      const nextConversationId = statusQuery.data?.data?.conversationId ?? null;
+      if (nextConversationId) {
+        setConversationId(nextConversationId);
       }
       setIsComplete(true);
     }
@@ -238,8 +238,8 @@ export default function GeneratingScreen() {
 
   const handleContinue = async () => {
     await completeOnboarding();
-    if (planId) {
-      router.replace({ pathname: "/chat", params: { planId: String(planId) } });
+    if (conversationId) {
+      router.replace({ pathname: "/chat", params: { conversationId } });
       return;
     }
     router.replace("/chat");

@@ -21,6 +21,7 @@ export async function updatePlanGenerationJob(
     status: "pending" | "running" | "completed" | "failed";
     responseText: string | null;
     planId: number | null;
+    conversationId: string | null;
     errorMessage: string | null;
   }>,
 ) {

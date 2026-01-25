@@ -19,6 +19,7 @@ import EventSource from "react-native-sse";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
 import { useToast } from "heroui-native";
+import { authClient } from "@/lib/auth-client";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -89,7 +90,11 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const loadConversationMessages = async () => {
     if (!conversationId || !serverUrl) return;
 
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
     const res = await fetch(`${serverUrl}/api/conversations/${conversationId}/messages`, {
+      headers,
       credentials: "include",
     });
 
@@ -256,11 +261,14 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
     const payload = JSON.stringify({ message: userMessage.content });
 
+    const cookie = authClient.getCookie();
+
     const eventSource = new EventSource(`${serverUrl}/api/conversations/${conversationId}/stream`, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
+        ...(cookie ? { Cookie: cookie } : {}),
       },
       body: payload,
       pollingInterval: 0,
@@ -341,7 +349,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           {backgroundGlow}
           <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push("/(tabs)")}
               className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />

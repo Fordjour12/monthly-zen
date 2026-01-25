@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import PlannerAiStreamTest from "./test/ai-stream";
+import { authClient } from "@/lib/auth-client";
 
 export default function Chat() {
   const router = useRouter();
@@ -22,11 +23,14 @@ export default function Chat() {
     const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
     if (!serverUrl) return;
 
+    const cookie = authClient.getCookie();
+    const authHeaders: Record<string, string> = cookie ? { Cookie: cookie } : {};
+
     const ensure = async () => {
       if (conversationId) {
         await fetch(`${serverUrl}/api/conversations`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders },
           credentials: "include",
           body: JSON.stringify({ id: conversationId, title: "Planner Chat" }),
         }).catch(() => {});
@@ -37,7 +41,7 @@ export default function Chat() {
 
       const res = await fetch(`${serverUrl}/api/conversations`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         credentials: "include",
         body: JSON.stringify({ title: "Planner Chat" }),
       });

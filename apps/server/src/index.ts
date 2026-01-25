@@ -30,8 +30,8 @@ app.use(
   "/*",
   cors({
     origin: process.env.CORS_ORIGIN || "",
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
     credentials: true,
   }),
 );
@@ -86,6 +86,17 @@ app.get("/api/conversations/:id/messages", async (c) => {
   const conversationId = c.req.param("id");
   const messages = await db.listMessages(userId, conversationId);
   return c.json({ messages });
+});
+
+app.delete("/api/conversations/:id", async (c) => {
+  const userId = await requireUserId(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const conversationId = c.req.param("id");
+  const deleted = await db.deleteConversation(userId, conversationId);
+  if (!deleted) return c.json({ error: "Conversation not found" }, 404);
+
+  return c.json({ success: true });
 });
 
 app.post("/api/conversations/:id/stream", async (c) => {
