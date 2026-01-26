@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -12,11 +12,28 @@ import {
   ArrowUp01Icon,
   SparklesIcon,
   PlusSignIcon,
+  Settings02Icon,
 } from "@hugeicons/core-free-icons";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
+
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
 import EventSource from "react-native-sse";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import type { ChatMessage } from "@/storage/chatStore";
+import {
+  addMessage,
+  getConversationMonitorSettings,
+  getDefaultMonitorSettings,
+  getMessages,
+  newId,
+  setConversationMonitorSettings,
+  setDefaultMonitorSettings,
+  setLastConversationId,
+  updateConversation,
+  updateMessage,
+} from "@/storage/chatStore";
+import { throttle } from "@/storage/throttle";
 import { orpc } from "@/utils/orpc";
 import { useToast } from "heroui-native";
 import { authClient } from "@/lib/auth-client";
@@ -28,11 +45,41 @@ const PROMPTS = [
   "Review my last month",
 ];
 
-const QUICK_STATS = [
-  { label: "Intensity", value: "Balanced" },
-  { label: "Focus", value: "3 domains" },
-  { label: "Weekend", value: "Hybrid" },
-];
+const TONE_OPTIONS = ["Calm", "Direct", "Analytical"] as const;
+const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
+const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
+
+type ToneOption = (typeof TONE_OPTIONS)[number];
+type DepthOption = (typeof DEPTH_OPTIONS)[number];
+type FormatOption = (typeof FORMAT_OPTIONS)[number];
+
+const DEFAULT_MONITOR_SETTINGS = {
+  tone: "Calm",
+  depth: "Balanced",
+  format: "Bullets",
+} as const;
+
+const SYSTEM_PROMPT =
+  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+
+const isToneOption = (value: string | null | undefined): value is ToneOption =>
+  typeof value === "string" && TONE_OPTIONS.includes(value as ToneOption);
+const isDepthOption = (value: string | null | undefined): value is DepthOption =>
+  typeof value === "string" && DEPTH_OPTIONS.includes(value as DepthOption);
+const isFormatOption = (value: string | null | undefined): value is FormatOption =>
+  typeof value === "string" && FORMAT_OPTIONS.includes(value as FormatOption);
+
+const resolveMonitorSettings = (
+  settings?: {
+    tone?: string | null;
+    depth?: string | null;
+    format?: string | null;
+  } | null,
+): { tone: ToneOption; depth: DepthOption; format: FormatOption } => ({
+  tone: isToneOption(settings?.tone) ? settings?.tone : DEFAULT_MONITOR_SETTINGS.tone,
+  depth: isDepthOption(settings?.depth) ? settings?.depth : DEFAULT_MONITOR_SETTINGS.depth,
+  format: isFormatOption(settings?.format) ? settings?.format : DEFAULT_MONITOR_SETTINGS.format,
+});
 
 type Message = {
   id: string;
@@ -58,9 +105,17 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const settingsSheetRef = useRef<BottomSheetModal>(null);
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [tone, setTone] = useState<(typeof TONE_OPTIONS)[number]>(DEFAULT_MONITOR_SETTINGS.tone);
+  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>(
+    DEFAULT_MONITOR_SETTINGS.depth,
+  );
+  const [format, setFormat] = useState<(typeof FORMAT_OPTIONS)[number]>(
+    DEFAULT_MONITOR_SETTINGS.format,
+  );
   const defaultMessages = useMemo<Message[]>(
     () => [
       {
@@ -164,6 +219,25 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   }, [conversationId]);
 
   useEffect(() => {
+    const fallbackDefaults = resolveMonitorSettings(getDefaultMonitorSettings());
+    if (!conversationId) {
+      setTone(fallbackDefaults.tone);
+      setDepth(fallbackDefaults.depth);
+      setFormat(fallbackDefaults.format);
+      return;
+    }
+
+    const saved = getConversationMonitorSettings(conversationId);
+    const nextSettings = resolveMonitorSettings(saved);
+    setTone(nextSettings.tone);
+    setDepth(nextSettings.depth);
+    setFormat(nextSettings.format);
+    if (!saved) {
+      setConversationMonitorSettings(conversationId, nextSettings);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
     return () => {
       streamingAbort.current?.removeAllEventListeners();
       streamingAbort.current?.close();
@@ -211,6 +285,73 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     ),
     [],
   );
+
+  const settingsSnapPoints = useMemo(() => ["52%"], []);
+  const renderSettingsBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
+  );
+
+  const monitorStats = useMemo(
+    () => [
+      { label: "Tone", value: tone },
+      { label: "Depth", value: depth },
+      { label: "Format", value: format },
+    ],
+    [depth, format, tone],
+  );
+
+  const systemPrompt = useMemo(
+    () => `${SYSTEM_PROMPT}\nResponse tone: ${tone}. Depth: ${depth}. Format: ${format}.`,
+    [depth, format, tone],
+  );
+
+  const buildChatMessages = (history: Message[]) => {
+    const cleanedHistory = history
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role,
+        content: message.content.trim(),
+      }))
+      .filter((message) => message.content.length > 0);
+
+    return [{ role: "system", content: systemPrompt }, ...cleanedHistory];
+  };
+
+  const updateMonitorSettings = (next: {
+    tone: (typeof TONE_OPTIONS)[number];
+    depth: (typeof DEPTH_OPTIONS)[number];
+    format: (typeof FORMAT_OPTIONS)[number];
+  }) => {
+    setTone(next.tone);
+    setDepth(next.depth);
+    setFormat(next.format);
+    if (conversationId) {
+      setConversationMonitorSettings(conversationId, next);
+    }
+  };
+
+  const handleToneChange = (value: (typeof TONE_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone: value, depth, format });
+  };
+
+  const handleDepthChange = (value: (typeof DEPTH_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone, depth: value, format });
+  };
+
+  const handleFormatChange = (value: (typeof FORMAT_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone, depth, format: value });
+  };
+
+  const saveDefaults = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setDefaultMonitorSettings({ tone, depth, format });
+  };
 
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
     if (!streamingMessageId.current) return;
@@ -338,6 +479,11 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setIsStreaming(false);
   };
 
+  const openSettings = () => {
+    Haptics.selectionAsync();
+    settingsSheetRef.current?.present();
+  };
+
   return (
     <Container className="bg-background" withScroll={false}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -352,7 +498,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
               onPress={() => router.push("/(tabs)")}
               className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color={colors.foreground} />
             </TouchableOpacity>
             <View className="flex-1">
               <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
@@ -361,19 +507,19 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
               <Text className="text-xl font-sans-bold text-foreground">AI Stream (Public)</Text>
             </View>
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
-              <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
+              <HugeiconsIcon icon={AiChat01Icon} size={20} color={colors.accent} />
             </View>
           </View>
 
           <View className="px-6">
             <Animated.View
               entering={FadeInDown.duration(500)}
-              className="bg-surface/60 border border-border/40 rounded-[24px] p-4"
+              className="bg-surface/60 border border-border/40 rounded-xl p-4"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-x-3">
                   <View className="w-9 h-9 rounded-2xl bg-accent/20 items-center justify-center">
-                    <HugeiconsIcon icon={SparklesIcon} size={16} color="var(--accent)" />
+                    <HugeiconsIcon icon={SparklesIcon} size={16} color={colors.accent} />
                   </View>
                   <View>
                     <Text className="text-sm font-sans-bold text-foreground">
@@ -395,8 +541,19 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                   </Text>
                 </View>
               </View>
+              <View className="flex-row items-center justify-between mt-3">
+                <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                  Conversation tuning
+                </Text>
+                <TouchableOpacity
+                  onPress={openSettings}
+                  className="rounded-full border border-border/40 bg-background/70 p-2"
+                >
+                  <HugeiconsIcon icon={Settings02Icon} size={12} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
               <View className="flex-row gap-x-2 mt-3">
-                {QUICK_STATS.map((stat) => (
+                {monitorStats.map((stat) => (
                   <View
                     key={stat.label}
                     className="flex-1 rounded-2xl bg-background/60 border border-border/30 px-3 py-2"
@@ -543,6 +700,98 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           </View>
         </View>
       </KeyboardAvoidingView>
+      <BottomSheetModal
+        ref={settingsSheetRef}
+        snapPoints={settingsSnapPoints}
+        enablePanDownToClose
+        backdropComponent={renderSettingsBackdrop}
+        handleIndicatorStyle={{ backgroundColor: "var(--border)", width: 40 }}
+        backgroundStyle={{ backgroundColor: colors.background, borderRadius: 32 }}
+      >
+        <BottomSheetView className="flex-1 px-6 pb-10">
+          <View className="py-4">
+            <Text className="text-xl font-sans-bold text-foreground">Monitor Configuration</Text>
+            <Text className="text-xs font-sans text-muted-foreground mt-1">
+              Tune how the assistant responds for this conversation.
+            </Text>
+          </View>
+          <View className="gap-y-5">
+            <ConfigRow
+              title="Response Tone"
+              options={TONE_OPTIONS}
+              value={tone}
+              onChange={handleToneChange}
+            />
+            <ConfigRow
+              title="Response Depth"
+              options={DEPTH_OPTIONS}
+              value={depth}
+              onChange={handleDepthChange}
+            />
+            <ConfigRow
+              title="Response Format"
+              options={FORMAT_OPTIONS}
+              value={format}
+              onChange={handleFormatChange}
+            />
+          </View>
+          <View className="mt-6 rounded-3xl border border-border/40 bg-surface/70 px-4 py-4">
+            <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+              Default preference
+            </Text>
+            <Text className="text-xs font-sans text-foreground mt-1">
+              Save these settings as your default for new conversations.
+            </Text>
+            <TouchableOpacity
+              onPress={saveDefaults}
+              className="mt-3 rounded-2xl bg-foreground px-4 py-2 items-center"
+            >
+              <Text className="text-[11px] font-sans-bold text-background">Save as default</Text>
+            </TouchableOpacity>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </Container>
+  );
+}
+
+type ConfigRowProps<T extends string> = {
+  title: string;
+  options: readonly T[];
+  value: T;
+  onChange: (value: T) => void;
+};
+
+function ConfigRow<T extends string>({ title, options, value, onChange }: ConfigRowProps<T>) {
+  return (
+    <View className="gap-y-2">
+      <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+        {title}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
+        <View className="flex-row gap-x-2">
+          {options.map((option) => {
+            const isActive = option === value;
+            return (
+              <TouchableOpacity
+                key={option}
+                onPress={() => onChange(option)}
+                className={`px-4 py-2 rounded-2xl border ${
+                  isActive ? "bg-foreground border-foreground" : "bg-surface border-border/40"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-sans-bold uppercase tracking-[2px] ${
+                    isActive ? "text-background" : "text-muted-foreground"
+                  }`}
+                >
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
