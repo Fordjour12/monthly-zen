@@ -457,6 +457,11 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       updateStreamingMessage(formattedContent);
 
       if (conversationId && streamingMessageId.current) {
+        persistAssistantContentThrottled.flush(
+          conversationId,
+          streamingMessageId.current,
+          formattedContent,
+        );
         updateMessage(conversationId, streamingMessageId.current, {
           status: "final",
           content: formattedContent,

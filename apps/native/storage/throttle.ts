@@ -1,9 +1,19 @@
-export function throttle<T extends (...args: any[]) => void>(fn: T, waitMs: number) {
+export type ThrottledFn<T extends (...args: any[]) => void> = ((
+  ...args: Parameters<T>
+) => void) & {
+  flush: (...args: Parameters<T>) => void;
+  cancel: () => void;
+};
+
+export function throttle<T extends (...args: any[]) => void>(
+  fn: T,
+  waitMs: number,
+): ThrottledFn<T> {
   let last = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pendingArgs: Parameters<T> | null = null;
 
-  return (...args: Parameters<T>) => {
+  const throttled = (...args: Parameters<T>) => {
     const now = Date.now();
     const remaining = waitMs - (now - last);
     pendingArgs = args;
@@ -26,4 +36,29 @@ export function throttle<T extends (...args: any[]) => void>(fn: T, waitMs: numb
       }, remaining);
     }
   };
+
+  throttled.flush = (...args: Parameters<T>) => {
+    if (args.length > 0) {
+      pendingArgs = args;
+    }
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (pendingArgs) {
+      last = Date.now();
+      fn(...pendingArgs);
+      pendingArgs = null;
+    }
+  };
+
+  throttled.cancel = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    pendingArgs = null;
+  };
+
+  return throttled;
 }
