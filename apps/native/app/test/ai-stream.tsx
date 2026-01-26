@@ -15,11 +15,11 @@ import {
   Settings02Icon,
 } from "@hugeicons/core-free-icons";
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
-import { useQuery } from "@tanstack/react-query";
-import EventSource from "react-native-sse";
 
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
+import EventSource from "react-native-sse";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type { ChatMessage } from "@/storage/chatStore";
 import {
   addMessage,
@@ -35,6 +35,8 @@ import {
 } from "@/storage/chatStore";
 import { throttle } from "@/storage/throttle";
 import { orpc } from "@/utils/orpc";
+import { useToast } from "heroui-native";
+import { authClient } from "@/lib/auth-client";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -47,11 +49,37 @@ const TONE_OPTIONS = ["Calm", "Direct", "Analytical"] as const;
 const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
 const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
 
+type ToneOption = (typeof TONE_OPTIONS)[number];
+type DepthOption = (typeof DEPTH_OPTIONS)[number];
+type FormatOption = (typeof FORMAT_OPTIONS)[number];
+
 const DEFAULT_MONITOR_SETTINGS = {
   tone: "Calm",
   depth: "Balanced",
   format: "Bullets",
 } as const;
+
+const SYSTEM_PROMPT =
+  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+
+const isToneOption = (value: string | null | undefined): value is ToneOption =>
+  typeof value === "string" && TONE_OPTIONS.includes(value as ToneOption);
+const isDepthOption = (value: string | null | undefined): value is DepthOption =>
+  typeof value === "string" && DEPTH_OPTIONS.includes(value as DepthOption);
+const isFormatOption = (value: string | null | undefined): value is FormatOption =>
+  typeof value === "string" && FORMAT_OPTIONS.includes(value as FormatOption);
+
+const resolveMonitorSettings = (
+  settings?: {
+    tone?: string | null;
+    depth?: string | null;
+    format?: string | null;
+  } | null,
+): { tone: ToneOption; depth: DepthOption; format: FormatOption } => ({
+  tone: isToneOption(settings?.tone) ? settings?.tone : DEFAULT_MONITOR_SETTINGS.tone,
+  depth: isDepthOption(settings?.depth) ? settings?.depth : DEFAULT_MONITOR_SETTINGS.depth,
+  format: isFormatOption(settings?.format) ? settings?.format : DEFAULT_MONITOR_SETTINGS.format,
+});
 
 type Message = {
   id: string;
@@ -60,18 +88,11 @@ type Message = {
   meta?: string;
 };
 
-type OpenRouterChunk = {
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-};
-
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
-const SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+type ServerStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; finishReason?: string }
+  | { type: "error"; message: string }
+  | { type: "usage"; usage: unknown };
 
 type PlannerAiStreamTestProps = {
   planId?: number;
@@ -81,6 +102,7 @@ type PlannerAiStreamTestProps = {
 export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
+  const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const settingsSheetRef = useRef<BottomSheetModal>(null);
@@ -88,7 +110,9 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
   const [tone, setTone] = useState<(typeof TONE_OPTIONS)[number]>(DEFAULT_MONITOR_SETTINGS.tone);
-  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>(DEFAULT_MONITOR_SETTINGS.depth);
+  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>(
+    DEFAULT_MONITOR_SETTINGS.depth,
+  );
   const [format, setFormat] = useState<(typeof FORMAT_OPTIONS)[number]>(
     DEFAULT_MONITOR_SETTINGS.format,
   );
@@ -116,62 +140,102 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const streamingMessageId = useRef<string | null>(null);
   const hasSeededPlan = useRef(false);
 
-  const persistAssistantContentThrottled = useMemo(
-    () =>
-      throttle((targetConversationId: string, messageId: string, content: string) => {
-        updateMessage(targetConversationId, messageId, { content });
-        updateConversation(targetConversationId, {
-          updatedAt: Date.now(),
-          lastMessagePreview: content.slice(0, 120),
-        });
-      }, 500),
-    [],
-  );
+  const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
 
-  const storedToLocalMessage = useMemo(
-    () =>
-      (stored: ChatMessage): Message => ({
-        id: stored.id,
-        role: stored.role,
-        content: stored.content,
-        meta: typeof stored.meta?.label === "string" ? stored.meta.label : undefined,
-      }),
-    [],
-  );
+  const loadConversationMessages = async () => {
+    if (!conversationId || !serverUrl) return;
+
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
+    const res = await fetch(`${serverUrl}/api/conversations/${conversationId}/messages`, {
+      headers,
+      credentials: "include",
+    });
+
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      messages?: Array<{
+        id: string;
+        role: "system" | "user" | "assistant";
+        content: string;
+      }>;
+    };
+
+    if (!Array.isArray(data.messages)) return;
+    if (data.messages.length === 0) {
+      setMessages(defaultMessages);
+      return;
+    }
+
+    setMessages(
+      data.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      })),
+    );
+  };
 
   const planQuery = useQuery({
     ...orpc.plan.getById.queryOptions({ planId: planId ?? 0, input: { planId: planId ?? 0 } }),
     enabled: Boolean(planId),
   });
 
-  useEffect(() => {
-    if (!conversationId) return;
-    setLastConversationId(conversationId);
+  const saveDraftMutation = useMutation(orpc.plan.saveDraftFromConversation.mutationOptions());
 
-    const storedMessages = getMessages(conversationId);
-    if (storedMessages.length > 0) {
-      setMessages(storedMessages.map(storedToLocalMessage));
+  const handleSaveDraft = async () => {
+    if (!conversationId) return;
+    try {
+      const result = (await saveDraftMutation.mutateAsync({
+        conversationId,
+      })) as { success: boolean; draftKey?: string; error?: string };
+
+      if (!result.success || !result.draftKey) {
+        toast.show({
+          variant: "danger",
+          label: "Save failed",
+          description: result.error || "Could not create draft",
+        });
+        return;
+      }
+
+      toast.show({
+        variant: "success",
+        label: "Draft created",
+        description: "Review and confirm when you’re ready.",
+      });
+
+      router.push(`/draft/${result.draftKey}` as any as never);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not create draft";
+      toast.show({ variant: "danger", label: "Save failed", description: message });
+    }
+  };
+
+  useEffect(() => {
+    void loadConversationMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
+  useEffect(() => {
+    const fallbackDefaults = resolveMonitorSettings(getDefaultMonitorSettings());
+    if (!conversationId) {
+      setTone(fallbackDefaults.tone);
+      setDepth(fallbackDefaults.depth);
+      setFormat(fallbackDefaults.format);
       return;
     }
 
-    const now = Date.now();
-    const seeded = defaultMessages.map((message, idx) => {
-      const id = newId(message.role);
-      const stored: ChatMessage = {
-        id,
-        conversationId,
-        role: message.role,
-        content: message.content,
-        createdAt: now + idx,
-        status: "final",
-        meta: message.meta ? { label: message.meta } : undefined,
-      };
-      addMessage(stored);
-      return stored;
-    });
-
-    setMessages(seeded.map(storedToLocalMessage));
-  }, [conversationId, defaultMessages, storedToLocalMessage]);
+    const saved = getConversationMonitorSettings(conversationId);
+    const nextSettings = resolveMonitorSettings(saved);
+    setTone(nextSettings.tone);
+    setDepth(nextSettings.depth);
+    setFormat(nextSettings.format);
+    if (!saved) {
+      setConversationMonitorSettings(conversationId, nextSettings);
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     const fallbackDefaults = getDefaultMonitorSettings() ?? DEFAULT_MONITOR_SETTINGS;
@@ -322,62 +386,25 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isStreaming) return;
+    if (!conversationId || !serverUrl) {
+      toast.show({
+        variant: "danger",
+        label: "Chat unavailable",
+        description: "Missing conversationId or server URL",
+      });
+      return;
+    }
 
     Haptics.selectionAsync();
-    const now = Date.now();
-    const userMessageId = conversationId ? newId("user") : `user-${now}`;
+
     const userMessage: Message = {
-      id: userMessageId,
+      id: `local-user-${Date.now()}`,
       role: "user",
       content: content.trim(),
     };
 
-    if (conversationId) {
-      addMessage({
-        id: userMessageId,
-        conversationId,
-        role: "user",
-        content: userMessage.content,
-        createdAt: now,
-        status: "final",
-      });
-      updateConversation(conversationId, {
-        updatedAt: now,
-        lastMessagePreview: userMessage.content.slice(0, 120),
-      });
-    }
-
-    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
-          meta: "Config",
-        },
-      ]);
-      setInput("");
-      return;
-    }
-
-    const assistantId = conversationId ? newId("assistant") : `assistant-${now}`;
+    const assistantId = `local-assistant-${Date.now()}`;
     streamingMessageId.current = assistantId;
-
-    if (conversationId) {
-      addMessage({
-        id: assistantId,
-        conversationId,
-        role: "assistant",
-        content: "",
-        createdAt: now + 1,
-        status: "streaming",
-        meta: { label: "Streaming" },
-      });
-      updateConversation(conversationId, { updatedAt: Date.now() });
-    }
 
     setMessages((prev) => [
       ...prev,
@@ -392,20 +419,16 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setInput("");
     setIsStreaming(true);
 
-    const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
-    const payload = JSON.stringify({
-      model,
-      stream: true,
-      messages: buildChatMessages([...messages, userMessage]),
-    });
+    const payload = JSON.stringify({ message: userMessage.content });
 
-    const eventSource = new EventSource(OPENROUTER_URL, {
+    const cookie = authClient.getCookie();
+
+    const eventSource = new EventSource(`${serverUrl}/api/conversations/${conversationId}/stream`, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-Title": "Monthly Zen (Native)",
+        ...(cookie ? { Cookie: cookie } : {}),
       },
       body: payload,
       pollingInterval: 0,
@@ -424,48 +447,24 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       const trimmed = data.trim();
       if (!trimmed) return;
 
-      if (trimmed === "[DONE]") {
-        closeStream();
-        return;
-      }
-
       try {
-        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
-        if (parsed.error?.message) {
-          if (conversationId && streamingMessageId.current) {
-            updateMessage(conversationId, streamingMessageId.current, {
-              status: "error",
-              content: `Error: ${parsed.error.message}`,
-            });
-            updateConversation(conversationId, { updatedAt: Date.now() });
-          }
-          updateStreamingMessage(`Error: ${parsed.error.message}`);
+        const parsed = JSON.parse(trimmed) as ServerStreamEvent;
+
+        if (parsed.type === "error") {
+          updateStreamingMessage(`Error: ${parsed.message}`);
           closeStream();
+          void loadConversationMessages();
           return;
         }
 
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
-          updateStreamingMessage((prev) => {
-            const next = prev + delta;
-            if (conversationId && streamingMessageId.current) {
-              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
-            }
-            return next;
-          });
+        if (parsed.type === "delta") {
+          updateStreamingMessage((prev) => prev + parsed.text);
+          return;
         }
 
-        const finishReason = parsed.choices?.[0]?.finish_reason;
-        if (finishReason) {
-          updateStreamingMessage((prev) => {
-            const next = `${prev}\n\n[${finishReason}]`;
-            if (conversationId && streamingMessageId.current) {
-              updateMessage(conversationId, streamingMessageId.current, { status: "final" });
-              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
-            }
-            return next;
-          });
+        if (parsed.type === "done") {
           closeStream();
+          void loadConversationMessages();
         }
       } catch (error) {
         console.error("Failed to parse SSE event", error);
@@ -515,10 +514,10 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           {backgroundGlow}
           <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push("/(tabs)")}
               className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color={colors.foreground} />
             </TouchableOpacity>
             <View className="flex-1">
               <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
@@ -527,19 +526,19 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
               <Text className="text-xl font-sans-bold text-foreground">AI Stream (Public)</Text>
             </View>
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
-              <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
+              <HugeiconsIcon icon={AiChat01Icon} size={20} color={colors.accent} />
             </View>
           </View>
 
           <View className="px-6">
             <Animated.View
               entering={FadeInDown.duration(500)}
-              className="bg-surface/60 border border-border/40 rounded-[24px] p-4"
+              className="bg-surface/60 border border-border/40 rounded-xl p-4"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-x-3">
                   <View className="w-9 h-9 rounded-2xl bg-accent/20 items-center justify-center">
-                    <HugeiconsIcon icon={SparklesIcon} size={16} color="var(--accent)" />
+                    <HugeiconsIcon icon={SparklesIcon} size={16} color={colors.accent} />
                   </View>
                   <View>
                     <Text className="text-sm font-sans-bold text-foreground">
@@ -567,10 +566,9 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                 </Text>
                 <TouchableOpacity
                   onPress={openSettings}
-                  className="flex-row items-center gap-x-1 rounded-full border border-border/40 bg-background/70 px-3 py-1"
+                  className="rounded-full border border-border/40 bg-background/70 p-2"
                 >
-                  <HugeiconsIcon icon={Settings02Icon} size={12} color="var(--foreground)" />
-                  <Text className="text-[10px] font-sans-semibold text-foreground">Edit</Text>
+                  <HugeiconsIcon icon={Settings02Icon} size={12} color={colors.foreground} />
                 </TouchableOpacity>
               </View>
               <View className="flex-row gap-x-2 mt-3">
@@ -633,6 +631,22 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                         >
                           {message.content || (isStreaming ? "..." : "")}
                         </Text>
+
+                        {message.role === "assistant" &&
+                          Boolean(conversationId) &&
+                          message.content.trim().length > 0 && (
+                            <View className="mt-3">
+                              <TouchableOpacity
+                                onPress={handleSaveDraft}
+                                disabled={saveDraftMutation.isPending}
+                                className="self-start px-3 py-2 rounded-full bg-background/60 border border-border/40"
+                              >
+                                <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                                  {saveDraftMutation.isPending ? "Saving..." : "Save Plan"}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
                       </View>
                     )}
                   </Animated.View>

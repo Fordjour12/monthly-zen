@@ -47,20 +47,20 @@ const planByIdSchema = z.object({
   planId: z.number().int().positive(),
 });
 
-const jsonExtraction = (input: string) => {
-  const trimmed = input.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-    try {
-      return JSON.parse(trimmed.slice(start, end + 1));
-    } catch {
-      return null;
-    }
-  }
+const saveDraftFromConversationSchema = z.object({
+  conversationId: z.string().min(1),
+  monthYear: z.string().optional(),
+});
+
+const getDraftSchema = z.object({
+  draftKey: z.string().min(1),
+});
+
+const currentMonthYear = () => {
+  const now = new Date();
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
 };
 
 const buildPrompt = (input: z.infer<typeof generationInputSchema>, monthYear: string) => {
@@ -207,31 +207,37 @@ async function runPlanGeneration({
       throw error;
     }
 
-    const parsed = jsonExtraction(content);
-    const aiResponse = {
-      rawContent: content,
-      metadata: {
-        contentLength: content.length,
-        format: parsed ? ("json" as const) : ("text" as const),
-      },
-    };
+    const conversation = await db.createConversation(userId, input.mainGoal || "Monthly Plan");
 
-    const monthlySummary = parsed?.monthly_summary;
-    const planData = parsed || { raw: content };
-    const planId = await db.saveGeneratedPlan(
-      userId,
-      preferences.id,
-      monthYear,
-      prompt,
-      aiResponse,
-      planData,
-      monthlySummary,
-    );
+    if (!conversation) {
+      throw new Error("Failed to create conversation");
+    }
+    const userSummary = `Goal: ${input.mainGoal}\nFocus areas: ${input.focusAreas}\nComplexity: ${input.taskComplexity}\nWeekend: ${input.weekendPreference}`;
+
+    await db.addMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: userSummary,
+      status: "final",
+    });
+
+    await db.addMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content,
+      status: "final",
+      meta: { label: "Onboarding Plan" },
+    });
+
+    await db.updateConversation(userId, conversation.id, {
+      lastMessagePreview: content.slice(0, 120),
+    });
 
     await db.updatePlanGenerationJob(jobId, {
       status: "completed",
       responseText: content,
-      planId: planId || null,
+      planId: null,
+      conversationId: conversation.id,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate plan";
@@ -277,6 +283,7 @@ export const planRouter = {
         data: {
           status: job.status,
           planId: job.planId,
+          conversationId: job.conversationId,
           errorMessage: job.errorMessage,
         },
       };
@@ -294,5 +301,53 @@ export const planRouter = {
     }
 
     return { success: true, data: plan };
+  }),
+
+  saveDraftFromConversation: protectedProcedure
+    .input(saveDraftFromConversationSchema)
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id;
+      const message = await db.getLatestAssistantMessage(userId, input.conversationId);
+
+      if (!message || !message.content.trim()) {
+        return { success: false, error: "No assistant response to save" };
+      }
+
+      const preferences =
+        (await db.getUserPreferences(userId)) ?? (await db.createOrUpdatePreferences(userId, {}));
+
+      if (!preferences) {
+        return { success: false, error: "Unable to load user preferences" };
+      }
+
+      const monthYear = input.monthYear ?? currentMonthYear();
+
+      const planData = {
+        source: "conversation" as const,
+        conversationId: input.conversationId,
+        assistantMessageId: message.id,
+        content: message.content,
+      };
+
+      const { draftKey } = await db.createDraft(
+        userId,
+        planData,
+        preferences.id,
+        monthYear,
+        "Saved from chat",
+      );
+
+      return { success: true, draftKey };
+    }),
+
+  getDraft: protectedProcedure.input(getDraftSchema).handler(async ({ input, context }) => {
+    const userId = context.session.user.id;
+    const draft = await db.getDraft(userId, input.draftKey);
+
+    if (!draft) {
+      return { success: false, error: "Draft not found" };
+    }
+
+    return { success: true, data: draft };
   }),
 };

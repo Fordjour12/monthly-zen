@@ -33,7 +33,8 @@ const KEY_CONVERSATIONS = "conversations:v1";
 const KEY_LAST_CONVERSATION = "conversations:last:v1";
 const KEY_MONITOR_DEFAULT = "monitor-settings:default:v1";
 const convKey = (conversationId: string) => `messages:v1:${conversationId}`;
-const convMonitorKey = (conversationId: string) => `monitor-settings:conversation:v1:${conversationId}`;
+const convMonitorKey = (conversationId: string) =>
+  `monitor-settings:conversation:v1:${conversationId}`;
 
 function safeParse<T>(value: string | undefined): T | null {
   if (!value) return null;

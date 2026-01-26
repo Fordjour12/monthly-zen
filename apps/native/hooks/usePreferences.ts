@@ -32,11 +32,10 @@ export type UpdatePreferencesInput = {
   workingHoursEnd?: string;
   defaultFocusArea?: string;
   taskComplexity?: "Simple" | "Balanced" | "Ambitious";
-  focusAreas?: string;
-  resolutionsJson?: ResolutionsJson;
   weekendPreference?: "Work" | "Rest" | "Mixed";
   preferredTaskDuration?: number;
   fixedCommitmentsJson?: FixedCommitmentsJson;
+  resolutionsJson?: ResolutionsJson;
 };
 
 export function useHelloPreference() {
