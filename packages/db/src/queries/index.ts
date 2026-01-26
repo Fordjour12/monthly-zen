@@ -14,3 +14,4 @@ export * from "./pattern-detection";
 export * from "./yearly-resolutions";
 export * from "./user-preferences";
 export * from "./user";
+export * from "./conversations";

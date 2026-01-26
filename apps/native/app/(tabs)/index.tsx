@@ -18,14 +18,15 @@ import {
   TodaysTasksCard,
 } from "@/components/home";
 import { useSemanticColors } from "@/utils/theme";
-import {
-  Conversation,
-  createConversation,
-  deleteConversation,
-  getLastConversationId,
-  listConversations,
-  setLastConversationId,
-} from "@/storage/chatStore";
+import { getLastConversationId, setLastConversationId } from "@/storage/chatStore";
+import { authClient } from "@/lib/auth-client";
+
+type Conversation = {
+  id: string;
+  title: string | null;
+  lastMessagePreview: string | null;
+  updatedAt: string;
+};
 
 const styles = StyleSheet.create({
   backgroundGlow: {
@@ -39,6 +40,8 @@ const styles = StyleSheet.create({
   },
 });
 
+let hasAutoOpenedOnce = false;
+
 export default function Home() {
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
@@ -47,11 +50,24 @@ export default function Home() {
   const lastConversationRef = useRef<string | null>(null);
   const didAutoOpen = useRef(false);
 
-  const loadConversations = useCallback(() => {
-    const items = listConversations();
-    setConversations(items);
+  const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
+
+  const loadConversations = useCallback(async () => {
+    if (!serverUrl) return;
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
+    const res = await fetch(`${serverUrl}/api/conversations`, {
+      headers,
+      credentials: "include",
+    });
+
+    if (!res.ok) return;
+    const data = (await res.json()) as { conversations?: Conversation[] };
+    if (!Array.isArray(data.conversations)) return;
+    setConversations(data.conversations);
     lastConversationRef.current = getLastConversationId();
-  }, []);
+  }, [serverUrl]);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,20 +76,22 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (didAutoOpen.current) return;
+    if (didAutoOpen.current || hasAutoOpenedOnce) return;
     if (!rootNavigationState?.key) return;
     const lastId = getLastConversationId();
     if (!lastId) {
       didAutoOpen.current = true;
+      hasAutoOpenedOnce = true;
       return;
     }
 
-    const exists = listConversations().some((conversation) => conversation.id === lastId);
+    const exists = conversations.some((conversation) => conversation.id === lastId);
     if (exists) {
       router.replace({ pathname: "/chat", params: { conversationId: lastId } });
       didAutoOpen.current = true;
+      hasAutoOpenedOnce = true;
     }
-  }, [router, rootNavigationState?.key]);
+  }, [router, rootNavigationState?.key, conversations]);
 
   const backgroundGlow = useMemo(
     () => (
@@ -90,14 +108,30 @@ export default function Home() {
 
   const handleNewChat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const conversation = createConversation("Planner Chat");
-    setLastConversationId(conversation.id);
-    lastConversationRef.current = conversation.id;
-    loadConversations();
-    router.push({
-      pathname: "/chat",
-      params: { conversationId: conversation.id },
-    });
+    if (!serverUrl) return;
+
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
+    const create = async () => {
+      const res = await fetch(`${serverUrl}/api/conversations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(headers ?? {}) },
+        credentials: "include",
+        body: JSON.stringify({ title: "Planner Chat" }),
+      });
+
+      if (!res.ok) return;
+      const data = (await res.json()) as { id?: string };
+      if (!data.id) return;
+
+      setLastConversationId(data.id);
+      lastConversationRef.current = data.id;
+      await loadConversations();
+      router.push({ pathname: "/chat", params: { conversationId: data.id } });
+    };
+
+    void create();
   };
 
   const openConversation = (conversationId: string) => {
@@ -108,11 +142,23 @@ export default function Home() {
 
   const handleDelete = (conversationId: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    deleteConversation(conversationId);
-    loadConversations();
+    if (!serverUrl) return;
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
+    const remove = async () => {
+      await fetch(`${serverUrl}/api/conversations/${conversationId}`, {
+        method: "DELETE",
+        headers,
+        credentials: "include",
+      }).catch(() => {});
+      await loadConversations();
+    };
+
+    void remove();
   };
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",

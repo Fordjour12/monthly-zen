@@ -5,6 +5,8 @@ export * from "./monthly-plans";
 export * from "./plan-tasks";
 export * from "./yearly-resolutions";
 export * from "./plan-generation-jobs";
+export * from "./conversations";
+export * from "./messages";
 export * from "./generation-quota";
 export * from "./quota-history";
 export * from "./ai-request-logs";
