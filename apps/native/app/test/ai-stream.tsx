@@ -13,9 +13,11 @@ import {
   SparklesIcon,
   PlusSignIcon,
 } from "@hugeicons/core-free-icons";
+import type { StructuredAIResponse, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
+import EventSource from "react-native-sse";
+
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
-import EventSource from "react-native-sse";
 import type { ChatMessage } from "@/storage/chatStore";
 import {
   addMessage,
@@ -55,6 +57,123 @@ type OpenRouterChunk = {
     finish_reason?: string | null;
   }>;
   error?: { message?: string };
+};
+
+const DAY_ORDER = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+
+const extractJsonPayload = (rawText: string): string | null => {
+  const fencedMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fencedMatch?.[1]) {
+    return fencedMatch[1].trim();
+  }
+
+  const startIndex = rawText.indexOf("{");
+  const endIndex = rawText.lastIndexOf("}");
+  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+    return null;
+  }
+
+  return rawText.slice(startIndex, endIndex + 1).trim();
+};
+
+const parseStructuredResponse = (rawText: string): StructuredAIResponse | null => {
+  const payload = extractJsonPayload(rawText);
+  if (!payload) return null;
+
+  try {
+    return JSON.parse(payload) as StructuredAIResponse;
+  } catch (error) {
+    console.error("[AI Stream] Failed to parse JSON payload", error);
+    return null;
+  }
+};
+
+const formatTaskLine = (task: TaskDescription) => {
+  const details = [
+    task.focus_area ? `Focus: ${task.focus_area}` : null,
+    task.difficulty_level ? `Difficulty: ${task.difficulty_level}` : null,
+    task.start_time && task.end_time ? `Time: ${task.start_time} → ${task.end_time}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return details ? `- ${task.task_description} (${details})` : `- ${task.task_description}`;
+};
+
+const formatWeekSection = (week: WeeklyBreakdown, fallbackWeekNumber: number) => {
+  const lines: string[] = [];
+  const weekNumber = typeof week.week === "number" ? week.week : fallbackWeekNumber;
+  const focusLabel = week.focus ? ` — ${week.focus}` : "";
+
+  lines.push(`Week ${weekNumber}${focusLabel}`);
+
+  if (Array.isArray(week.goals) && week.goals.length > 0) {
+    lines.push("Goals:");
+    week.goals
+      .filter((goal) => typeof goal === "string" && goal.trim().length > 0)
+      .forEach((goal) => {
+        lines.push(`• ${goal}`);
+      });
+  }
+
+  if (week.daily_tasks && typeof week.daily_tasks === "object") {
+    DAY_ORDER.forEach((day) => {
+      const tasks = week.daily_tasks?.[day];
+      if (!Array.isArray(tasks) || tasks.length === 0) return;
+
+      lines.push(`${day}:`);
+      tasks
+        .filter((task): task is TaskDescription => Boolean(task?.task_description))
+        .forEach((task) => {
+          lines.push(formatTaskLine(task));
+          if (task.scheduling_reason) {
+            lines.push(`  ↳ ${task.scheduling_reason}`);
+          }
+        });
+    });
+  }
+
+  return lines;
+};
+
+const formatStructuredResponse = (response: StructuredAIResponse | null): string | null => {
+  if (!response) return null;
+
+  const lines: string[] = [];
+
+  if (response.monthly_summary) {
+    lines.push("Monthly Summary");
+    lines.push(response.monthly_summary.trim());
+  }
+
+  if (Array.isArray(response.weekly_breakdown) && response.weekly_breakdown.length > 0) {
+    response.weekly_breakdown.forEach((week, index) => {
+      if (lines.length > 0) lines.push("");
+      lines.push(...formatWeekSection(week, index + 1));
+    });
+  }
+
+  return lines.length > 0 ? lines.join("\n") : null;
+};
+
+const formatReadablePlan = (input: unknown): string | null => {
+  if (typeof input === "string") {
+    return formatStructuredResponse(parseStructuredResponse(input));
+  }
+
+  if (input && typeof input === "object") {
+    return formatStructuredResponse(input as StructuredAIResponse);
+  }
+
+  return null;
 };
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -97,6 +216,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
   const streamingAbort = useRef<EventSource | null>(null);
   const streamingMessageId = useRef<string | null>(null);
+  const streamingRawText = useRef("");
   const hasSeededPlan = useRef(false);
 
   const persistAssistantContentThrottled = useMemo(
@@ -176,6 +296,8 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       const responseText =
         plan.rawAiResponse?.trim() ||
         (plan.aiResponseRaw ? JSON.stringify(plan.aiResponseRaw, null, 2) : "");
+      const formattedResponse =
+        formatReadablePlan(plan.rawAiResponse ?? plan.aiResponseRaw) ?? responseText;
       const intro = plan.monthlySummary?.trim()
         ? `Plan summary: ${plan.monthlySummary}`
         : "Your onboarding plan is ready. Ask for edits or refinements.";
@@ -191,7 +313,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
         {
           id: `assistant-plan-${plan.id}`,
           role: "assistant",
-          content: responseText || "Plan generated. Ask me to refine it.",
+          content: formattedResponse || "Plan generated. Ask me to refine it.",
           meta: "Monthly Plan",
         },
       ]);
@@ -300,6 +422,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     ]);
     setInput("");
     setIsStreaming(true);
+    streamingRawText.current = "";
 
     const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
     const payload = JSON.stringify({
@@ -328,12 +451,30 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       setIsStreaming(false);
     };
 
+    const finalizeStream = () => {
+      const formattedContent =
+        formatReadablePlan(streamingRawText.current) ?? streamingRawText.current;
+      updateStreamingMessage(formattedContent);
+
+      if (conversationId && streamingMessageId.current) {
+        updateMessage(conversationId, streamingMessageId.current, {
+          status: "final",
+          content: formattedContent,
+        });
+        updateConversation(conversationId, {
+          updatedAt: Date.now(),
+          lastMessagePreview: formattedContent.slice(0, 120),
+        });
+      }
+    };
+
     const handleMessage = (data: string | null) => {
       if (!data) return;
       const trimmed = data.trim();
       if (!trimmed) return;
 
       if (trimmed === "[DONE]") {
+        finalizeStream();
         closeStream();
         return;
       }
@@ -355,6 +496,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
         const delta = parsed.choices?.[0]?.delta?.content;
         if (delta) {
+          streamingRawText.current += delta;
           updateStreamingMessage((prev) => {
             const next = prev + delta;
             if (conversationId && streamingMessageId.current) {
@@ -366,14 +508,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
         const finishReason = parsed.choices?.[0]?.finish_reason;
         if (finishReason) {
-          updateStreamingMessage((prev) => {
-            const next = `${prev}\n\n[${finishReason}]`;
-            if (conversationId && streamingMessageId.current) {
-              updateMessage(conversationId, streamingMessageId.current, { status: "final" });
-              persistAssistantContentThrottled(conversationId, streamingMessageId.current, next);
-            }
-            return next;
-          });
+          finalizeStream();
           closeStream();
         }
       } catch (error) {
