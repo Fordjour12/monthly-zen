@@ -23,9 +23,17 @@ export type Conversation = {
   lastMessagePreview?: string;
 };
 
+export type MonitorSettings = {
+  tone: string;
+  depth: string;
+  format: string;
+};
+
 const KEY_CONVERSATIONS = "conversations:v1";
 const KEY_LAST_CONVERSATION = "conversations:last:v1";
+const KEY_MONITOR_DEFAULT = "monitor-settings:default:v1";
 const convKey = (conversationId: string) => `messages:v1:${conversationId}`;
+const convMonitorKey = (conversationId: string) => `monitor-settings:conversation:v1:${conversationId}`;
 
 function safeParse<T>(value: string | undefined): T | null {
   if (!value) return null;
@@ -128,4 +136,20 @@ export function setLastConversationId(conversationId: string) {
 
 export function getLastConversationId(): string | null {
   return storage.getString(KEY_LAST_CONVERSATION) ?? null;
+}
+
+export function getDefaultMonitorSettings(): MonitorSettings | null {
+  return safeParse<MonitorSettings>(storage.getString(KEY_MONITOR_DEFAULT));
+}
+
+export function setDefaultMonitorSettings(settings: MonitorSettings) {
+  storage.set(KEY_MONITOR_DEFAULT, JSON.stringify(settings));
+}
+
+export function getConversationMonitorSettings(conversationId: string): MonitorSettings | null {
+  return safeParse<MonitorSettings>(storage.getString(convMonitorKey(conversationId)));
+}
+
+export function setConversationMonitorSettings(conversationId: string, settings: MonitorSettings) {
+  storage.set(convMonitorKey(conversationId), JSON.stringify(settings));
 }
