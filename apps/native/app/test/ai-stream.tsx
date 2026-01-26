@@ -238,6 +238,25 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   }, [conversationId]);
 
   useEffect(() => {
+    const fallbackDefaults = getDefaultMonitorSettings() ?? DEFAULT_MONITOR_SETTINGS;
+    if (!conversationId) {
+      setTone(fallbackDefaults.tone);
+      setDepth(fallbackDefaults.depth);
+      setFormat(fallbackDefaults.format);
+      return;
+    }
+
+    const saved = getConversationMonitorSettings(conversationId);
+    const nextSettings = saved ?? fallbackDefaults;
+    setTone(nextSettings.tone);
+    setDepth(nextSettings.depth);
+    setFormat(nextSettings.format);
+    if (!saved) {
+      setConversationMonitorSettings(conversationId, nextSettings);
+    }
+  }, [conversationId]);
+
+  useEffect(() => {
     return () => {
       streamingAbort.current?.removeAllEventListeners();
       streamingAbort.current?.close();
