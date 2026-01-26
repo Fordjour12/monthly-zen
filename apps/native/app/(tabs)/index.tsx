@@ -40,6 +40,8 @@ const styles = StyleSheet.create({
   },
 });
 
+let hasAutoOpenedOnce = false;
+
 export default function Home() {
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
@@ -74,11 +76,12 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (didAutoOpen.current) return;
+    if (didAutoOpen.current || hasAutoOpenedOnce) return;
     if (!rootNavigationState?.key) return;
     const lastId = getLastConversationId();
     if (!lastId) {
       didAutoOpen.current = true;
+      hasAutoOpenedOnce = true;
       return;
     }
 
@@ -86,6 +89,7 @@ export default function Home() {
     if (exists) {
       router.replace({ pathname: "/chat", params: { conversationId: lastId } });
       didAutoOpen.current = true;
+      hasAutoOpenedOnce = true;
     }
   }, [router, rootNavigationState?.key, conversations]);
 
