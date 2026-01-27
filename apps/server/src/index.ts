@@ -1,7 +1,13 @@
 import "dotenv/config";
 import { createContext } from "@monthly-zen/api/context";
-import { appRouter } from "@monthly-zen/api/routers/index";
+import type {
+  FixedCommitmentsJson,
+  PlanGenerationInput,
+  ResolutionsJson,
+} from "@monthly-zen/api/lib/prompt-builder";
+import { buildPlannerSystemPrompt } from "@monthly-zen/api/lib/prompt-builder";
 import { streamChatCompletion, type OpenRouterMessage } from "@monthly-zen/api/lib/openrouter";
+import { appRouter } from "@monthly-zen/api/routers/index";
 import { auth } from "@monthly-zen/auth";
 import * as db from "@monthly-zen/db";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
@@ -17,8 +23,66 @@ import { stream } from "hono/streaming";
 
 const app = new Hono();
 
-const DEFAULT_SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+type PlannerContext = {
+  focusArea?: string;
+  taskComplexity?: "Simple" | "Balanced" | "Ambitious";
+  weekendPreference?: "Work" | "Rest" | "Mixed";
+  responseTone?: "encouraging" | "direct" | "analytical" | "friendly";
+  depth?: "Brief" | "Balanced" | "Deep";
+  format?: "Bullets" | "Narrative" | "Checklist";
+  fixedCommitmentsJson?: FixedCommitmentsJson;
+  resolutionsJson?: ResolutionsJson;
+  coachName?: string;
+  coachTone?: "encouraging" | "direct" | "analytical" | "friendly";
+  monthYear?: string;
+};
+
+const resolveTaskComplexity = (value?: PlannerContext["taskComplexity"]) => {
+  if (value === "Simple" || value === "Balanced" || value === "Ambitious") {
+    return value;
+  }
+  return "Balanced";
+};
+
+const resolveWeekendPreference = (value?: PlannerContext["weekendPreference"]) => {
+  if (value === "Work" || value === "Rest" || value === "Mixed") {
+    return value;
+  }
+  return "Mixed";
+};
+
+const resolveFixedCommitments = (value?: FixedCommitmentsJson): FixedCommitmentsJson => {
+  if (value && Array.isArray(value.commitments)) {
+    return { commitments: value.commitments };
+  }
+  return { commitments: [] };
+};
+
+const resolveResolutions = (value?: ResolutionsJson): ResolutionsJson => {
+  if (value && Array.isArray(value.resolutions)) {
+    return { resolutions: value.resolutions };
+  }
+  return { resolutions: [] };
+};
+
+const resolvePlanInput = (
+  question: string,
+  plannerContext?: PlannerContext,
+): PlanGenerationInput => {
+  const focusArea =
+    typeof plannerContext?.focusArea === "string" ? plannerContext.focusArea.trim() : "";
+
+  return {
+    mainGoal: question,
+    coachName: plannerContext?.coachName,
+    coachTone: plannerContext?.coachTone ?? plannerContext?.responseTone,
+    taskComplexity: resolveTaskComplexity(plannerContext?.taskComplexity),
+    focusAreas: focusArea || "General planning",
+    weekendPreference: resolveWeekendPreference(plannerContext?.weekendPreference),
+    resolutionsJson: resolveResolutions(plannerContext?.resolutionsJson),
+    fixedCommitmentsJson: resolveFixedCommitments(plannerContext?.fixedCommitmentsJson),
+  };
+};
 
 async function requireUserId(c: HonoContext) {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -111,12 +175,22 @@ app.post("/api/conversations/:id/stream", async (c) => {
     message?: string;
     temperature?: number;
     maxTokens?: number;
+    plannerContext?: PlannerContext;
   };
 
   const question = typeof body.message === "string" ? body.message.trim() : "";
   if (!question) return c.json({ error: "message is required" }, 400);
 
-  const systemPrompt = process.env.OPENROUTER_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT;
+  const planInput = resolvePlanInput(question, body.plannerContext);
+  const systemPrompt =
+    process.env.OPENROUTER_SYSTEM_PROMPT ??
+    buildPlannerSystemPrompt({
+      input: planInput,
+      monthYear: body.plannerContext?.monthYear,
+      responseTone: body.plannerContext?.responseTone,
+      depth: body.plannerContext?.depth,
+      format: body.plannerContext?.format,
+    });
   const model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
 
   // Persist user + assistant placeholder

@@ -45,6 +45,7 @@ import { throttle } from "@/storage/throttle";
 import { orpc } from "@/utils/orpc";
 import { useToast } from "heroui-native";
 import { authClient } from "@/lib/auth-client";
+import { usePreferences } from "@/hooks/usePreferences";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -55,7 +56,7 @@ const PROMPTS = [
 
 const TASK_COMPLEXITY_OPTIONS = ["Simple", "Balanced", "Ambitious"] as const;
 const WEEKEND_PREFERENCE_OPTIONS = ["Work", "Rest", "Mixed"] as const;
-const RESPONSE_TONE_OPTIONS = ["encouraging", "direct", "analytical"] as const;
+const RESPONSE_TONE_OPTIONS = ["encouraging", "direct", "analytical", "friendly"] as const;
 const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
 const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
 
@@ -73,9 +74,6 @@ const DEFAULT_MONITOR_SETTINGS = {
   depth: "Balanced",
   format: "Bullets",
 } as const;
-
-const SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
 
 const isTaskComplexityOption = (value: string | null | undefined): value is TaskComplexityOption =>
   typeof value === "string" && TASK_COMPLEXITY_OPTIONS.includes(value as TaskComplexityOption);
@@ -256,10 +254,31 @@ type PlannerAiStreamTestProps = {
   conversationId?: string;
 };
 
+type PlannerContext = {
+  focusArea?: string;
+  taskComplexity?: TaskComplexityOption;
+  weekendPreference?: WeekendPreferenceOption;
+  responseTone?: ResponseToneOption;
+  depth?: DepthOption;
+  format?: FormatOption;
+  fixedCommitmentsJson?: {
+    commitments: Array<{
+      dayOfWeek: string;
+      startTime: string;
+      endTime: string;
+      description: string;
+    }>;
+  };
+  coachName?: string | null;
+  coachTone?: ResponseToneOption | null;
+};
+
 export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
   const { toast } = useToast();
+  const { data: preferencesResponse } = usePreferences();
+  const preferences = preferencesResponse?.data;
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const settingsSheetRef = useRef<BottomSheetModal>(null);
@@ -482,16 +501,6 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     [focusArea, taskComplexity, weekendPreference],
   );
 
-  const systemPrompt = useMemo(
-    () =>
-      `${SYSTEM_PROMPT}\nFocus area: ${focusArea || "Unspecified"}. Task complexity: ${
-        taskComplexity
-      }. Weekend preference: ${weekendPreference}. Response tone: ${responseTone}. Depth: ${
-        depth
-      }. Format: ${format}.`,
-    [depth, focusArea, format, responseTone, taskComplexity, weekendPreference],
-  );
-
   const persistAssistantContentThrottled = useMemo(
     () =>
       throttle((conversationId: string, messageId: string, content: string) => {
@@ -651,7 +660,21 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setIsStreaming(true);
     streamingRawText.current = "";
 
-    const payload = JSON.stringify({ message: userMessage.content });
+    const resolvedFocusArea =
+      focusArea.trim() || preferences?.defaultFocusArea?.trim() || "General planning";
+    const fixedCommitmentsJson = preferences?.fixedCommitmentsJson ?? { commitments: [] };
+    const plannerContext: PlannerContext = {
+      focusArea: resolvedFocusArea,
+      taskComplexity,
+      weekendPreference,
+      responseTone,
+      depth,
+      format,
+      fixedCommitmentsJson,
+      coachName: preferences?.coachName ?? null,
+      coachTone: preferences?.coachTone ?? null,
+    };
+    const payload = JSON.stringify({ message: userMessage.content, plannerContext });
 
     const cookie = authClient.getCookie();
 
@@ -872,10 +895,10 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                       </View>
                     ) : (
                       <View
-                        className={`max-w-[82%] rounded-[26px] px-4 py-3 border ${
+                        className={`rounded-[26px] px-4 py-3 border ${
                           message.role === "user"
-                            ? "bg-foreground border-foreground"
-                            : "bg-surface border-border/40"
+                            ? "max-w-[82%] bg-foreground border-foreground"
+                            : "max-w-[90%] bg-surface border-border/40"
                         }`}
                       >
                         {message.meta && message.role !== "user" && (

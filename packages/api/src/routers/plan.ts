@@ -2,10 +2,8 @@ import { z } from "zod";
 
 import { protectedProcedure } from "../index";
 import * as db from "@monthly-zen/db";
+import { buildSystemPrompt } from "../lib/prompt-builder";
 import { collectChatCompletion, type OpenRouterMessage } from "../lib/openrouter";
-
-const DEFAULT_SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
 
 const fixedCommitmentsSchema = z.object({
   commitments: z.array(
@@ -143,13 +141,14 @@ ${fixedCommitmentsText}
 1. **START FROM CURRENT DATE**: Begin scheduling tasks from ${currentDate.toISOString().split("T")[0]}, NOT from the beginning of the month
 2. **RESPECT FIXED COMMITMENTS**: Absolutely DO NOT schedule any tasks during the user's fixed commitment time slots listed above
 3. For each scheduled task, verify start_time and end_time do NOT overlap with any fixed commitment
-4. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
-5. Respect the user's weekend preference (${input.weekendPreference})
-6. **PRIORITIZE RESOLUTIONS**: When generating tasks, actively work toward completing the user's yearly resolutions listed above. Each resolution should have at least 1-2 supporting tasks per week
-7. Focus primarily on these areas: ${input.focusAreas}
-8. Provide clear, actionable task descriptions with estimated durations
-9. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
-10. Spread tasks evenly throughout the week when possible
+4. On days with fixed commitments, avoid advanced tasks; keep workloads lighter where possible
+5. Create realistic, achievable tasks based on complexity level (${input.taskComplexity})
+6. Respect the user's weekend preference (${input.weekendPreference})
+7. **PRIORITIZE RESOLUTIONS**: When generating tasks, actively work toward completing the user's yearly resolutions listed above. Each resolution should have at least 1-2 supporting tasks per week
+8. Focus primarily on these areas: ${input.focusAreas}
+9. Provide clear, actionable task descriptions with estimated durations
+10. Consider business hours (${businessHoursStart}-${businessHoursEnd}) when scheduling, unless the user's commitments indicate otherwise
+11. Spread tasks evenly throughout the week when possible
 
 **Task Complexity Guide:**
 - Simple: 3-5 shorter tasks per day, 30-60 minutes each
@@ -188,8 +187,17 @@ async function runPlanGeneration({
     const model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.5-flash";
     const timeoutMsRaw = Number.parseInt(process.env.OPENROUTER_TIMEOUT_MS ?? "60000", 10);
     const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 60000;
+    const systemPrompt =
+      process.env.OPENROUTER_SYSTEM_PROMPT ??
+      buildSystemPrompt({
+        coachName: input.coachName,
+        responseTone: input.coachTone,
+        taskComplexity: input.taskComplexity,
+        weekendPreference: input.weekendPreference,
+        focusArea: input.focusAreas,
+      });
     const messages: OpenRouterMessage[] = [
-      { role: "system", content: process.env.OPENROUTER_SYSTEM_PROMPT ?? DEFAULT_SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       { role: "user", content: prompt },
     ];
 
