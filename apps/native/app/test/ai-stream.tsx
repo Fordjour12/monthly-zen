@@ -873,7 +873,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
             <ScrollView
               ref={scrollRef}
               className="mt-5"
-              contentContainerStyle={{ paddingBottom: composerHeight + 24 }}
+              contentContainerStyle={{ paddingBottom: composerHeight + 68 }}
               showsVerticalScrollIndicator={false}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
             >
