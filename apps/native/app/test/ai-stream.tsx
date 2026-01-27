@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
@@ -12,24 +12,27 @@ import {
   ArrowUp01Icon,
   SparklesIcon,
   PlusSignIcon,
+  Settings02Icon,
 } from "@hugeicons/core-free-icons";
-import type { StructuredAIResponse, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import EventSource from "react-native-sse";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { StructuredAIResponse, WeeklyBreakdown, TaskDescription } from "@monthly-zen/types";
 
 import { Container } from "@/components/ui/container";
 import { useSemanticColors } from "@/utils/theme";
-import type { ChatMessage } from "@/storage/chatStore";
 import {
-  addMessage,
-  getMessages,
-  newId,
-  setLastConversationId,
+  getConversationMonitorSettings,
+  getDefaultMonitorSettings,
+  setConversationMonitorSettings,
+  setDefaultMonitorSettings,
   updateConversation,
   updateMessage,
 } from "@/storage/chatStore";
 import { throttle } from "@/storage/throttle";
-import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/utils/orpc";
+import { useToast } from "heroui-native";
+import { authClient } from "@/lib/auth-client";
 
 const PROMPTS = [
   "Build a 30-day plan",
@@ -38,25 +41,47 @@ const PROMPTS = [
   "Review my last month",
 ];
 
-const QUICK_STATS = [
-  { label: "Intensity", value: "Balanced" },
-  { label: "Focus", value: "3 domains" },
-  { label: "Weekend", value: "Hybrid" },
-];
+const TONE_OPTIONS = ["Calm", "Direct", "Analytical"] as const;
+const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
+const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
+
+type ToneOption = (typeof TONE_OPTIONS)[number];
+type DepthOption = (typeof DEPTH_OPTIONS)[number];
+type FormatOption = (typeof FORMAT_OPTIONS)[number];
+
+const DEFAULT_MONITOR_SETTINGS = {
+  tone: "Calm",
+  depth: "Balanced",
+  format: "Bullets",
+} as const;
+
+const SYSTEM_PROMPT =
+  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+
+const isToneOption = (value: string | null | undefined): value is ToneOption =>
+  typeof value === "string" && TONE_OPTIONS.includes(value as ToneOption);
+const isDepthOption = (value: string | null | undefined): value is DepthOption =>
+  typeof value === "string" && DEPTH_OPTIONS.includes(value as DepthOption);
+const isFormatOption = (value: string | null | undefined): value is FormatOption =>
+  typeof value === "string" && FORMAT_OPTIONS.includes(value as FormatOption);
+
+const resolveMonitorSettings = (
+  settings?: {
+    tone?: string | null;
+    depth?: string | null;
+    format?: string | null;
+  } | null,
+): { tone: ToneOption; depth: DepthOption; format: FormatOption } => ({
+  tone: isToneOption(settings?.tone) ? settings?.tone : DEFAULT_MONITOR_SETTINGS.tone,
+  depth: isDepthOption(settings?.depth) ? settings?.depth : DEFAULT_MONITOR_SETTINGS.depth,
+  format: isFormatOption(settings?.format) ? settings?.format : DEFAULT_MONITOR_SETTINGS.format,
+});
 
 type Message = {
   id: string;
   role: "assistant" | "user" | "system";
   content: string;
   meta?: string;
-};
-
-type OpenRouterChunk = {
-  choices?: Array<{
-    delta?: { content?: string };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
 };
 
 const DAY_ORDER = [
@@ -175,11 +200,11 @@ const formatReadablePlan = (input: unknown): string | null => {
 
   return null;
 };
-
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
-const SYSTEM_PROMPT =
-  "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
+type ServerStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; finishReason?: string }
+  | { type: "error"; message: string }
+  | { type: "usage"; usage: unknown };
 
 type PlannerAiStreamTestProps = {
   planId?: number;
@@ -189,11 +214,20 @@ type PlannerAiStreamTestProps = {
 export default function PlannerAiStreamTest({ planId, conversationId }: PlannerAiStreamTestProps) {
   const router = useRouter();
   const colors = useSemanticColors();
+  const { toast } = useToast();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const settingsSheetRef = useRef<BottomSheetModal>(null);
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [tone, setTone] = useState<(typeof TONE_OPTIONS)[number]>(DEFAULT_MONITOR_SETTINGS.tone);
+  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>(
+    DEFAULT_MONITOR_SETTINGS.depth,
+  );
+  const [format, setFormat] = useState<(typeof FORMAT_OPTIONS)[number]>(
+    DEFAULT_MONITOR_SETTINGS.format,
+  );
   const defaultMessages = useMemo<Message[]>(
     () => [
       {
@@ -219,62 +253,102 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const streamingRawText = useRef("");
   const hasSeededPlan = useRef(false);
 
-  const persistAssistantContentThrottled = useMemo(
-    () =>
-      throttle((targetConversationId: string, messageId: string, content: string) => {
-        updateMessage(targetConversationId, messageId, { content });
-        updateConversation(targetConversationId, {
-          updatedAt: Date.now(),
-          lastMessagePreview: content.slice(0, 120),
-        });
-      }, 500),
-    [],
-  );
+  const serverUrl = process.env.EXPO_PUBLIC_SERVER_URL;
 
-  const storedToLocalMessage = useMemo(
-    () =>
-      (stored: ChatMessage): Message => ({
-        id: stored.id,
-        role: stored.role,
-        content: stored.content,
-        meta: typeof stored.meta?.label === "string" ? stored.meta.label : undefined,
-      }),
-    [],
-  );
+  const loadConversationMessages = async () => {
+    if (!conversationId || !serverUrl) return;
+
+    const cookie = authClient.getCookie();
+    const headers = cookie ? { Cookie: cookie } : undefined;
+
+    const res = await fetch(`${serverUrl}/api/conversations/${conversationId}/messages`, {
+      headers,
+      credentials: "include",
+    });
+
+    if (!res.ok) return;
+    const data = (await res.json()) as {
+      messages?: Array<{
+        id: string;
+        role: "system" | "user" | "assistant";
+        content: string;
+      }>;
+    };
+
+    if (!Array.isArray(data.messages)) return;
+    if (data.messages.length === 0) {
+      setMessages(defaultMessages);
+      return;
+    }
+
+    setMessages(
+      data.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      })),
+    );
+  };
 
   const planQuery = useQuery({
     ...orpc.plan.getById.queryOptions({ planId: planId ?? 0, input: { planId: planId ?? 0 } }),
     enabled: Boolean(planId),
   });
 
-  useEffect(() => {
-    if (!conversationId) return;
-    setLastConversationId(conversationId);
+  const saveDraftMutation = useMutation(orpc.plan.saveDraftFromConversation.mutationOptions());
 
-    const storedMessages = getMessages(conversationId);
-    if (storedMessages.length > 0) {
-      setMessages(storedMessages.map(storedToLocalMessage));
+  const handleSaveDraft = async () => {
+    if (!conversationId) return;
+    try {
+      const result = (await saveDraftMutation.mutateAsync({
+        conversationId,
+      })) as { success: boolean; draftKey?: string; error?: string };
+
+      if (!result.success || !result.draftKey) {
+        toast.show({
+          variant: "danger",
+          label: "Save failed",
+          description: result.error || "Could not create draft",
+        });
+        return;
+      }
+
+      toast.show({
+        variant: "success",
+        label: "Draft created",
+        description: "Review and confirm when you’re ready.",
+      });
+
+      router.push(`/draft/${result.draftKey}` as any as never);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not create draft";
+      toast.show({ variant: "danger", label: "Save failed", description: message });
+    }
+  };
+
+  useEffect(() => {
+    void loadConversationMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
+  useEffect(() => {
+    const fallbackDefaults = resolveMonitorSettings(getDefaultMonitorSettings());
+    if (!conversationId) {
+      setTone(fallbackDefaults.tone);
+      setDepth(fallbackDefaults.depth);
+      setFormat(fallbackDefaults.format);
       return;
     }
 
-    const now = Date.now();
-    const seeded = defaultMessages.map((message, idx) => {
-      const id = newId(message.role);
-      const stored: ChatMessage = {
-        id,
-        conversationId,
-        role: message.role,
-        content: message.content,
-        createdAt: now + idx,
-        status: "final",
-        meta: message.meta ? { label: message.meta } : undefined,
-      };
-      addMessage(stored);
-      return stored;
-    });
-
-    setMessages(seeded.map(storedToLocalMessage));
-  }, [conversationId, defaultMessages, storedToLocalMessage]);
+    const saved = getConversationMonitorSettings(conversationId);
+    const nextSettings = resolveMonitorSettings(saved);
+    setTone(nextSettings.tone);
+    setDepth(nextSettings.depth);
+    setFormat(nextSettings.format);
+    if (!saved) {
+      setConversationMonitorSettings(conversationId, nextSettings);
+    }
+  }, [conversationId]);
 
   useEffect(() => {
     return () => {
@@ -327,16 +401,68 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     [],
   );
 
-  const buildChatMessages = (history: Message[]) => {
-    const cleanedHistory = history
-      .filter((message) => message.role !== "system")
-      .map((message) => ({
-        role: message.role,
-        content: message.content.trim(),
-      }))
-      .filter((message) => message.content.length > 0);
+  const settingsSnapPoints = useMemo(() => ["52%"], []);
+  const renderSettingsBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
+  );
 
-    return [{ role: "system", content: SYSTEM_PROMPT }, ...cleanedHistory];
+  const monitorStats = useMemo(
+    () => [
+      { label: "Tone", value: tone },
+      { label: "Depth", value: depth },
+      { label: "Format", value: format },
+    ],
+    [depth, format, tone],
+  );
+
+  const systemPrompt = useMemo(
+    () => `${SYSTEM_PROMPT}\nResponse tone: ${tone}. Depth: ${depth}. Format: ${format}.`,
+    [depth, format, tone],
+  );
+
+  const persistAssistantContentThrottled = useMemo(
+    () =>
+      throttle((conversationId: string, messageId: string, content: string) => {
+        updateMessage(conversationId, messageId, { content });
+        updateConversation(conversationId, { updatedAt: Date.now() });
+      }, 500),
+    [],
+  );
+
+  const updateMonitorSettings = (next: {
+    tone: (typeof TONE_OPTIONS)[number];
+    depth: (typeof DEPTH_OPTIONS)[number];
+    format: (typeof FORMAT_OPTIONS)[number];
+  }) => {
+    setTone(next.tone);
+    setDepth(next.depth);
+    setFormat(next.format);
+    if (conversationId) {
+      setConversationMonitorSettings(conversationId, next);
+    }
+  };
+
+  const handleToneChange = (value: (typeof TONE_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone: value, depth, format });
+  };
+
+  const handleDepthChange = (value: (typeof DEPTH_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone, depth: value, format });
+  };
+
+  const handleFormatChange = (value: (typeof FORMAT_OPTIONS)[number]) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({ tone, depth, format: value });
+  };
+
+  const saveDefaults = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setDefaultMonitorSettings({ tone, depth, format });
   };
 
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
@@ -353,62 +479,25 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isStreaming) return;
+    if (!conversationId || !serverUrl) {
+      toast.show({
+        variant: "danger",
+        label: "Chat unavailable",
+        description: "Missing conversationId or server URL",
+      });
+      return;
+    }
 
     Haptics.selectionAsync();
-    const now = Date.now();
-    const userMessageId = conversationId ? newId("user") : `user-${now}`;
+
     const userMessage: Message = {
-      id: userMessageId,
+      id: `local-user-${Date.now()}`,
       role: "user",
       content: content.trim(),
     };
 
-    if (conversationId) {
-      addMessage({
-        id: userMessageId,
-        conversationId,
-        role: "user",
-        content: userMessage.content,
-        createdAt: now,
-        status: "final",
-      });
-      updateConversation(conversationId, {
-        updatedAt: now,
-        lastMessagePreview: userMessage.content.slice(0, 120),
-      });
-    }
-
-    const apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-    if (!apiKey) {
-      setMessages((prev) => [
-        ...prev,
-        userMessage,
-        {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: "Missing EXPO_PUBLIC_OPENROUTER_API_KEY in apps/native/.env.",
-          meta: "Config",
-        },
-      ]);
-      setInput("");
-      return;
-    }
-
-    const assistantId = conversationId ? newId("assistant") : `assistant-${now}`;
+    const assistantId = `local-assistant-${Date.now()}`;
     streamingMessageId.current = assistantId;
-
-    if (conversationId) {
-      addMessage({
-        id: assistantId,
-        conversationId,
-        role: "assistant",
-        content: "",
-        createdAt: now + 1,
-        status: "streaming",
-        meta: { label: "Streaming" },
-      });
-      updateConversation(conversationId, { updatedAt: Date.now() });
-    }
 
     setMessages((prev) => [
       ...prev,
@@ -424,20 +513,16 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setIsStreaming(true);
     streamingRawText.current = "";
 
-    const model = process.env.EXPO_PUBLIC_OPENROUTER_MODEL ?? DEFAULT_MODEL;
-    const payload = JSON.stringify({
-      model,
-      stream: true,
-      messages: buildChatMessages([...messages, userMessage]),
-    });
+    const payload = JSON.stringify({ message: userMessage.content });
 
-    const eventSource = new EventSource(OPENROUTER_URL, {
+    const cookie = authClient.getCookie();
+
+    const eventSource = new EventSource(`${serverUrl}/api/conversations/${conversationId}/stream`, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "X-Title": "Monthly Zen (Native)",
+        ...(cookie ? { Cookie: cookie } : {}),
       },
       body: payload,
       pollingInterval: 0,
@@ -477,30 +562,18 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
       if (!data) return;
       const trimmed = data.trim();
       if (!trimmed) return;
-
-      if (trimmed === "[DONE]") {
-        finalizeStream();
-        closeStream();
-        return;
-      }
-
       try {
-        const parsed = JSON.parse(trimmed) as OpenRouterChunk;
-        if (parsed.error?.message) {
-          if (conversationId && streamingMessageId.current) {
-            updateMessage(conversationId, streamingMessageId.current, {
-              status: "error",
-              content: `Error: ${parsed.error.message}`,
-            });
-            updateConversation(conversationId, { updatedAt: Date.now() });
-          }
-          updateStreamingMessage(`Error: ${parsed.error.message}`);
+        const parsed = JSON.parse(trimmed) as ServerStreamEvent;
+
+        if (parsed.type === "error") {
+          updateStreamingMessage(`Error: ${parsed.message}`);
           closeStream();
+          void loadConversationMessages();
           return;
         }
 
-        const delta = parsed.choices?.[0]?.delta?.content;
-        if (delta) {
+        if (parsed.type === "delta") {
+          const delta = parsed.text;
           streamingRawText.current += delta;
           updateStreamingMessage((prev) => {
             const next = prev + delta;
@@ -509,12 +582,13 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
             }
             return next;
           });
+          return;
         }
 
-        const finishReason = parsed.choices?.[0]?.finish_reason;
-        if (finishReason) {
+        if (parsed.type === "done") {
           finalizeStream();
           closeStream();
+          void loadConversationMessages();
         }
       } catch (error) {
         console.error("Failed to parse SSE event", error);
@@ -548,6 +622,11 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     setIsStreaming(false);
   };
 
+  const openSettings = () => {
+    Haptics.selectionAsync();
+    settingsSheetRef.current?.present();
+  };
+
   return (
     <Container className="bg-background" withScroll={false}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -559,10 +638,10 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           {backgroundGlow}
           <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push("/(tabs)")}
               className="w-10 h-10 rounded-2xl bg-surface border border-border/50 items-center justify-center"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color="var(--foreground)" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color={colors.foreground} />
             </TouchableOpacity>
             <View className="flex-1">
               <Text className="text-[10px] font-sans-bold uppercase tracking-[3px] text-muted-foreground">
@@ -571,19 +650,19 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
               <Text className="text-xl font-sans-bold text-foreground">AI Stream (Public)</Text>
             </View>
             <View className="w-10 h-10 rounded-2xl bg-accent/15 items-center justify-center">
-              <HugeiconsIcon icon={AiChat01Icon} size={20} color="var(--accent)" />
+              <HugeiconsIcon icon={AiChat01Icon} size={20} color={colors.accent} />
             </View>
           </View>
 
           <View className="px-6">
             <Animated.View
               entering={FadeInDown.duration(500)}
-              className="bg-surface/60 border border-border/40 rounded-[24px] p-4"
+              className="bg-surface/60 border border-border/40 rounded-xl p-4"
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-x-3">
                   <View className="w-9 h-9 rounded-2xl bg-accent/20 items-center justify-center">
-                    <HugeiconsIcon icon={SparklesIcon} size={16} color="var(--accent)" />
+                    <HugeiconsIcon icon={SparklesIcon} size={16} color={colors.accent} />
                   </View>
                   <View>
                     <Text className="text-sm font-sans-bold text-foreground">
@@ -605,8 +684,19 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                   </Text>
                 </View>
               </View>
+              <View className="flex-row items-center justify-between mt-3">
+                <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                  Conversation tuning
+                </Text>
+                <TouchableOpacity
+                  onPress={openSettings}
+                  className="rounded-full border border-border/40 bg-background/70 p-2"
+                >
+                  <HugeiconsIcon icon={Settings02Icon} size={12} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
               <View className="flex-row gap-x-2 mt-3">
-                {QUICK_STATS.map((stat) => (
+                {monitorStats.map((stat) => (
                   <View
                     key={stat.label}
                     className="flex-1 rounded-2xl bg-background/60 border border-border/30 px-3 py-2"
@@ -665,6 +755,22 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                         >
                           {message.content || (isStreaming ? "..." : "")}
                         </Text>
+
+                        {message.role === "assistant" &&
+                          Boolean(conversationId) &&
+                          message.content.trim().length > 0 && (
+                            <View className="mt-3">
+                              <TouchableOpacity
+                                onPress={handleSaveDraft}
+                                disabled={saveDraftMutation.isPending}
+                                className="self-start px-3 py-2 rounded-full bg-background/60 border border-border/40"
+                              >
+                                <Text className="text-[9px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                                  {saveDraftMutation.isPending ? "Saving..." : "Save Plan"}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
                       </View>
                     )}
                   </Animated.View>
@@ -713,7 +819,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
                   onChangeText={setInput}
                   placeholder="Describe your month goals to stream..."
                   placeholderTextColor="var(--muted-foreground)"
-                  className="min-h-[44px] max-h-28 text-sm font-sans text-foreground leading-6"
+                  className="min-h-11 max-h-28 text-sm font-sans text-foreground leading-6"
                   multiline
                   textAlignVertical="top"
                 />
@@ -737,6 +843,98 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           </View>
         </View>
       </KeyboardAvoidingView>
+      <BottomSheetModal
+        ref={settingsSheetRef}
+        snapPoints={settingsSnapPoints}
+        enablePanDownToClose
+        backdropComponent={renderSettingsBackdrop}
+        handleIndicatorStyle={{ backgroundColor: "var(--border)", width: 40 }}
+        backgroundStyle={{ backgroundColor: colors.background, borderRadius: 32 }}
+      >
+        <BottomSheetView className="flex-1 px-6 pb-10">
+          <View className="py-4">
+            <Text className="text-xl font-sans-bold text-foreground">Monitor Configuration</Text>
+            <Text className="text-xs font-sans text-muted-foreground mt-1">
+              Tune how the assistant responds for this conversation.
+            </Text>
+          </View>
+          <View className="gap-y-5">
+            <ConfigRow
+              title="Response Tone"
+              options={TONE_OPTIONS}
+              value={tone}
+              onChange={handleToneChange}
+            />
+            <ConfigRow
+              title="Response Depth"
+              options={DEPTH_OPTIONS}
+              value={depth}
+              onChange={handleDepthChange}
+            />
+            <ConfigRow
+              title="Response Format"
+              options={FORMAT_OPTIONS}
+              value={format}
+              onChange={handleFormatChange}
+            />
+          </View>
+          <View className="mt-6 rounded-3xl border border-border/40 bg-surface/70 px-4 py-4">
+            <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+              Default preference
+            </Text>
+            <Text className="text-xs font-sans text-foreground mt-1">
+              Save these settings as your default for new conversations.
+            </Text>
+            <TouchableOpacity
+              onPress={saveDefaults}
+              className="mt-3 rounded-2xl bg-foreground px-4 py-2 items-center"
+            >
+              <Text className="text-[11px] font-sans-bold text-background">Save as default</Text>
+            </TouchableOpacity>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </Container>
+  );
+}
+
+type ConfigRowProps<T extends string> = {
+  title: string;
+  options: readonly T[];
+  value: T;
+  onChange: (value: T) => void;
+};
+
+function ConfigRow<T extends string>({ title, options, value, onChange }: ConfigRowProps<T>) {
+  return (
+    <View className="gap-y-2">
+      <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+        {title}
+      </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
+        <View className="flex-row gap-x-2">
+          {options.map((option) => {
+            const isActive = option === value;
+            return (
+              <TouchableOpacity
+                key={option}
+                onPress={() => onChange(option)}
+                className={`px-4 py-2 rounded-2xl border ${
+                  isActive ? "bg-foreground border-foreground" : "bg-surface border-border/40"
+                }`}
+              >
+                <Text
+                  className={`text-[10px] font-sans-bold uppercase tracking-[2px] ${
+                    isActive ? "text-background" : "text-muted-foreground"
+                  }`}
+                >
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </View>
   );
 }

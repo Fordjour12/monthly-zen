@@ -79,7 +79,7 @@ export default function GeneratingScreen() {
   const [isComplete, setIsComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
-  const [planId, setPlanId] = useState<number | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const hasNotified = useRef(false);
 
   const sampleTasks = [
@@ -95,7 +95,7 @@ export default function GeneratingScreen() {
   const startGenerationMutation = useMutation(
     orpc.plan.startFirstGeneration.mutationOptions({
       onSuccess: (result) => {
-        if (result.success) {
+        if (result.success && typeof result.jobId === "number") {
           setJobId(result.jobId);
         } else {
           setError(result.error || "Failed to start generation");
@@ -109,8 +109,8 @@ export default function GeneratingScreen() {
   );
 
   const statusQuery = useQuery({
-    ...orpc.plan.getGenerationStatus.queryOptions({ jobId: jobId ?? 0 }),
-    enabled: jobId !== null,
+    ...orpc.plan.getGenerationStatus.queryOptions({ input: { jobId: jobId ?? 1 } }),
+    enabled: typeof jobId === "number" && jobId > 0,
     refetchInterval: (query) => {
       const status = query.state.data?.data?.status;
       if (!status || status === "completed" || status === "failed") {
@@ -132,9 +132,8 @@ export default function GeneratingScreen() {
           coachTone,
           taskComplexity,
           weekendPreference,
-          focusAreas,
-          resolutionsJson: { resolutions: parsedResolutions },
           fixedCommitmentsJson: parsedCommitments,
+          resolutionsJson: { resolutions: parsedResolutions },
         });
 
         startGenerationMutation.mutate({
@@ -181,6 +180,8 @@ export default function GeneratingScreen() {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
       }),
@@ -202,9 +203,9 @@ export default function GeneratingScreen() {
     }
 
     if (status === "completed") {
-      const nextPlanId = statusQuery.data?.data?.planId ?? null;
-      if (nextPlanId) {
-        setPlanId(nextPlanId);
+      const nextConversationId = statusQuery.data?.data?.conversationId ?? null;
+      if (nextConversationId) {
+        setConversationId(nextConversationId);
       }
       setIsComplete(true);
     }
@@ -215,7 +216,8 @@ export default function GeneratingScreen() {
 
     hasNotified.current = true;
     toast.show({
-      title: "Your plan is ready",
+      variant: "success",
+      label: "Your plan is ready",
       description: "Open the plan chat to refine or tweak it.",
     });
 
@@ -237,8 +239,8 @@ export default function GeneratingScreen() {
 
   const handleContinue = async () => {
     await completeOnboarding();
-    if (planId) {
-      router.replace({ pathname: "/chat", params: { planId: String(planId) } });
+    if (conversationId) {
+      router.replace({ pathname: "/chat", params: { conversationId } });
       return;
     }
     router.replace("/chat");

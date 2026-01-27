@@ -72,7 +72,7 @@ export default function ProfileDynamicScreen() {
   const [taskComplexity, setTaskComplexity] = useState<"Simple" | "Balanced" | "Ambitious">(
     "Balanced",
   );
-  const [focusAreas, setFocusAreas] = useState("");
+  const [defaultFocusArea, setDefaultFocusArea] = useState("");
   const [weekendPreference, setWeekendPreference] = useState<"Work" | "Rest" | "Mixed">("Mixed");
   const [preferredTaskDuration, setPreferredTaskDuration] = useState(45);
 
@@ -87,7 +87,7 @@ export default function ProfileDynamicScreen() {
   useEffect(() => {
     if (preferences) {
       setTaskComplexity(preferences.taskComplexity || "Balanced");
-      setFocusAreas(preferences.focusAreas || "");
+      setDefaultFocusArea(preferences.defaultFocusArea || "");
       setWeekendPreference(preferences.weekendPreference || "Mixed");
       setPreferredTaskDuration(preferences.preferredTaskDuration || 45);
       setCoachName(preferences.coachName || "Coach");
@@ -121,13 +121,13 @@ export default function ProfileDynamicScreen() {
       updatePreferences.mutate(
         {
           taskComplexity,
-          focusAreas,
           weekendPreference,
           preferredTaskDuration,
           coachName,
           coachTone,
           workingHoursStart,
           workingHoursEnd,
+          defaultFocusArea,
           fixedCommitmentsJson: { commitments },
         },
         {
@@ -148,7 +148,7 @@ export default function ProfileDynamicScreen() {
     isEditPreferences,
     profileName,
     taskComplexity,
-    focusAreas,
+    defaultFocusArea,
     weekendPreference,
     preferredTaskDuration,
     coachName,
@@ -430,13 +430,13 @@ export default function ProfileDynamicScreen() {
                 <Section icon={Compass01Icon} title="Operating Habitat">
                   <View className="bg-surface rounded-[24px] border border-border/50 px-5 py-5">
                     <Text className="text-[10px] font-sans-bold text-muted-foreground uppercase tracking-widest mb-2 ml-1">
-                      Focus Sectors
+                      Default Focus Area
                     </Text>
                     <TextInput
                       className="text-foreground text-base font-sans-medium"
-                      value={focusAreas}
-                      onChangeText={setFocusAreas}
-                      placeholder="e.g. Health, Finance, Deep Work"
+                      value={defaultFocusArea}
+                      onChangeText={setDefaultFocusArea}
+                      placeholder="e.g. Health"
                       placeholderTextColor="var(--muted-foreground)/50"
                     />
                   </View>

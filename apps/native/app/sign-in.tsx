@@ -6,7 +6,6 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Platform,
   Pressable,
   TextInput,
   Image,
