@@ -945,25 +945,27 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
             onLayout={(event) => setComposerHeight(event.nativeEvent.layout.height)}
           >
             <View className="px-6">
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 8 }}
-              >
-                <View className="flex-row gap-x-2">
-                  {PROMPTS.map((prompt) => (
-                    <TouchableOpacity
-                      key={prompt}
-                      onPress={() => handlePrompt(prompt)}
-                      className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
-                    >
-                      <Text className="text-[11px] font-sans-semibold text-foreground">
-                        {prompt}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
+              {!messages.some((message) => message.role === "user") && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 8 }}
+                >
+                  <View className="flex-row gap-x-2">
+                    {PROMPTS.map((prompt) => (
+                      <TouchableOpacity
+                        key={prompt}
+                        onPress={() => handlePrompt(prompt)}
+                        className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
+                      >
+                        <Text className="text-[11px] font-sans-semibold text-foreground">
+                          {prompt}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
             </View>
 
             <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 px-4 py-3 shadow-xl shadow-black/10">
