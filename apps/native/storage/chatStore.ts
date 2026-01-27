@@ -24,9 +24,12 @@ export type Conversation = {
 };
 
 export type MonitorSettings = {
-  tone: string;
-  depth: string;
-  format: string;
+  focusArea?: string | null;
+  taskComplexity?: string | null;
+  weekendPreference?: string | null;
+  responseTone?: string | null;
+  depth?: string | null;
+  format?: string | null;
 };
 
 const KEY_CONVERSATIONS = "conversations:v1";

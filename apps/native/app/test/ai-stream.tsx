@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
 import { Stack, useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import {
+  AndroidSoftInputModes,
+  KeyboardController,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { HugeiconsIcon } from "@hugeicons/react-native";
@@ -41,16 +53,23 @@ const PROMPTS = [
   "Review my last month",
 ];
 
-const TONE_OPTIONS = ["Calm", "Direct", "Analytical"] as const;
+const TASK_COMPLEXITY_OPTIONS = ["Simple", "Balanced", "Ambitious"] as const;
+const WEEKEND_PREFERENCE_OPTIONS = ["Work", "Rest", "Mixed"] as const;
+const RESPONSE_TONE_OPTIONS = ["encouraging", "direct", "analytical"] as const;
 const DEPTH_OPTIONS = ["Brief", "Balanced", "Deep"] as const;
 const FORMAT_OPTIONS = ["Bullets", "Narrative", "Checklist"] as const;
 
-type ToneOption = (typeof TONE_OPTIONS)[number];
+type TaskComplexityOption = (typeof TASK_COMPLEXITY_OPTIONS)[number];
+type WeekendPreferenceOption = (typeof WEEKEND_PREFERENCE_OPTIONS)[number];
+type ResponseToneOption = (typeof RESPONSE_TONE_OPTIONS)[number];
 type DepthOption = (typeof DEPTH_OPTIONS)[number];
 type FormatOption = (typeof FORMAT_OPTIONS)[number];
 
 const DEFAULT_MONITOR_SETTINGS = {
-  tone: "Calm",
+  focusArea: "",
+  taskComplexity: "Balanced",
+  weekendPreference: "Mixed",
+  responseTone: "encouraging",
   depth: "Balanced",
   format: "Bullets",
 } as const;
@@ -58,8 +77,15 @@ const DEFAULT_MONITOR_SETTINGS = {
 const SYSTEM_PROMPT =
   "You are Monthly Zen, a planning assistant. Create clear month plans, focus maps, and next steps.";
 
-const isToneOption = (value: string | null | undefined): value is ToneOption =>
-  typeof value === "string" && TONE_OPTIONS.includes(value as ToneOption);
+const isTaskComplexityOption = (value: string | null | undefined): value is TaskComplexityOption =>
+  typeof value === "string" && TASK_COMPLEXITY_OPTIONS.includes(value as TaskComplexityOption);
+const isWeekendPreferenceOption = (
+  value: string | null | undefined,
+): value is WeekendPreferenceOption =>
+  typeof value === "string" &&
+  WEEKEND_PREFERENCE_OPTIONS.includes(value as WeekendPreferenceOption);
+const isResponseToneOption = (value: string | null | undefined): value is ResponseToneOption =>
+  typeof value === "string" && RESPONSE_TONE_OPTIONS.includes(value as ResponseToneOption);
 const isDepthOption = (value: string | null | undefined): value is DepthOption =>
   typeof value === "string" && DEPTH_OPTIONS.includes(value as DepthOption);
 const isFormatOption = (value: string | null | undefined): value is FormatOption =>
@@ -67,14 +93,33 @@ const isFormatOption = (value: string | null | undefined): value is FormatOption
 
 const resolveMonitorSettings = (
   settings?: {
-    tone?: string | null;
+    focusArea?: string | null;
+    taskComplexity?: string | null;
+    weekendPreference?: string | null;
+    responseTone?: string | null;
     depth?: string | null;
     format?: string | null;
   } | null,
-): { tone: ToneOption; depth: DepthOption; format: FormatOption } => ({
-  tone: isToneOption(settings?.tone) ? settings?.tone : DEFAULT_MONITOR_SETTINGS.tone,
-  depth: isDepthOption(settings?.depth) ? settings?.depth : DEFAULT_MONITOR_SETTINGS.depth,
-  format: isFormatOption(settings?.format) ? settings?.format : DEFAULT_MONITOR_SETTINGS.format,
+): {
+  focusArea: string;
+  taskComplexity: TaskComplexityOption;
+  weekendPreference: WeekendPreferenceOption;
+  responseTone: ResponseToneOption;
+  depth: DepthOption;
+  format: FormatOption;
+} => ({
+  focusArea: typeof settings?.focusArea === "string" ? settings.focusArea : "",
+  taskComplexity: isTaskComplexityOption(settings?.taskComplexity)
+    ? settings.taskComplexity
+    : DEFAULT_MONITOR_SETTINGS.taskComplexity,
+  weekendPreference: isWeekendPreferenceOption(settings?.weekendPreference)
+    ? settings.weekendPreference
+    : DEFAULT_MONITOR_SETTINGS.weekendPreference,
+  responseTone: isResponseToneOption(settings?.responseTone)
+    ? settings.responseTone
+    : DEFAULT_MONITOR_SETTINGS.responseTone,
+  depth: isDepthOption(settings?.depth) ? settings.depth : DEFAULT_MONITOR_SETTINGS.depth,
+  format: isFormatOption(settings?.format) ? settings.format : DEFAULT_MONITOR_SETTINGS.format,
 });
 
 type Message = {
@@ -221,13 +266,18 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   const [input, setInput] = useState("");
   const [composerHeight, setComposerHeight] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [tone, setTone] = useState<(typeof TONE_OPTIONS)[number]>(DEFAULT_MONITOR_SETTINGS.tone);
-  const [depth, setDepth] = useState<(typeof DEPTH_OPTIONS)[number]>(
-    DEFAULT_MONITOR_SETTINGS.depth,
+  const [focusArea, setFocusArea] = useState<string>(DEFAULT_MONITOR_SETTINGS.focusArea);
+  const [taskComplexity, setTaskComplexity] = useState<TaskComplexityOption>(
+    DEFAULT_MONITOR_SETTINGS.taskComplexity,
   );
-  const [format, setFormat] = useState<(typeof FORMAT_OPTIONS)[number]>(
-    DEFAULT_MONITOR_SETTINGS.format,
+  const [weekendPreference, setWeekendPreference] = useState<WeekendPreferenceOption>(
+    DEFAULT_MONITOR_SETTINGS.weekendPreference,
   );
+  const [responseTone, setResponseTone] = useState<ResponseToneOption>(
+    DEFAULT_MONITOR_SETTINGS.responseTone,
+  );
+  const [depth, setDepth] = useState<DepthOption>(DEFAULT_MONITOR_SETTINGS.depth);
+  const [format, setFormat] = useState<FormatOption>(DEFAULT_MONITOR_SETTINGS.format);
   const defaultMessages = useMemo<Message[]>(
     () => [
       {
@@ -334,7 +384,10 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   useEffect(() => {
     const fallbackDefaults = resolveMonitorSettings(getDefaultMonitorSettings());
     if (!conversationId) {
-      setTone(fallbackDefaults.tone);
+      setFocusArea(fallbackDefaults.focusArea);
+      setTaskComplexity(fallbackDefaults.taskComplexity);
+      setWeekendPreference(fallbackDefaults.weekendPreference);
+      setResponseTone(fallbackDefaults.responseTone);
       setDepth(fallbackDefaults.depth);
       setFormat(fallbackDefaults.format);
       return;
@@ -342,7 +395,10 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
     const saved = getConversationMonitorSettings(conversationId);
     const nextSettings = resolveMonitorSettings(saved);
-    setTone(nextSettings.tone);
+    setFocusArea(nextSettings.focusArea);
+    setTaskComplexity(nextSettings.taskComplexity);
+    setWeekendPreference(nextSettings.weekendPreference);
+    setResponseTone(nextSettings.responseTone);
     setDepth(nextSettings.depth);
     setFormat(nextSettings.format);
     if (!saved) {
@@ -354,6 +410,14 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     return () => {
       streamingAbort.current?.removeAllEventListeners();
       streamingAbort.current?.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    KeyboardController.setInputMode(AndroidSoftInputModes.SOFT_INPUT_ADJUST_RESIZE);
+    return () => {
+      KeyboardController.setDefaultMode();
     };
   }, []);
 
@@ -411,16 +475,21 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
 
   const monitorStats = useMemo(
     () => [
-      { label: "Tone", value: tone },
-      { label: "Depth", value: depth },
-      { label: "Format", value: format },
+      { label: "Focus Area", value: focusArea || "Not set" },
+      { label: "Complexity", value: taskComplexity },
+      { label: "Weekend", value: weekendPreference },
     ],
-    [depth, format, tone],
+    [focusArea, taskComplexity, weekendPreference],
   );
 
   const systemPrompt = useMemo(
-    () => `${SYSTEM_PROMPT}\nResponse tone: ${tone}. Depth: ${depth}. Format: ${format}.`,
-    [depth, format, tone],
+    () =>
+      `${SYSTEM_PROMPT}\nFocus area: ${focusArea || "Unspecified"}. Task complexity: ${
+        taskComplexity
+      }. Weekend preference: ${weekendPreference}. Response tone: ${responseTone}. Depth: ${
+        depth
+      }. Format: ${format}.`,
+    [depth, focusArea, format, responseTone, taskComplexity, weekendPreference],
   );
 
   const persistAssistantContentThrottled = useMemo(
@@ -433,11 +502,17 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   );
 
   const updateMonitorSettings = (next: {
-    tone: (typeof TONE_OPTIONS)[number];
-    depth: (typeof DEPTH_OPTIONS)[number];
-    format: (typeof FORMAT_OPTIONS)[number];
+    focusArea: string;
+    taskComplexity: TaskComplexityOption;
+    weekendPreference: WeekendPreferenceOption;
+    responseTone: ResponseToneOption;
+    depth: DepthOption;
+    format: FormatOption;
   }) => {
-    setTone(next.tone);
+    setFocusArea(next.focusArea);
+    setTaskComplexity(next.taskComplexity);
+    setWeekendPreference(next.weekendPreference);
+    setResponseTone(next.responseTone);
     setDepth(next.depth);
     setFormat(next.format);
     if (conversationId) {
@@ -445,24 +520,87 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
     }
   };
 
-  const handleToneChange = (value: (typeof TONE_OPTIONS)[number]) => {
-    Haptics.selectionAsync();
-    updateMonitorSettings({ tone: value, depth, format });
+  const handleFocusAreaChange = (value: string) => {
+    updateMonitorSettings({
+      focusArea: value,
+      taskComplexity,
+      weekendPreference,
+      responseTone,
+      depth,
+      format,
+    });
   };
 
-  const handleDepthChange = (value: (typeof DEPTH_OPTIONS)[number]) => {
+  const handleTaskComplexityChange = (value: TaskComplexityOption) => {
     Haptics.selectionAsync();
-    updateMonitorSettings({ tone, depth: value, format });
+    updateMonitorSettings({
+      focusArea,
+      taskComplexity: value,
+      weekendPreference,
+      responseTone,
+      depth,
+      format,
+    });
   };
 
-  const handleFormatChange = (value: (typeof FORMAT_OPTIONS)[number]) => {
+  const handleWeekendPreferenceChange = (value: WeekendPreferenceOption) => {
     Haptics.selectionAsync();
-    updateMonitorSettings({ tone, depth, format: value });
+    updateMonitorSettings({
+      focusArea,
+      taskComplexity,
+      weekendPreference: value,
+      responseTone,
+      depth,
+      format,
+    });
+  };
+
+  const handleResponseToneChange = (value: ResponseToneOption) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({
+      focusArea,
+      taskComplexity,
+      weekendPreference,
+      responseTone: value,
+      depth,
+      format,
+    });
+  };
+
+  const handleDepthChange = (value: DepthOption) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({
+      focusArea,
+      taskComplexity,
+      weekendPreference,
+      responseTone,
+      depth: value,
+      format,
+    });
+  };
+
+  const handleFormatChange = (value: FormatOption) => {
+    Haptics.selectionAsync();
+    updateMonitorSettings({
+      focusArea,
+      taskComplexity,
+      weekendPreference,
+      responseTone,
+      depth,
+      format: value,
+    });
   };
 
   const saveDefaults = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setDefaultMonitorSettings({ tone, depth, format });
+    setDefaultMonitorSettings({
+      focusArea,
+      taskComplexity,
+      weekendPreference,
+      responseTone,
+      depth,
+      format,
+    });
   };
 
   const updateStreamingMessage = (updater: string | ((prev: string) => string)) => {
@@ -630,10 +768,7 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
   return (
     <Container className="bg-background" withScroll={false}>
       <Stack.Screen options={{ headerShown: false }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
+      <View className="flex-1">
         <View className="flex-1">
           {backgroundGlow}
           <View className="px-6 pt-10 pb-3 flex-row items-center gap-x-4">
@@ -780,69 +915,73 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
           </View>
         </View>
 
-        <View
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-          className="pt-3"
-          onLayout={(event) => setComposerHeight(event.nativeEvent.layout.height)}
-        >
-          <View className="px-6">
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 8 }}
-            >
-              <View className="flex-row gap-x-2">
-                {PROMPTS.map((prompt) => (
-                  <TouchableOpacity
-                    key={prompt}
-                    onPress={() => handlePrompt(prompt)}
-                    className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
-                  >
-                    <Text className="text-[11px] font-sans-semibold text-foreground">{prompt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 px-4 py-3 shadow-xl shadow-black/10">
-            <View className="flex-row items-end gap-x-3">
-              <TouchableOpacity
-                className="w-10 h-10 rounded-2xl bg-background/80 border border-border/50 items-center justify-center"
-                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+        <KeyboardStickyView offset={{ closed: insets.bottom, opened: insets.bottom + 6 }}>
+          <View
+            style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+            className="pt-3"
+            onLayout={(event) => setComposerHeight(event.nativeEvent.layout.height)}
+          >
+            <View className="px-6">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 8 }}
               >
-                <HugeiconsIcon icon={PlusSignIcon} size={18} color={colors.foreground} />
-              </TouchableOpacity>
-              <View className="flex-1">
-                <TextInput
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder="Describe your month goals to stream..."
-                  placeholderTextColor="var(--muted-foreground)"
-                  className="min-h-11 max-h-28 text-sm font-sans text-foreground leading-6"
-                  multiline
-                  textAlignVertical="top"
-                />
+                <View className="flex-row gap-x-2">
+                  {PROMPTS.map((prompt) => (
+                    <TouchableOpacity
+                      key={prompt}
+                      onPress={() => handlePrompt(prompt)}
+                      className="px-4 py-2 rounded-2xl bg-surface border border-border/40"
+                    >
+                      <Text className="text-[11px] font-sans-semibold text-foreground">
+                        {prompt}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View className="mt-2 rounded-[26px] bg-surface/90 border border-border/50 px-4 py-3 shadow-xl shadow-black/10">
+              <View className="flex-row items-end gap-x-3">
+                <TouchableOpacity
+                  className="w-10 h-10 rounded-2xl bg-background/80 border border-border/50 items-center justify-center"
+                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} size={18} color={colors.foreground} />
+                </TouchableOpacity>
+                <View className="flex-1">
+                  <TextInput
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Describe your month goals to stream..."
+                    placeholderTextColor="var(--muted-foreground)"
+                    className="min-h-11 max-h-28 text-sm font-sans text-foreground leading-6"
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </View>
+                {isStreaming ? (
+                  <TouchableOpacity
+                    onPress={stopStreaming}
+                    className="w-10 h-10 rounded-2xl bg-danger items-center justify-center"
+                  >
+                    <Text className="text-[11px] font-sans-bold text-background">Stop</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => sendMessage(input)}
+                    className="w-10 h-10 rounded-2xl bg-foreground items-center justify-center"
+                  >
+                    <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
+                  </TouchableOpacity>
+                )}
               </View>
-              {isStreaming ? (
-                <TouchableOpacity
-                  onPress={stopStreaming}
-                  className="w-10 h-10 rounded-2xl bg-danger items-center justify-center"
-                >
-                  <Text className="text-[11px] font-sans-bold text-background">Stop</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => sendMessage(input)}
-                  className="w-10 h-10 rounded-2xl bg-foreground items-center justify-center"
-                >
-                  <HugeiconsIcon icon={ArrowUp01Icon} size={18} color={colors.background} />
-                </TouchableOpacity>
-              )}
             </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardStickyView>
+      </View>
       <BottomSheetModal
         ref={settingsSheetRef}
         snapPoints={settingsSnapPoints}
@@ -859,11 +998,35 @@ export default function PlannerAiStreamTest({ planId, conversationId }: PlannerA
             </Text>
           </View>
           <View className="gap-y-5">
+            <View className="gap-y-2">
+              <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
+                Focus Area
+              </Text>
+              <TextInput
+                value={focusArea}
+                onChangeText={handleFocusAreaChange}
+                placeholder="e.g. Health, Career"
+                placeholderTextColor="var(--muted-foreground)"
+                className="rounded-2xl border border-border/40 bg-background/70 px-4 py-2 text-sm font-sans text-foreground"
+              />
+            </View>
+            <ConfigRow
+              title="Task Complexity"
+              options={TASK_COMPLEXITY_OPTIONS}
+              value={taskComplexity}
+              onChange={handleTaskComplexityChange}
+            />
+            <ConfigRow
+              title="Weekend Preference"
+              options={WEEKEND_PREFERENCE_OPTIONS}
+              value={weekendPreference}
+              onChange={handleWeekendPreferenceChange}
+            />
             <ConfigRow
               title="Response Tone"
-              options={TONE_OPTIONS}
-              value={tone}
-              onChange={handleToneChange}
+              options={RESPONSE_TONE_OPTIONS}
+              value={responseTone}
+              onChange={handleResponseToneChange}
             />
             <ConfigRow
               title="Response Depth"
@@ -911,7 +1074,12 @@ function ConfigRow<T extends string>({ title, options, value, onChange }: Config
       <Text className="text-[10px] font-sans-bold uppercase tracking-[2px] text-muted-foreground">
         {title}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="overflow-visible"
+        contentContainerStyle={{ paddingRight: 12 }}
+      >
         <View className="flex-row gap-x-2">
           {options.map((option) => {
             const isActive = option === value;
